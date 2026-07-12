@@ -33,7 +33,7 @@ public class SaveChanges extends CefMessageRouterHandlerAdapter {
 	public boolean onQuery(
 			CefBrowser browser, long id, String request, boolean persistent, CefQueryCallback callback) {
 
-		Environment.getInstance().workers().execute(
+		Environment.getInstance().mutationWorker().execute(
 				new ChangesSaver(request, callback));
 
 		return true;

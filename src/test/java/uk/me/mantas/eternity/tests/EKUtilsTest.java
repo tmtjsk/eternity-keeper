@@ -44,6 +44,15 @@ public class EKUtilsTest {
 	}
 
 	@Test
+	public void extractCharacterNameTest () {
+		assertEquals("Elwyn", extractCharacterName("Player_Elwyn(Clone)_0"));
+		assertEquals("Calisca", extractCharacterName("Companion_Calisca(Clone)_1"));
+		assertEquals("New_Game", extractCharacterName("Player_New_Game(Clone)_0"));
+		assertEquals("", extractCharacterName("NoPrefix"));
+		assertEquals("", extractCharacterName(null));
+	}
+
+	@Test
 	public void removeBOMTest () {
 		byte[] data = new byte[]{-17, -69, -65, 100, 97, 116, 97};
 		byte[] actual = removeBOM(data);

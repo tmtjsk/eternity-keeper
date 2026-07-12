@@ -73,6 +73,13 @@ public class JSHandlers {
 		final CefMessageRouter deleteSavedGameRouter = CefMessageRouter.create(
 				new CefMessageRouterConfig("deleteSavedGame", "deleteSavedGameCancel"), new DeleteSavedGame());
 
+		final CefMessageRouter updatePartyRouter = CefMessageRouter.create(
+				new CefMessageRouterConfig("updateParty", "updatePartyCancel"), new UpdateParty());
+
+		final CefMessageRouter renameSavedGameRouter = CefMessageRouter.create(
+				new CefMessageRouterConfig("renameSavedGame", "renameSavedGameCancel"),
+				new RenameSavedGame());
+
 		cefClient.addMessageRouter(getDefaultSaveLocationRouter);
 		cefClient.addMessageRouter(listSavedGamesRouter);
 		cefClient.addMessageRouter(openSavedGameRouter);
@@ -87,5 +94,7 @@ public class JSHandlers {
 		cefClient.addMessageRouter(importCharacterRouter);
 		cefClient.addMessageRouter(getGameStructuresRouter);
 		cefClient.addMessageRouter(deleteSavedGameRouter);
+		cefClient.addMessageRouter(updatePartyRouter);
+		cefClient.addMessageRouter(renameSavedGameRouter);
 	}
 }

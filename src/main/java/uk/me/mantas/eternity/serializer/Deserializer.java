@@ -464,11 +464,14 @@ public class Deserializer {
 		} catch (ArrayIndexOutOfBoundsException e) {
 			logger.error(
 					"Tried to get enum value index #%d that "
-							+ "didn't exist for enum %s.%n",
+							+ "didn't exist for enum %s, preserving the raw value.%n",
 					value, type.getSimpleName());
 		}
 
-		return null;
+		// Newer game versions contain enum values this port doesn't know
+		// about. Returning the raw value means it serializes back to the
+		// same bytes instead of corrupting the save with a null.
+		return value;
 	}
 
 	private Property createProperty(byte elementID, String propertyName, TypePair propertyType) {

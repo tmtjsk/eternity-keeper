@@ -441,7 +441,14 @@ public class ChangesSaver implements Runnable {
 			logger.warn("Source directory listFiles() returned null!%n");
 		}
 
-		FileUtils.copyDirectory(oldSave, newDirectory);
+		try {
+			FileUtils.copyDirectory(oldSave, newDirectory);
+		} catch (final IOException e) {
+			// Don't leave a partial clone behind; it would occupy a sequence
+			// number in the working directory and confuse the next attempt.
+			FileUtils.deleteQuietly(newDirectory);
+			throw e;
+		}
 
 		if (newDirectory.listFiles() != null) {
 			logger.info("Cloning complete. Target directory contains %d files.%n", newDirectory.listFiles().length);

@@ -81,14 +81,15 @@ public class ChangesSaverTest extends TestHarness {
 		+ "}";
 
 		ChangesSaver cls = new ChangesSaver(request, mockCallback);
-		when(mockEnvironment.state().previousSaveDirectory()).thenReturn(null);
 		when(mockEnvironment.state().previousSaveDirectory())
 			.thenReturn(new File("/404"));
 
 		cls.run();
 		verify(mockCallback).failure(
-			-1
-			, "{\"error\":\"Unable to write new save file.\"}");
+			eq(-1)
+			, argThat((String error) ->
+				error.startsWith("{\"error\":\"IO Error: ")
+				&& error.contains("saveinfo.xml")));
 	}
 
 	@Test
@@ -146,12 +147,17 @@ public class ChangesSaverTest extends TestHarness {
 
 		doThrow(new JSONException("")).when(mockJSON).getString(anyString());
 
+		final File savesLocation = EKUtils.createTempDir(PREFIX).get();
+		when(mockJSON.optString(eq("savesLocation"), anyString()))
+			.thenReturn(savesLocation.getAbsolutePath());
+
 		final File saveDirectory = new File(workingDirectory, "id 0 Encampment.savegame");
 		final ChangesSaver cls = new ChangesSaver(request, mockCallback);
 
 		cls.run();
 		verify(mockCallback).success("{\"success\":true}");
 		verify(mockEnvironment.state()).previousSaveDirectory(saveDirectory);
+		assertTrue(new File(savesLocation, saveDirectory.getName()).exists());
 
 		final byte[] saveinfoBytes =
 			FileUtils.readFileToByteArray(new File(saveDirectory, "saveinfo.xml"));

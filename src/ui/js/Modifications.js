@@ -32,7 +32,7 @@ var Modifications = function () {
 	self.html = {};
 
 	self.init = () => {
-		self.html.menuSaveModifications.click(self.save.bind(self));
+		self.html.saveButton.click(self.save.bind(self));
 		self.html.saveChanges.click(self.save.bind(self));
 		self.html.dontSaveChanges.click(self.discardChanges.bind(self));
 		self.html.saveNameBtn.click(self.saveName.bind(self));
@@ -48,23 +48,21 @@ var Modifications = function () {
 
 	self.render = newState => {
 		self.state = $.extend({}, defaultState, newState);
-
-		if (self.state.modifications) {
-			self.html.menuSaveModifications.parent().removeClass('disabled');
-		} else {
-			self.html.menuSaveModifications.parent().addClass('disabled');
-		}
-
-		if (self.state.saving) {
-			self.html.saveNameBtn.prop('disabled', true);
-		} else {
-			self.html.saveNameBtn.prop('disabled', false);
-		}
+		self.html.saveButton.prop('disabled', !self.state.modifications || self.state.saving);
+		self.html.saveNameBtn.prop('disabled', self.state.saving);
 	};
 };
 
 Modifications.prototype.suggestSaveName = function (info) {
 	return ((info.userSaveName) ? info.userSaveName : info.systemName) + ' (edited)';
+};
+
+// Fades the confirmation toast in and back out again a moment later.
+Modifications.prototype.showSavedToast = function () {
+	var self = this;
+	self.html.saveToast.addClass('show');
+	clearTimeout(self.toastTimer);
+	self.toastTimer = setTimeout(() => self.html.saveToast.removeClass('show'), 2600);
 };
 
 Modifications.prototype.saveName = function () {
@@ -91,6 +89,7 @@ Modifications.prototype.save = function () {
 			});
 		} else {
 			self.transition({modifications: false, savedYet: true, saving: false});
+			self.showSavedToast();
 		}
 	};
 

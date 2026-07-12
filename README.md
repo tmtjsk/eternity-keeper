@@ -59,6 +59,9 @@ This alpha release includes initial code by ktully allowing you to generate Stea
 * Modify character attributes
 * Modify all raw numeric character variables
 * Modify character names (including companions)
+* Character importing/exporting (`Character > Export character to file` saves a `.chr` file; `Character > Import character from file` adds a previously exported character to the currently open save, anchored next to the player). If the imported character already exists in the target save (the main character, or a companion already in the party), Eternity Keeper asks for confirmation and then overwrites the existing character in place instead of duplicating them.
+* Light and dark mode (toggle in the top-right corner)
+* Party management from anywhere (`Character > Party management`): move companions between the active party and the stronghold roster without travelling to Caed Nua. The editor replicates the game's own structures — the `PartyMemberAI`/`AIPackageController` component swap, the physical move to the Great Hall, the `_stored` roster records and the stronghold's stored-GUID lists.
 
 **Note about the Raw tab**: The 'Raw' tab is basically a dump of all a character's stats from the save file. Changing most of the values here has not been tested and could result in a corrupt save file. Eternity Keeper will never overwrite your save files, it will just create a new, edited one, so you don't need to worry too much.
 
@@ -67,8 +70,6 @@ The values in the other tabs have been tested and will be accepted by the game. 
 # Planned Features
 * Faster conversion from Windows to Steam format
 * Mac support
-* Character importing/exporting
-* Party management
 * Bring dead characters back to life
 * Clean up vendors (i.e. delete all the crap you sold to vendors from the save files to make them smaller and faster to save in future)
 * Modify inventory and stash
@@ -103,7 +104,7 @@ The saved games are just compressed zip files. This revelation obviously isn't a
 # Testing
 You may run the TestEnvironment tool to automatically copy a small number of saves as well as any necessary game data to a temporary directory on your filesystem and then modify your settings file to point to these. This should make UI testing a bit easier and less destructive. You can run the tool after building the whole project with:
 
-	java -cp target/eternity-0.1.-shaded.jar uk.me.mantas.eternity.TestEnvironment <game location> <save location>
+	java -cp target/eternity-0.21a.jar uk.me.mantas.eternity.TestEnvironment <game location> <save location>
 
 Where *<game location>* is the path to your Pillars of Eternity install and *<save location>* is the path to your save file directory.
 

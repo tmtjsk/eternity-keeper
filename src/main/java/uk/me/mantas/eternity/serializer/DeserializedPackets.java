@@ -58,9 +58,6 @@ public class DeserializedPackets {
 		final SharpSerializer serializer =
 			sharpSerializer.forFile(destinationFile.getAbsolutePath()).toFormat(outputFormat);
 
-		serializer.serialize(count);
-		for (final Property property : packets) {
-			serializer.serialize(property);
-		}
+		serializer.serializeAll(count, packets);
 	}
 }

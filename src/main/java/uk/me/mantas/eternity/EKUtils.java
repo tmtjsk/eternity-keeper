@@ -152,6 +152,21 @@ public class EKUtils {
 		return (ObjectPersistencePacket) property.obj;
 	}
 
+	// Extracts a user-facing character name from a mobile object name,
+	// e.g. "Companion_Calisca(Clone)_1" -> "Calisca".
+	public static String extractCharacterName (final String objectName) {
+		if (objectName == null || !objectName.contains("_")) {
+			return "";
+		}
+
+		String name = objectName.substring(objectName.indexOf("_") + 1);
+		if (name.contains("(")) {
+			name = name.split("\\(")[0];
+		}
+
+		return name;
+	}
+
 	public static Optional<ComponentPersistencePacket> findComponent (
 		final ComponentPersistencePacket[] haystack
 		, final String needle) {

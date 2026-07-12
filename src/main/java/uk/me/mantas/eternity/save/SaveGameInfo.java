@@ -28,6 +28,12 @@ import org.w3c.dom.DOMException;
 import uk.me.mantas.eternity.EKUtils;
 import uk.me.mantas.eternity.Logger;
 
+import javax.xml.transform.OutputKeys;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerException;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
@@ -185,8 +191,15 @@ public class SaveGameInfo {
 		try {
 			Match xml = $(contents);
 			xml.find("Simple[name='UserSaveName']").attr("value", newUserSaveName);
-			xml.write(newContentsStream);
-		} catch (DOMException e) {
+
+			// Serialize with an explicit UTF-8 encoder; joox's write() uses
+			// the platform charset which silently replaces characters it
+			// cannot encode, corrupting non-ASCII save names.
+			Transformer transformer = TransformerFactory.newInstance().newTransformer();
+			transformer.setOutputProperty(OutputKeys.ENCODING, "UTF-8");
+			transformer.transform(
+					new DOMSource(xml.document()), new StreamResult(newContentsStream));
+		} catch (DOMException | TransformerException e) {
 
 			logger.error(
 					"Error parsing copied saveinfo '%s': %s%n"
@@ -194,8 +207,7 @@ public class SaveGameInfo {
 					, e.getMessage());
 		}
 
-		String newContents = newContentsStream.toString("UTF-8");
-		byte[] newContentsBytes = newContents.getBytes();
+		byte[] newContentsBytes = newContentsStream.toByteArray();
 		if (newContentsBytes[0] != -17) {
 			newContentsBytes = EKUtils.addBOM(newContentsBytes);
 		}

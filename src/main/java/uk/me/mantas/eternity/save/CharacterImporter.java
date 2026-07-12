@@ -20,6 +20,7 @@
 package uk.me.mantas.eternity.save;
 
 import org.json.JSONObject;
+import uk.me.mantas.eternity.EKUtils;
 import uk.me.mantas.eternity.Logger;
 import uk.me.mantas.eternity.environment.Environment;
 import uk.me.mantas.eternity.factory.PacketDeserializerFactory;
@@ -79,7 +80,59 @@ public class CharacterImporter {
 		packetDeserializer = environment.factory().packetDeserializer();
 	}
 
+	// Describes a character in the CHR file that already exists in the target
+	// save and would be duplicated by a plain import.
+	public static final class ImportConflict {
+		public final String characterName;
+		public final boolean mainCharacter;
+
+		ImportConflict (final String characterName, final boolean mainCharacter) {
+			this.characterName = characterName;
+			this.mainCharacter = mainCharacter;
+		}
+	}
+
+	public Optional<ImportConflict> detectConflict () throws IOException {
+		final Optional<DeserializedPackets> chrDeserialized =
+			packetDeserializer.forFile(chrFile).deserialize();
+
+		if (!chrDeserialized.isPresent()) {
+			return Optional.empty();
+		}
+
+		final Optional<Property> chrCharacter =
+			findCharacter(chrDeserialized.get().getPackets());
+
+		if (!chrCharacter.isPresent()) {
+			return Optional.empty();
+		}
+
+		final File mobileObjectsFile = new File(saveFile, "MobileObjects.save");
+		final Optional<DeserializedPackets> deserialized =
+			packetDeserializer.forFile(mobileObjectsFile).deserialize();
+
+		if (!deserialized.isPresent()) {
+			return Optional.empty();
+		}
+
+		final ObjectPersistencePacket chrPacket =
+			(ObjectPersistencePacket) chrCharacter.get().obj;
+
+		return findExistingMatch(chrPacket, deserialized.get().getPackets())
+			.map(existing -> new ImportConflict(
+				EKUtils.extractCharacterName(chrPacket.ObjectName)
+				, isMainCharacter(chrPacket)));
+	}
+
 	public boolean importCharacter () throws IOException {
+		return doImport(false);
+	}
+
+	public boolean overwriteCharacter () throws IOException {
+		return doImport(true);
+	}
+
+	private boolean doImport (final boolean overwrite) throws IOException {
 		final PacketDeserializer chrDeserializer = packetDeserializer.forFile(chrFile);
 		final Optional<DeserializedPackets> chrDeserialized = chrDeserializer.deserialize();
 		if (!chrDeserialized.isPresent()) {
@@ -105,39 +158,70 @@ public class CharacterImporter {
 			return false;
 		}
 
-		// We need to find a character in the existing save to 'anchor' the
-		// imported character to, i.e. set their area and location co-ords.
-		final Optional<ObjectPersistencePacket> anchorPoint = findAnchorPoint(mobileObjects);
-		if (!anchorPoint.isPresent()) {
-			logger.error("Unable to find anchor point in save.%n");
-			return false;
-		}
-
 		final Optional<Property> characterProperty = findCharacter(chrObjects);
 		if (!characterProperty.isPresent()) {
 			logger.error("Unable to find character in CHR file.%n");
 			return false;
 		}
 
-		final boolean anchored = anchorCharacter(characterProperty.get(), anchorPoint.get());
+		final ObjectPersistencePacket chrPacket =
+			(ObjectPersistencePacket) characterProperty.get().obj;
+
+		final Optional<Property> existingMatch = overwrite
+			? findExistingMatch(chrPacket, mobileObjects)
+			: Optional.empty();
+
+		List<Property> retainedObjects = mobileObjects;
+		final String levelName;
+		final Vector3 location;
+
+		if (existingMatch.isPresent()) {
+			// Overwrite: the imported character replaces the existing one
+			// (and everything it owns) and takes its exact position. Its
+			// identity is kept so no GUID regeneration happens.
+			final ObjectPersistencePacket existing =
+				(ObjectPersistencePacket) existingMatch.get().obj;
+
+			retainedObjects = removeCharacterObjects(mobileObjects, existingMatch.get(), existing);
+			levelName = existing.LevelName;
+			location = existing.Location;
+		} else {
+			// Plain import: we need a character in the existing save to
+			// 'anchor' the imported character to. Just naively try to put the
+			// character somewhere near the anchor point.
+			final Optional<ObjectPersistencePacket> anchorPoint = findAnchorPoint(mobileObjects);
+			if (!anchorPoint.isPresent()) {
+				logger.error("Unable to find anchor point in save.%n");
+				return false;
+			}
+
+			levelName = anchorPoint.get().LevelName;
+			location = new Vector3();
+			location.x = anchorPoint.get().Location.x + 1;
+			location.y = anchorPoint.get().Location.y + 1;
+			location.z = anchorPoint.get().Location.z;
+
+			// Need to regenerate the GUID since it seems to be the same for
+			// all player characters.
+			final UUID newGUID = UUID.randomUUID();
+			Property.update(characterProperty.get(), "GUID", newGUID);
+			Property.update(characterProperty.get(), "ObjectID", newGUID.toString());
+		}
+
+		final boolean anchored = anchorCharacter(characterProperty.get(), levelName, location);
 		if (!anchored) {
 			logger.error("Unable to anchor character!%n");
 			return false;
 		}
 
-		// Need to regenerate the GUID since it seems to be the same for all
-		// player characters.
-		final UUID newGUID = UUID.randomUUID();
-		Property.update(characterProperty.get(), "GUID", newGUID);
-		Property.update(characterProperty.get(), "ObjectID", newGUID.toString());
-
 		final SimpleProperty simpleObjCount = deserialized.get().getCount();
 		final int count = (int) simpleObjCount.obj;
-		Property.update(simpleObjCount, count + chrObjects.size());
+		final int removed = mobileObjects.size() - retainedObjects.size();
+		Property.update(simpleObjCount, count - removed + chrObjects.size());
 
 		final List<Property> totalObjects = new ArrayList<>();
 		totalObjects.addAll(chrObjects);
-		totalObjects.addAll(mobileObjects);
+		totalObjects.addAll(retainedObjects);
 
 		if (!mobileObjectsFile.delete()) {
 			logger.error("Unable to delete '%s'.%n", mobileObjectsFile.getAbsolutePath());
@@ -155,19 +239,70 @@ public class CharacterImporter {
 		return true;
 	}
 
+	// Finds a character already in the save that the CHR character would
+	// duplicate. Main characters match any other main character (there can
+	// only be one Player_ object); companions have fixed GUIDs across saves
+	// so they match by ObjectID.
+	private Optional<Property> findExistingMatch (
+		final ObjectPersistencePacket chrPacket
+		, final List<Property> mobileObjects) {
+
+		final boolean chrIsMain = isMainCharacter(chrPacket);
+
+		for (final Property property : mobileObjects) {
+			final Optional<ObjectPersistencePacket> packet = unwrapProperty(property);
+			if (!packet.isPresent()) {
+				continue;
+			}
+
+			if (chrIsMain) {
+				if (isMainCharacter(packet.get())) {
+					return Optional.of(property);
+				}
+			} else if (chrPacket.ObjectID != null
+				&& chrPacket.ObjectID.equals(packet.get().ObjectID)) {
+
+				return Optional.of(property);
+			}
+		}
+
+		return Optional.empty();
+	}
+
+	private List<Property> removeCharacterObjects (
+		final List<Property> mobileObjects
+		, final Property characterProperty
+		, final ObjectPersistencePacket character) {
+
+		final List<Property> retained = new ArrayList<>();
+		for (final Property property : mobileObjects) {
+			if (property == characterProperty) {
+				continue;
+			}
+
+			if (property.obj instanceof ObjectPersistencePacket) {
+				final ObjectPersistencePacket packet = (ObjectPersistencePacket) property.obj;
+				if (character.ObjectName != null
+					&& character.ObjectName.equals(packet.Parent)) {
+
+					continue;
+				}
+			}
+
+			retained.add(property);
+		}
+
+		return retained;
+	}
+
+	private boolean isMainCharacter (final ObjectPersistencePacket packet) {
+		return packet.ObjectName != null && packet.ObjectName.startsWith("Player_");
+	}
+
 	boolean anchorCharacter (
 		Property chrProperty
-		, ObjectPersistencePacket anchorPoint) {
-
-		String areaName = anchorPoint.LevelName;
-		Vector3 location = anchorPoint.Location;
-
-		// Just naively try to put the character somewhere near the anchor
-		// point. Revisit this if it causes problems.
-		Vector3 newLocation = new Vector3();
-		newLocation.x = location.x + 1;
-		newLocation.y = location.y + 1;
-		newLocation.z = location.z;
+		, String areaName
+		, Vector3 newLocation) {
 
 		boolean updatedAreaName =
 			Property.update(chrProperty, "LevelName", areaName);
@@ -204,11 +339,11 @@ public class CharacterImporter {
 
 	private Optional<Property> findCharacter (List<Property> chrObjects) {
 		for (Property property : chrObjects) {
-			ObjectPersistencePacket packet =
-				(ObjectPersistencePacket) property.obj;
+			Optional<ObjectPersistencePacket> packet = unwrapProperty(property);
 
-			if (packet.ObjectName.startsWith("Player_")
-				|| packet.ObjectName.startsWith("Companion_")) {
+			if (packet.isPresent()
+				&& (packet.get().ObjectName.startsWith("Player_")
+					|| packet.get().ObjectName.startsWith("Companion_"))) {
 
 				return Optional.of(property);
 			}
@@ -221,14 +356,30 @@ public class CharacterImporter {
 		List<Property> mobileObjects) {
 
 		for (Property property : mobileObjects) {
-			ObjectPersistencePacket packet =
-				(ObjectPersistencePacket) property.obj;
+			Optional<ObjectPersistencePacket> packet = unwrapProperty(property);
 
-			if (packet.ObjectName.startsWith("Player_")) {
-				return Optional.of(packet);
+			if (packet.isPresent()
+				&& packet.get().ObjectName.startsWith("Player_")) {
+
+				return packet;
 			}
 		}
 
 		return Optional.empty();
+	}
+
+	// Real saves contain packets with null ObjectNames as well as the odd
+	// property that isn't an ObjectPersistencePacket at all.
+	private Optional<ObjectPersistencePacket> unwrapProperty (Property property) {
+		if (!(property.obj instanceof ObjectPersistencePacket)) {
+			return Optional.empty();
+		}
+
+		ObjectPersistencePacket packet = (ObjectPersistencePacket) property.obj;
+		if (packet.ObjectName == null) {
+			return Optional.empty();
+		}
+
+		return Optional.of(packet);
 	}
 }

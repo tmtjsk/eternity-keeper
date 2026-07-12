@@ -93,11 +93,7 @@ public class CharacterExporter {
 
 		SharpSerializer serializer = sharpSerializer.forFile(chrFile.getAbsolutePath());
 		Property.update(count, extractedObjects.size());
-		serializer.serialize(count);
-
-		for (Property property : extractedObjects) {
-			serializer.serialize(property);
-		}
+		serializer.serializeAll(count, extractedObjects);
 
 		return true;
 	}
@@ -106,18 +102,27 @@ public class CharacterExporter {
 		List<Property> mobileObjects) {
 
 		List<Property> objs = new ArrayList<>();
-		Optional<String> objectName = getObjectNameForGUID(mobileObjects);
 
-		if (!objectName.isPresent()) {
-			return objs;
+		// Real saves contain packets with null ObjectIDs, Parents and
+		// ObjectNames so we match null-safely with the GUID/name on the left.
+		String objectName = null;
+		for (Property property : mobileObjects) {
+			Optional<ObjectPersistencePacket> packet = unwrapProperty(property);
+			if (packet.isPresent() && guid.equals(packet.get().ObjectID)) {
+				objectName = packet.get().ObjectName;
+				break;
+			}
 		}
 
 		for (Property property : mobileObjects) {
-			ObjectPersistencePacket packet =
-				(ObjectPersistencePacket) property.obj;
+			Optional<ObjectPersistencePacket> maybePacket = unwrapProperty(property);
+			if (!maybePacket.isPresent()) {
+				continue;
+			}
 
-			if (packet.ObjectID.equals(guid)
-				|| packet.Parent.equals(objectName.get())) {
+			ObjectPersistencePacket packet = maybePacket.get();
+			if (guid.equals(packet.ObjectID)
+				|| (objectName != null && objectName.equals(packet.Parent))) {
 
 				objs.add(property);
 			}
@@ -126,16 +131,9 @@ public class CharacterExporter {
 		return objs;
 	}
 
-	private Optional<String> getObjectNameForGUID (
-		List<Property> mobileObjects) {
-
-		for (Property property : mobileObjects) {
-			ObjectPersistencePacket packet =
-				(ObjectPersistencePacket) property.obj;
-
-			if (packet.ObjectID.equals(guid)) {
-				return Optional.of(packet.ObjectName);
-			}
+	private Optional<ObjectPersistencePacket> unwrapProperty (Property property) {
+		if (property.obj instanceof ObjectPersistencePacket) {
+			return Optional.of((ObjectPersistencePacket) property.obj);
 		}
 
 		return Optional.empty();

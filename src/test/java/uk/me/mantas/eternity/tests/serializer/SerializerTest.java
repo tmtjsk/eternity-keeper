@@ -22,8 +22,10 @@ import com.google.common.io.RecursiveDeleteOption;
 import org.apache.commons.io.FileUtils;
 import org.junit.Test;
 import uk.me.mantas.eternity.EKUtils;
+import uk.me.mantas.eternity.game.CharacterStats;
 import uk.me.mantas.eternity.serializer.*;
 import uk.me.mantas.eternity.serializer.properties.Property;
+import uk.me.mantas.eternity.serializer.properties.SimpleProperty;
 import uk.me.mantas.eternity.tests.TestHarness;
 
 import java.io.File;
@@ -112,6 +114,42 @@ public class SerializerTest extends TestHarness {
 		} catch (final Exception e) {
 			e.printStackTrace();
 		}
+	}
+
+	// Newer versions of the game store enum values that this port's enum
+	// definitions don't know about (e.g. CharacterStats+Class #53,
+	// StatusEffect+ModifiedStat #282 in 2025-era saves). Unknown values must
+	// survive a deserialize/reserialize round trip instead of being nulled.
+	@Test
+	public void preservesUnknownEnumValues () throws IOException {
+		final int unknownValue = 999;
+		final File file = Files.createTempFile(PREFIX, null).toFile();
+
+		final SimpleProperty count = new SimpleProperty(
+			"Root", new TypePair(int.class, "System.Int32"));
+		count.value = 1;
+		count.obj = 1;
+
+		final SimpleProperty enumProperty = new SimpleProperty(
+			"Root", new TypePair(CharacterStats.Class.class, "CharacterStats+Class"));
+		enumProperty.value = unknownValue;
+		enumProperty.obj = unknownValue;
+
+		final SharpSerializer serializer = new SharpSerializer(file.getAbsolutePath());
+		serializer.serialize(count);
+		serializer.serialize(enumProperty);
+
+		// The raw value must be preserved in memory...
+		final SharpSerializer deserializer = new SharpSerializer(file.getAbsolutePath());
+		assertTrue(deserializer.deserialize().isPresent()); // skip count
+		final Optional<Property> read = deserializer.deserialize();
+		assertTrue(read.isPresent());
+		assertEquals(unknownValue, read.get().obj);
+
+		// ...and the file must round trip byte-identically.
+		final File output = Files.createTempFile(PREFIX, null).toFile();
+		EKUtils.reserializeFile(file, output, SerializerFormat.PRESERVE);
+		assertFileContentsEquals(file, output);
 	}
 
 	public static void assertFileContentsEquals(File expectedFile, File actualFile) throws IOException {

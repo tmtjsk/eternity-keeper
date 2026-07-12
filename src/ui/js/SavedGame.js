@@ -32,12 +32,26 @@ var SavedGame = function () {
 	};
 
 	var populateCharacterList = (container, characters) => {
+		// The main character always sits at the top marked with a star; the
+		// rest of the party is sorted alphabetically.
+		var sorted = characters.slice().sort((a, b) => {
+			if (!!a.isMainCharacter !== !!b.isMainCharacter) {
+				return a.isMainCharacter ? -1 : 1;
+			}
+
+			return a.name.localeCompare(b.name);
+		});
+
 		container.append(
-			characters.map(
+			sorted.map(
 				character =>
 					$('<li>')
 					.data('guid', character.GUID)
-					.html('<i class="fa fa-heartbeat"></i> ' + character.name)
+					.append($('<i>').addClass(
+						character.isMainCharacter
+							? 'fa fa-star main-character-star'
+							: 'fa fa-heartbeat'))
+					.append(document.createTextNode(' ' + character.name))
 					.addClass(character.isDead ? 'dead' : '')
 					.click(self.switchCharacter.bind(self, character.GUID))));
 	};

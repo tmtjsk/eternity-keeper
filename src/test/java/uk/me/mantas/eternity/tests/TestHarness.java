@@ -118,6 +118,7 @@ public abstract class TestHarness {
 		when(mockEnvironment.state()).thenReturn(mockState);
 		when(mockEnvironment.variables()).thenReturn(mockVariables);
 		when(mockEnvironment.workers()).thenReturn(environment.workers());
+		when(mockEnvironment.mutationWorker()).thenReturn(environment.mutationWorker());
 
 		return mockEnvironment;
 	}

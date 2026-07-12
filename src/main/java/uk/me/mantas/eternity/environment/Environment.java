@@ -35,6 +35,12 @@ public class Environment {
 	private ExecutorService workers =
 		Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
 
+	// All operations that modify (or copy) an extracted save run here, one at
+	// a time. Letting them overlap on the parallel pool corrupted copies when
+	// e.g. a save was packaged while a party update was still writing
+	// MobileObjects.save.
+	private ExecutorService mutationWorker = Executors.newSingleThreadExecutor();
+
 	private final Factories factories = new Factories();
 	public Factories factory () { return factories; }
 
@@ -75,6 +81,10 @@ public class Environment {
 		return workers;
 	}
 
+	public ExecutorService mutationWorker () {
+		return mutationWorker;
+	}
+
 	public boolean isWindows () {
 		// This method just exists so we can mock it in tests.
 		return OS.isWindows();
@@ -102,18 +112,22 @@ public class Environment {
 	}
 
 	public static void joinAllWorkers () {
-		final ExecutorService workers = getInstance().workers();
-		workers.shutdown();
+		shutdownPool(getInstance().workers());
+		shutdownPool(getInstance().mutationWorker());
+	}
+
+	private static void shutdownPool (final ExecutorService pool) {
+		pool.shutdown();
 
 		try {
-			if (!workers.awaitTermination(SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
-				workers.shutdownNow();
-				if (!workers.awaitTermination(SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+			if (!pool.awaitTermination(SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+				pool.shutdownNow();
+				if (!pool.awaitTermination(SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
 					logger.error("Thread pool did not terminate!%n");
 				}
 			}
 		} catch (final InterruptedException e) {
-			workers.shutdownNow();
+			pool.shutdownNow();
 			Thread.currentThread().interrupt();
 		}
 	}

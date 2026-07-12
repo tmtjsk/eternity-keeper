@@ -130,6 +130,33 @@ public class SharpSerializer {
 		}
 	}
 
+	// Writes a whole packet stream in one session. Each property still gets
+	// its own Serializer so the output is byte-identical to repeated
+	// serialize() calls, but the file is opened only once, which makes
+	// writing large saves orders of magnitude faster.
+	public void serializeAll (final Property count, final List<Property> properties) {
+		try {
+			FileOutputStream baseStream = new FileOutputStream(targetFile, true);
+
+			try (LittleEndianDataOutputStream stream =
+				new LittleEndianDataOutputStream(baseStream)) {
+
+				baseStream.getChannel()
+					.position(baseStream.getChannel().size());
+
+				new Serializer(stream).toFormat(format).serialize(count);
+				for (final Property property : properties) {
+					new Serializer(stream).toFormat(format).serialize(property);
+				}
+			}
+		} catch (IOException e) {
+			logger.error(
+				"Error opening target file '%s' for serializing: %s%n"
+				, targetFile
+				, e.getMessage());
+		}
+	}
+
 	public Optional<Property> followReference (final ReferenceTargetProperty property) {
 		if (property.reference == null) {
 			return Optional.empty();

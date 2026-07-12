@@ -186,7 +186,12 @@ public class SavedGameOpener implements Runnable {
 		}
 
 		jsonObject.put("isCompanion", isCompanion);
+		jsonObject.put("isMainCharacter", packet.ObjectName.toLowerCase().startsWith("player_"));
 		jsonObject.put("isDead", isDead);
+		jsonObject.put("inParty", detectInParty(packet));
+		jsonObject.put("slot", extractPartySlot(packet));
+		jsonObject.put("level", extractLevel(packet));
+		jsonObject.put("className", extractClassName(packet));
 		jsonObject.put("name", name);
 		jsonObject.put("portrait", extractPortrait(packet, isCompanion));
 		jsonObject.put("stats", stats.get());
@@ -257,16 +262,43 @@ public class SavedGameOpener implements Runnable {
 	}
 
 	private String extractName(final ObjectPersistencePacket packet) {
-		String name = "";
-		if (packet.ObjectName.contains("_")) {
-			final int firstUnderscore = packet.ObjectName.indexOf("_");
-			name = packet.ObjectName.substring(firstUnderscore + 1);
-			if (name.contains("(")) {
-				name = name.split("\\(")[0];
-			}
-		}
+		return extractCharacterName(packet.ObjectName);
+	}
 
-		return name;
+	private boolean detectInParty(final ObjectPersistencePacket packet) {
+		final Optional<ComponentPersistencePacket> ai =
+				findComponent(packet.ComponentPackets, "PartyMemberAI");
+
+		return ai.isPresent()
+				&& Boolean.TRUE.equals(ai.get().Variables.get("IsActiveInParty"));
+	}
+
+	private int extractPartySlot(final ObjectPersistencePacket packet) {
+		final Optional<Integer> slot = findComponent(packet.ComponentPackets, "PartyMemberAI")
+				.map(c -> c.Variables.get("AssignedSlot"))
+				.filter(v -> v instanceof Integer)
+				.map(v -> (Integer) v);
+
+		return slot.orElse(-1);
+	}
+
+	private int extractLevel(final ObjectPersistencePacket packet) {
+		final Optional<Integer> level = findComponent(packet.ComponentPackets, "CharacterStats")
+				.map(c -> c.Variables.get("Level"))
+				.filter(v -> v instanceof Integer)
+				.map(v -> (Integer) v);
+
+		return level.orElse(0);
+	}
+
+	private String extractClassName(final ObjectPersistencePacket packet) {
+		final Optional<Object> cls = findComponent(packet.ComponentPackets, "CharacterStats")
+				.map(c -> c.Variables.get("CharacterClass"));
+
+		// Unknown enum values deserialize to their raw Integer.
+		return cls.filter(v -> v.getClass().isEnum())
+				.map(v -> ((Enum) v).name())
+				.orElse("Unknown");
 	}
 
 	private boolean detectDead(final ObjectPersistencePacket packet) {

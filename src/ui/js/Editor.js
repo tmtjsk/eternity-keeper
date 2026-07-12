@@ -104,6 +104,33 @@ var Editor = function () {
 	var disableMenu = menuID => $('#' + menuID).find('li').addClass('disabled').find('a').off();
 	var enableMenu = menuID => $('#' + menuID).find('li').removeClass('disabled');
 
+	var applyTheme = theme => {
+		var light = theme === 'light';
+		$('body').toggleClass('theme-light', light);
+		$('#themeToggle span').text(light ? 'Dark mode' : 'Light mode');
+		$('#themeToggle i').attr('class', light ? 'fa fa-moon-o' : 'fa fa-sun-o');
+	};
+
+	var initialiseTheme = () => {
+		var theme = 'dark';
+		try {
+			theme = localStorage.getItem('ekTheme') || 'dark';
+		} catch (e) {
+			// localStorage may be unavailable; default to dark.
+		}
+
+		applyTheme(theme);
+		$('#themeToggle').off('click').click(() => {
+			var light = !$('body').hasClass('theme-light');
+			applyTheme(light ? 'light' : 'dark');
+			try {
+				localStorage.setItem('ekTheme', light ? 'light' : 'dark');
+			} catch (e) {
+				// Not persisted but still applied for this session.
+			}
+		});
+	};
+
 	self.state = $.extend({}, defaultState);
 	self.render = newState => {
 		self.state = $.extend({}, defaultState, newState);
@@ -120,11 +147,22 @@ var Editor = function () {
 			self.CurrencyEditor.transition({enabled: false});
 			self.SavedGame.html.menuEditGlobals.off().parent().addClass('disabled');
 			disableMenu('menuCharacter');
+			disableMenu('menuGlobals');
+			self.ImportCharacter.transition({enabled: false});
+			self.ExportCharacter.transition({enabled: false});
+			self.PartyManagement.transition({enabled: false});
+			self.Modifications.html.saveButton.hide();
 		}
 
 		if (self.state.saveView) {
 			self.SavedGame.html.menuEditGlobals.parent().removeClass('disabled');
 			enableMenu('menuCharacter');
+			enableMenu('menuGlobals');
+			self.ImportCharacter.transition({enabled: true});
+			self.ExportCharacter.transition({enabled: true});
+			self.PartyManagement.transition({enabled: true});
+			self.SaveSearch.html.saveActions.hide();
+			self.Modifications.html.saveButton.show();
 		}
 	};
 
@@ -137,10 +175,14 @@ var Editor = function () {
 	self.SavedGame = new SavedGame();
 	self.CurrencyEditor = new CurrencyEditor();
 	self.Modifications = new Modifications();
+	self.ImportCharacter = new ImportCharacter();
+	self.ExportCharacter = new ExportCharacter();
+	self.PartyManagement = new PartyManagement();
 
 	// Client startup tasks go here:
 	bindDOM();
 	initialise();
+	initialiseTheme();
 	getDirectoryPaths();
 	getStructures();
 };

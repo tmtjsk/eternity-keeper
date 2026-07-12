@@ -105,6 +105,13 @@ public class ExportCharacter extends CefMessageRouterHandlerAdapter {
 				return;
 			}
 
+			// Reads the save on the mutation queue so it can never observe a
+			// half-written MobileObjects.save.
+			Environment.getInstance().mutationWorker().execute(
+				() -> export(filenames.get(0)));
+		}
+
+		private void export (final String filename) {
 			try {
 				final JSONObject json = new JSONObject(request);
 				final String guid = json.getString("GUID");
@@ -113,7 +120,7 @@ public class ExportCharacter extends CefMessageRouterHandlerAdapter {
 				final CharacterExporter exporter = new CharacterExporter(
 					savePath
 					, guid
-					, addChrExtension(filenames.get(0)));
+					, addChrExtension(filename));
 
 				boolean exportedSuccessfully = exporter.export();
 

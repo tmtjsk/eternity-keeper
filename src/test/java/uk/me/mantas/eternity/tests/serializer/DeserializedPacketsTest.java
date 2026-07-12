@@ -50,8 +50,10 @@ public class DeserializedPacketsTest extends TestHarness {
 		when(mockFile.getAbsolutePath()).thenReturn("");
 		deserialized.reserialize(mockFile);
 
-		final InOrder inOrder = inOrder(mockSerializer);
-		inOrder.verify(mockSerializer).serialize(mockCount);
-		inOrder.verify(mockSerializer).serialize(mockProperty);
+		// Everything must be written in a single serializer session; opening
+		// the file once per packet made large saves take minutes to write and
+		// left a huge window for concurrent readers to see a growing file.
+		verify(mockSerializer).serializeAll(mockCount, components);
+		verify(mockSerializer, never()).serialize(any(Property.class));
 	}
 }
