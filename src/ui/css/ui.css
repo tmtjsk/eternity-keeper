@@ -2491,7 +2491,7 @@ body.theme-light .sidebar-toggle:hover {
 	}
 
 	.inv-browse-grid {
-		max-height: 140px;
+		max-height: 92px;
 	}
 }
 
@@ -2570,4 +2570,112 @@ body.sidebar-collapsed .sidebar-toggle {
 /* Slide the content across as the list opens and closes rather than snapping. */
 .main-panel {
 	transition: margin-left .15s ease;
+}
+
+/* Exactly two rows of items — the page size is computed from how many tiles
+   fit across, so nothing is ever cut off or left scrolling. */
+.inv-browse-grid {
+	height: 92px;          /* 2 x (42px tile + 4px margin) */
+	max-height: 92px;
+	overflow: hidden;
+}
+
+/* ---- skills panel ----------------------------------------------------------
+   Ranks are what the game shows; the point total is echoed beside each row so
+   the relationship is visible rather than surprising. */
+
+.skills-panel {
+	padding-top: 4px;
+}
+
+.skills-head {
+	font-size: 14px;
+	color: #e8d5a3;
+	padding-bottom: 8px;
+	margin-bottom: 10px;
+	border-bottom: 1px solid rgba(201, 180, 126, .22);
+	overflow: hidden;
+}
+
+.skills-remaining {
+	float: right;
+	font-size: 10px;
+	text-transform: uppercase;
+	letter-spacing: .06em;
+	color: #8d7f63;
+}
+
+.skills-remaining input {
+	display: inline-block;
+	width: 58px;
+	margin-left: 6px;
+	padding: 2px 6px;
+	height: 24px;
+	text-align: center;
+	background: rgba(0, 0, 0, .35);
+	border: 1px solid rgba(201, 180, 126, .3);
+	color: #e8d5a3;
+}
+
+.skill-row {
+	margin-bottom: 6px;
+	white-space: nowrap;
+}
+
+.skill-name {
+	display: inline-block;
+	width: 92px;
+	margin: 0;
+	font-weight: normal;
+	color: #cdbb92;
+	vertical-align: middle;
+}
+
+.skill-rank {
+	display: inline-block;
+	width: 64px;
+	padding: 2px 6px;
+	height: 26px;
+	text-align: center;
+	vertical-align: middle;
+	background: rgba(0, 0, 0, .35);
+	border: 1px solid rgba(201, 180, 126, .3);
+	color: #e8d5a3;
+}
+
+.skill-points {
+	display: inline-block;
+	margin-left: 10px;
+	font-size: 11px;
+	color: #8d7f63;
+	vertical-align: middle;
+}
+
+.skills-note {
+	margin-top: 10px;
+	font-size: 11px;
+	line-height: 1.45;
+	color: #8d7f63;
+}
+
+body.theme-light .skills-head {
+	color: #4a2f14;
+	border-bottom-color: rgba(107, 56, 18, .2);
+}
+
+body.theme-light .skills-remaining,
+body.theme-light .skill-points,
+body.theme-light .skills-note {
+	color: #6d5433;
+}
+
+body.theme-light .skill-name {
+	color: #3a2a18;
+}
+
+body.theme-light .skill-rank,
+body.theme-light .skills-remaining input {
+	background: #fff;
+	border-color: rgba(107, 56, 18, .3);
+	color: #3a2a18;
 }

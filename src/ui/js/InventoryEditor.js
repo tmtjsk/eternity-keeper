@@ -58,6 +58,7 @@ var InventoryEditor = function () {
 	var browseFilter = 0;
 	var browseOffset = 0;
 	var browseTotal = 0;
+	var browseLimit = 60;
 	var browseItems = [];
 	var browseTimer = null;
 
@@ -73,8 +74,8 @@ var InventoryEditor = function () {
 	// Slot order as the game's own inventory screen lays them out: head down
 	// the left with the pet at the bottom, neck down the right. The deprecated
 	// cape slot is never populated, so it isn't shown at all.
-	var LEFT_SLOTS = ['Head', 'Chest', 'RightRing', 'Feet', 'Pet'];
-	var RIGHT_SLOTS = ['Neck', 'Hands', 'Waist', 'LeftRing', 'Grimoire'];
+	var LEFT_SLOTS = ['Head', 'Chest', 'LeftRing', 'Feet', 'Pet'];
+	var RIGHT_SLOTS = ['Neck', 'Hands', 'RightRing', 'Waist', 'Grimoire'];
 
 	var SLOT_LABELS = {
 		Head: 'Head', Neck: 'Neck', Chest: 'Armour', Hands: 'Hands'
@@ -796,17 +797,30 @@ var InventoryEditor = function () {
 		}
 	};
 
+	// The browser shows exactly two rows, so a page is however many tiles fit
+	// across the grid twice over — which changes with the window size.
+	var TILE_SPAN = 46;      // 42px tile + 4px margin
+	var BROWSE_ROWS = 2;
+
+	var browsePageSize = () => {
+		var width = self.html.invBrowseGrid.width() || 0;
+		var columns = Math.max(1, Math.floor(width / TILE_SPAN));
+		return columns * BROWSE_ROWS;
+	};
+
 	var requestBrowse = () => {
 		if (!window.browseItems) {
 			return;
 		}
+
+		browseLimit = browsePageSize();
 
 		window.browseItems({
 			request: JSON.stringify({
 				search: self.html.invBrowseSearch.val() || ''
 				, filter: browseFilter
 				, offset: browseOffset
-				, limit: 60
+				, limit: browseLimit
 			})
 			, onSuccess: response => {
 				var page = JSON.parse(response);
@@ -842,10 +856,10 @@ var InventoryEditor = function () {
 		self.html.invBrowseCount.text(browseTotal + ' items');
 		self.html.invBrowsePage.text(browseTotal < 1
 			? ''
-			: (browseOffset + 1) + '–' + Math.min(browseOffset + 60, browseTotal));
+			: (browseOffset + 1) + '–' + Math.min(browseOffset + browseLimit, browseTotal));
 
 		self.html.invBrowsePrev.prop('disabled', browseOffset <= 0);
-		self.html.invBrowseNext.prop('disabled', browseOffset + 60 >= browseTotal);
+		self.html.invBrowseNext.prop('disabled', browseOffset + browseLimit >= browseTotal);
 
 		browseItems.forEach(item => {
 			var tile = tileFor(item, {readOnly: true});
@@ -1376,12 +1390,26 @@ var InventoryEditor = function () {
 		self.html.invStashSearch.keyup(() => renderStash());
 		self.html.invBrowseSearch.keyup(scheduleBrowse);
 		self.html.invBrowsePrev.click(() => {
-			browseOffset = Math.max(0, browseOffset - 60);
+			browseOffset = Math.max(0, browseOffset - browseLimit);
 			requestBrowse();
 		});
 		self.html.invBrowseNext.click(() => {
-			browseOffset += 60;
+			browseOffset += browseLimit;
 			requestBrowse();
+		});
+
+		// A resize changes how many tiles fit, so the page has to be refilled
+		// to keep it exactly two rows.
+		$(window).resize(() => {
+			window.clearTimeout(browseTimer);
+			browseTimer = window.setTimeout(() => {
+				if (self.html.inventoryView.is(':visible')
+					&& browsePageSize() !== browseLimit) {
+
+					browseOffset = 0;
+					requestBrowse();
+				}
+			}, 200);
 		});
 
 		// Escape drops whatever is in hand, like right-clicking in the game.

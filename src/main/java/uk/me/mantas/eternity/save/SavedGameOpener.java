@@ -282,14 +282,19 @@ public class SavedGameOpener implements Runnable {
 			// unlock through talents (CharacterStats.MaxWeaponSets is
 			// 2 + BonusWeaponSets), so the editor greys out the rest.
 			characterJson.put("maxWeaponSets", 2 + intStat(packet, "BonusWeaponSets"));
-			characterJson.put("pack", inventoryComponentToJSON(packet, packComponent, icons));
+			characterJson.put("pack",
+				inventoryComponentToJSON(packet, packComponent, itemNamesByID, icons));
 			characterJson.put(
-				"quickbar", inventoryComponentToJSON(packet, "QuickbarInventory", icons));
+				"quickbar"
+				, inventoryComponentToJSON(
+					packet, "QuickbarInventory", itemNamesByID, icons));
 			characterJson.put("equipment", equipmentToJSON(packet, itemNamesByID, icons));
 
 			if (isPlayer) {
 				inventory.put(
-					"stash", inventoryComponentToJSON(packet, "StashInventory", icons));
+					"stash"
+					, inventoryComponentToJSON(
+						packet, "StashInventory", itemNamesByID, icons));
 			}
 
 			charactersJson.put(characterJson);
@@ -434,6 +439,7 @@ public class SavedGameOpener implements Runnable {
 	private JSONObject inventoryComponentToJSON (
 		final ObjectPersistencePacket ownerPacket
 		, final String component
+		, final Map<String, String> itemNamesByID
 		, final JSONObject icons) {
 
 		final JSONObject json = new JSONObject();
@@ -471,12 +477,24 @@ public class SavedGameOpener implements Runnable {
 			if (!(item instanceof InventoryItem)) continue;
 
 			final InventoryItem inventoryItem = (InventoryItem) item;
+
+			// Some entries — quick-bar slots especially — carry no BaseItem at
+			// all; the game identifies them purely through the GUIDLink in
+			// SerializedItemList. Fall back to the item's own packet, whose
+			// ObjectName is the prefab name plus a "(Clone)" suffix.
+			String baseItem = inventoryItem.BaseItem;
+			if (baseItem == null || baseItem.isEmpty()) {
+				final String objectName = itemNamesByID.get(guid.toString().toLowerCase());
+				baseItem = objectName == null
+					? "" : objectName.replace("(Clone)", "").trim();
+			}
+
 			final JSONObject itemJson = new JSONObject();
 			itemJson.put("guid", guid.toString());
-			itemJson.put("baseItem", inventoryItem.BaseItem);
+			itemJson.put("baseItem", baseItem);
 			itemJson.put("stackSize", inventoryItem.StackSize);
 			itemJson.put("uiSlot", inventoryItem.uiSlot);
-			decorateWithCatalog(itemJson, inventoryItem.BaseItem, icons);
+			decorateWithCatalog(itemJson, baseItem, icons);
 			items.put(itemJson);
 		}
 

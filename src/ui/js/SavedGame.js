@@ -171,6 +171,104 @@ var SavedGame = function () {
 		});
 	};
 
+	// The save stores cumulative skill POINTS, but the character sheet shows a
+	// RANK: reaching rank N costs 1+2+...+N points. Editing points directly is
+	// why small changes look like they did nothing, so the editor works in
+	// ranks and writes the exact point total the game would.
+	// (CharacterStats.GetPointsForSkillLevel / CalculateSkillLevelViaPoints.)
+	var SKILLS = [
+		{stat: 'AthleticsSkill', label: 'Athletics'}
+		, {stat: 'StealthSkill', label: 'Stealth'}
+		, {stat: 'LoreSkill', label: 'Lore'}
+		, {stat: 'MechanicsSkill', label: 'Mechanics'}
+		, {stat: 'SurvivalSkill', label: 'Survival'}
+		, {stat: 'CraftingSkill', label: 'Crafting'}
+	];
+
+	var MAX_SKILL_RANK = 20;
+
+	var pointsForRank = rank => rank * (rank + 1) / 2;
+
+	var rankForPoints = points => {
+		var rank = 0;
+		var total = 0;
+		while (total + (rank + 1) <= points && rank < 100) {
+			rank++;
+			total += rank;
+		}
+
+		return rank;
+	};
+
+	var populateSkills = (data) => {
+		var grid = self.html.skillsGrid.empty();
+		var available = SKILLS.filter(skill => data.stats[skill.stat] !== undefined);
+
+		if (available.length < 1) {
+			self.html.skillsNote.text('This character has no skill data.');
+			self.html.remainingSkillPoints.val('').prop('disabled', true);
+			return;
+		}
+
+		var remaining = data.stats.RemainingSkillPoints;
+		self.html.remainingSkillPoints
+			.prop('disabled', remaining === undefined)
+			.val(remaining === undefined ? '' : remaining.value)
+			.off()
+			.on('change keyup', function () {
+				var value = parseInt($(this).val(), 10);
+				if (!isNaN(value) && value >= 0 && remaining !== undefined) {
+					remaining.value = value;
+					Eternity.Modifications.transition({modifications: true});
+				}
+			});
+
+		available.forEach(skill => {
+			var entry = data.stats[skill.stat];
+			var points = parseInt(entry.value, 10) || 0;
+			var rank = rankForPoints(points);
+
+			var readout = $('<span>').addClass('skill-points');
+			var input = $('<input>')
+				.attr({type: 'number', min: 0, max: MAX_SKILL_RANK})
+				.addClass('form-control skill-rank')
+				.val(rank);
+
+			var describe = (currentRank, currentPoints) => {
+				var spare = currentPoints - pointsForRank(currentRank);
+				readout.text(currentPoints + ' pts'
+					+ (spare > 0 ? ' (' + spare + ' spare)' : ''));
+			};
+
+			describe(rank, points);
+
+			input.on('change keyup', function () {
+				var wanted = parseInt($(this).val(), 10);
+				if (isNaN(wanted) || wanted < 0 || wanted > MAX_SKILL_RANK) {
+					return;
+				}
+
+				// Writing the exact cost keeps the sheet and the save agreeing;
+				// any leftover points from the old value are dropped, which is
+				// what the game itself would store for that rank.
+				entry.value = pointsForRank(wanted);
+				describe(wanted, entry.value);
+				Eternity.Modifications.transition({modifications: true});
+			});
+
+			grid.append($('<div>').addClass('skill-row')
+				.append($('<label>').addClass('skill-name').text(skill.label))
+				.append(input)
+				.append(readout));
+		});
+
+		// Unlike the six base attributes, skills are not re-copied from the
+		// prefab on load, so these stick for companions too.
+		self.html.skillsNote.text(
+			'Rank ' + 0 + '–' + MAX_SKILL_RANK + '. Rank N costs '
+			+ 'N(N+1)/2 points; the game shows the rank, the save stores points.');
+	};
+
 	var populateCharacter = (container, data) => {
 		var portrait = container.find('.portrait')
 			.empty()
@@ -232,6 +330,8 @@ var SavedGame = function () {
 			.find('input')
 			.change(self.update.bind(self))
 			.keyup(self.update.bind(self));
+
+		populateSkills(data);
 	};
 
 	var filterTable = (search, table) => {

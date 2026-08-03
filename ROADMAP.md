@@ -63,88 +63,110 @@ enough to mint objects the game accepts.
 
 ---
 
-## 3. Next features, in priority order
+## 3. Feature roadmap
 
-### Tier 1 — finish what's started
+Features come first; store/platform compatibility follows in §4.
 
-**1.1 Multi-store game detection** (see §4 — biggest correctness win)
+### Phase 1 — character progression
 
-**1.2 Skills and talents editor**
-Skills already work on the tested scalar path; they're just not surfaced in a
-friendly UI. Talents/abilities need prefab knowledge — the same catalog trick
-used for items should work on the ability bundles.
-*Effort: medium. Risk: low for skills, medium for talents.*
+**1.1 Skills editor** — ✅ **done**
+Athletics, Stealth, Lore, Mechanics, Survival and Crafting are already on the
+proven scalar write path — they just have no friendly UI. Worth knowing: the
+save stores cumulative **points**, while the character sheet shows the derived
+**rank** (rank N costs N(N+1)/2 points), so the editor must show both or edits
+will look like they did nothing.
+Shipped: rank-based editing with the point total shown alongside, unspent points,
+and confirmation from the decompiled source that skills are *not* prefab-reset for
+companions (only the six base attributes are). Verified against a real save —
+Mechanics 0 → rank 5 wrote 15 points.
 
-**1.3 Vendor cleanup**
-Every item ever sold to a vendor is stored forever. Deleting them shrinks saves
-and speeds up load/save. The purge machinery already exists (`Resurrector`,
-`InventoryManager`).
-*Effort: low-medium. Risk: low — it's deletion of provably unreferenced objects.*
+**1.2 Talents and abilities**
+Add/remove talents and class abilities. Needs an ability catalog built the same
+way the item catalog was — the ability prefabs live in the same bundle structure
+and carry `DisplayName`/`Icon`, so the extractor generalises.
+*Effort: medium-high. Risk: medium — abilities are GUID-linked objects like items.*
 
-**1.4 Stronghold editor**
-Prestige, security, debt, turns are plain scalars already extracted. Upgrades,
-hirelings and prisoners are structural lists; `PartyManager` already mutates
-`SerializedStoredGuids`.
-*Effort: medium. Risk: low for scalars.*
+**1.3 Culture, race and class**
+Enums already reach the UI. Caveat to handle: changing race or class changes
+which equipment slots exist (godlike lose the head slot, non-wizards lose the
+grimoire), so the editor must deal with gear that becomes illegal.
+*Effort: medium. Risk: medium.*
 
-### Tier 2 — new capability
+### Phase 2 — world and inventory
 
-**2.1 Culture, race and class editing**
-Enums already shipped to the UI. **Caveat worth testing first:** changing race
-changes which equipment slots exist (godlike lose the head slot), and changing
-class changes grimoire access — the editor would need to handle gear that
-becomes illegal.
+**2.1 Vendor cleanup**
+Every item ever sold to a vendor is stored forever. Purging them shrinks saves
+and speeds up load/save. The "purge, don't orphan" machinery already exists.
+*Effort: low-medium. Risk: low — deleting provably unreferenced objects.*
 
-**2.2 Grimoire editor**
-Spell contents per grimoire. Needs ability-prefab knowledge, same as talents.
+**2.2 Stronghold editor**
+Prestige, security, debt and turns are plain scalars already extracted.
+Upgrades, hirelings and prisoners are structural lists; `PartyManager` already
+mutates `SerializedStoredGuids`.
+*Effort: medium. Risk: low for the scalars.*
 
-**2.3 Quest editing beyond restore**
-`QuestTrackerBlob` can already read and patch tracker state. Full editing needs
-an NRBF *writer* for `SerializedActiveQuests`. *Effort: high.*
+**2.3 Grimoire editor**
+Which spells sit in which grimoire. Depends on 1.2's ability catalog.
+*Effort: medium. Risk: medium.*
 
 **2.4 Companion portrait picker**
-Currently a manual file-shuffle. The editor already reads the portrait directory.
-*Effort: low. Good first issue.*
+Currently a manual file-shuffle. The editor already reads the portrait
+directory. Good small win.
+*Effort: low. Risk: low.*
 
-### Tier 3 — platform and quality
+### Phase 3 — deeper save surgery
 
-**3.1 Mac support** — build and bundle JCEF for macOS.
-**3.2 Faster Windows Store conversion.**
-**3.3 Bundle the item catalog extractor** so users aren't asked to run Python.
+**3.1 Quest editing beyond restore**
+`QuestTrackerBlob` already reads and patches tracker state. Full editing needs
+an NRBF *writer* for `SerializedActiveQuests`.
+*Effort: high. Risk: high.*
+
+**3.2 Save validation pass**
+Assert the invariants already learned before writing: every `InstanceID.Guid`
+equals its own `ObjectID`, no duplicate ObjectIDs, list lengths match counts,
+every `SerializedItemList` GUID resolves. This would have caught the
+item-minting aliasing bug immediately instead of only in-game.
+*Effort: low. Risk: none — read-only checks. Recommended early despite the phase.*
+
+**3.3 Save comparison** — diff two saves and show what changed.
+**3.4 Undo within a session** — an undo stack over the staged model.
 
 ---
 
-## 4. Support every store, not just Steam
+## 4. Compatibility (after the features)
+
+### 4.1 Detect the game across every store
 
 Today `Configuration.installationLocations` is a hardcoded list checked **only on
 the system drive** (`GetDefaultSaveLocation:130`). A Steam library on `D:` — the
-most common setup — is never found. Users must set the path by hand.
+most common setup — is never found, so users must set the path by hand.
 
 Saves are less of a problem: every desktop store writes to
-`%USERPROFILE%\Saved Games\Pillars of Eternity`. The install path is what matters,
-because that's where portraits and the item catalog come from.
+`%USERPROFILE%\Saved Games\Pillars of Eternity`. The install path is what
+matters, because that's where portraits and the item catalog come from.
 
-**Proposed detection order, first hit wins:**
+Detection order, first hit wins:
 
-1. **Explicit setting** — whatever the user chose, always respected.
-2. **Steam, properly.** Read `steamapps/libraryfolders.vdf` from the Steam install
-   (found via `HKCU\Software\Valve\Steam\SteamPath`), then check every library for
-   `steamapps/common/Pillars of Eternity`. This solves multi-drive libraries
-   generally rather than guessing paths.
-3. **GOG.** `HKLM\SOFTWARE\WOW6432Node\GOG.com\Games\*` carries `path` per game;
-   fall back to `GOG Games\Pillars of Eternity` on each drive.
-4. **Epic.** Parse `C:\ProgramData\Epic\EpicGamesLauncher\Data\Manifests\*.item`
-   (JSON) and match `DisplayName`/`InstallLocation`.
-5. **Any drive, known layouts.** Repeat the existing list across every fixed
-   drive rather than only the system drive — this alone fixes most cases.
-6. **Microsoft Store / Game Pass.** Detection only; the `gameflt` kernel driver
-   blocks reads from the mounted volume. Should say so plainly rather than fail
-   silently. (Note: Windows Store *saves* are already convertible.)
+1. **Explicit setting** — always respected.
+2. **Steam** — read `steamapps/libraryfolders.vdf` (found via
+   `HKCU\Software\Valve\Steam\SteamPath`), then check every library. Solves
+   multi-drive setups generally rather than guessing paths.
+3. **GOG** — `HKLM\SOFTWARE\WOW6432Node\GOG.com\Games\*` carries `path`.
+4. **Epic** — parse `C:\ProgramData\Epic\EpicGamesLauncher\Data\Manifests\*.item`.
+5. **Any drive, known layouts** — repeat the existing list across every fixed
+   drive. This alone fixes most cases.
+6. **Microsoft Store / Game Pass** — detect and explain; the `gameflt` kernel
+   driver blocks reads. (Windows Store *saves* are already convertible.)
 
-**Verification:** a unit test per store with a faked filesystem/registry layer,
-plus a manual check on this machine's real `D:\Steam` install.
+*Effort: medium. Risk: low — detection only, manual override intact.*
 
-*Effort: medium. Risk: low — detection only, with the manual override intact.*
+### 4.2 Mac support
+Build and bundle JCEF for macOS.
+
+### 4.3 Faster Windows Store conversion
+
+### 4.4 Bundle the item catalog extractor
+So users aren't asked to install Python.
 
 ---
 
@@ -170,13 +192,17 @@ Not requested, offered for the record.
 
 ---
 
-## 6. Suggested order of work
+## 6. Order of work
 
-1. Commit the current work.
-2. Delete the auto-updater and the bootstrapper.
-3. Rewrite the README to match reality.
-4. Multi-store detection (§4).
-5. Save validation pass (§5) — cheap, and protects everything after it.
-6. Vendor cleanup.
-7. Skills editor, then stronghold scalars.
-8. Talents/grimoires once ability prefabs are catalogued.
+Features first, per the project owner's direction; compatibility afterwards.
+
+1. ~~Commit the current work.~~ done
+2. ~~Skills editor (1.1)~~ done
+3. **Talents and abilities** (1.2) ← next; needs an ability catalog
+4. Vendor cleanup (2.1)
+5. Stronghold editor (2.2)
+6. Culture / race / class (1.3)
+7. Grimoire editor (2.3), companion portraits (2.4)
+8. Save validation pass (3.2) — cheap, pull earlier if bugs bite
+9. **Then** compatibility: multi-store detection (4.1), Mac, faster conversion
+10. Delete the auto-updater and bootstrapper whenever convenient

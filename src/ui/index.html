@@ -571,6 +571,18 @@
 							</form>
 						</div>
 					</div>
+					<div class="col-sm-4 skills-panel">
+						<div class="skills-head">
+							Skills
+							<span class="skills-remaining">
+								Unspent points
+								<input type="number" class="form-control" id="remainingSkillPoints"
+								       data-bound="SavedGame" min="0">
+							</span>
+						</div>
+						<div class="skills-grid" id="skillsGrid" data-bound="SavedGame"></div>
+						<div class="skills-note" id="skillsNote" data-bound="SavedGame"></div>
+					</div>
 				</div>
 				<div class="row view raw" id="rawTable" data-bound="SavedGame">
 					<form>
