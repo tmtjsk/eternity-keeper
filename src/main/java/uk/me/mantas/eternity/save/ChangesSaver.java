@@ -459,6 +459,32 @@ public class ChangesSaver implements Runnable {
 		return newDirectory;
 	}
 
+	/**
+	 * The file name a save is about to be written under, worked out the same
+	 * way {@link #createNewSaveDirectory} does but without creating anything.
+	 * The name typed into the save dialog isn't part of it — that only becomes
+	 * the display name inside saveinfo.xml — so this is the only way the UI can
+	 * tell someone which file to go looking for.
+	 */
+	public static String previewSaveFileName (final String oldSaveAbsolutePath) {
+		if (oldSaveAbsolutePath == null || oldSaveAbsolutePath.isEmpty()) {
+			return "";
+		}
+
+		final File oldSave = new File(oldSaveAbsolutePath);
+		final String oldSaveName = oldSave.getName();
+		if (!oldSaveName.contains(" ")) {
+			return oldSaveName;
+		}
+
+		final String sessionID = oldSaveName.split(" ")[0].replace("-", "");
+		final String sceneTitle = oldSaveName.substring(oldSaveName.lastIndexOf(" ") + 1);
+		final int gameID = getAvailableGameID(
+			Environment.getInstance().directory().working(), sessionID);
+
+		return String.format("%s %d %s", sessionID, gameID, sceneTitle);
+	}
+
 	static File createNewSaveDirectory(final String oldSaveAbsolutePath) throws IOException {
 		final Environment environment = Environment.getInstance();
 		final File workingDirectory = environment.directory().working();

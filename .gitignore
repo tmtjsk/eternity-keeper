@@ -8,3 +8,7 @@ settings.json
 **/maven-metadata*
 jar
 hs_err_*.log
+
+# Stale build output and IDE state
+bin/
+.vs/

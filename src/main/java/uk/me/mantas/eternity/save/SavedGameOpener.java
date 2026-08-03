@@ -31,6 +31,7 @@ import uk.me.mantas.eternity.environment.Environment;
 import uk.me.mantas.eternity.factory.PacketDeserializerFactory;
 import uk.me.mantas.eternity.game.*;
 import uk.me.mantas.eternity.handlers.OpenSavedGame;
+import uk.me.mantas.eternity.serializer.CSharpCollection;
 import uk.me.mantas.eternity.serializer.DeserializedPackets;
 import uk.me.mantas.eternity.serializer.PacketDeserializer;
 import uk.me.mantas.eternity.serializer.properties.Property;
@@ -83,8 +84,88 @@ public class SavedGameOpener implements Runnable {
 		final float currency = extractCurrency(gameObjects);
 		final Map<String, Property> globals = extractGlobals(gameObjects);
 		final Map<String, Property> characters = extractCharacters(gameObjects);
+		final List<JSONObject> deadCompanions = extractDeadCompanions(gameObjects, characters);
+		final JSONObject inventory = extractInventory(gameObjects, characters);
 
-		sendJSON(currency, globals, characters);
+		sendJSON(currency, globals, characters, deadCompanions, inventory);
+	}
+
+	// Companions who died in-game have no mobile object left in the save —
+	// death is recorded only as a b_X_Dead global. Surface them as synthetic
+	// list entries so the UI can offer resurrection.
+	private List<JSONObject> extractDeadCompanions (
+		final List<Property> gameObjects, final Map<String, Property> characters) {
+
+		final List<JSONObject> dead = new ArrayList<>();
+		final Optional<Property> global =
+			findProperty(gameObjects, name -> name.startsWith("InGameGlobal"));
+
+		if (!global.isPresent()) {
+			return dead;
+		}
+
+		final Optional<ComponentPersistencePacket> globalVariables =
+			findComponent(unwrapPacket(global.get()).ComponentPackets, "GlobalVariables");
+
+		if (!globalVariables.isPresent()) {
+			return dead;
+		}
+
+		final Object mData = globalVariables.get().Variables.get("m_data");
+		if (!(mData instanceof Hashtable)) {
+			return dead;
+		}
+
+		@SuppressWarnings("unchecked")
+		final Map<String, Object> table = (Map<String, Object>) mData;
+		final Set<String> presentNames = characters.values().stream()
+			.map(p -> unwrapPacket(p).ObjectName)
+			.filter(Objects::nonNull)
+			.map(String::toLowerCase)
+			.collect(Collectors.toSet());
+
+		// Parents referenced by objects whose owner no longer exists — the
+		// only death trace flagless companions (Zahua) leave behind.
+		final Set<String> allNames = new HashSet<>();
+		for (final Property p : gameObjects) {
+			final String name = unwrapPacket(p).ObjectName;
+			if (name != null) {
+				allNames.add(name);
+			}
+		}
+
+		final Set<String> orphanParents = new HashSet<>();
+		for (final Property p : gameObjects) {
+			final String parent = unwrapPacket(p).Parent;
+			if (parent != null && !allNames.contains(parent)) {
+				orphanParents.add(parent.toLowerCase());
+			}
+		}
+
+		for (final CompanionRegistry.Companion companion : CompanionRegistry.all()) {
+			if (!companion.isDeadIn(table, presentNames, orphanParents)) {
+				continue;
+			}
+
+			final JSONObject json = new JSONObject();
+			json.put("GUID", "dead:" + companion.key);
+			json.put("name", companion.displayName);
+			json.put("isCompanion", true);
+			json.put("isMainCharacter", false);
+			json.put("isDead", true);
+			json.put("resurrectable", true);
+			json.put("inParty", false);
+			json.put("slot", -1);
+			json.put("level", 0);
+			json.put("className", "Unknown");
+			json.put("portrait", portraitFromSubPath(Optional.of(String.format(
+				Environment.getInstance().config().companionPortraitPath()
+				, companion.portraitName()))));
+			json.put("stats", new JSONObject());
+			dead.add(json);
+		}
+
+		return dead;
 	}
 
 	private boolean isObjectPersistencePacket(final Property property) {
@@ -123,6 +204,345 @@ public class SavedGameOpener implements Runnable {
 		return ((CurrencyValue) currencyValue).v;
 	}
 
+	// Every party member carries their OWN 16-slot pack — the player's is a
+	// PlayerInventory, a companion's a plain Inventory, and the game sets
+	// MaxItems from CharacterStats.InventoryMaxSize (16) on both. The four
+	// quick-item slots are a QuickbarInventory, and worn gear lives in
+	// Equipment as fixed-length UUID arrays. Only the stash (plus the quest
+	// and crafting bags) is party-wide, and it hangs off the player alone.
+	//
+	// Each ItemList entry has a same-index UUID in the parallel
+	// SerializedItemList, which is also the ObjectID of the item's own
+	// standalone packet elsewhere in the save.
+	private JSONObject extractInventory (
+		final List<Property> gameObjects, final Map<String, Property> characters) {
+
+		final JSONObject inventory = new JSONObject();
+		final JSONArray charactersJson = new JSONArray();
+		final JSONObject icons = new JSONObject();
+
+		// Equipment only stores slot UUIDs, so we need to be able to get from
+		// a UUID back to the item's own packet, whose ObjectName is the prefab
+		// name with a "(Clone)" suffix.
+		final Map<String, String> itemNamesByID = new HashMap<>();
+		for (final Property property : gameObjects) {
+			final ObjectPersistencePacket packet = unwrapPacket(property);
+			if (packet.ObjectID != null && packet.ObjectName != null) {
+				itemNamesByID.put(packet.ObjectID.toLowerCase(), packet.ObjectName);
+			}
+		}
+
+		inventory.put("characters", charactersJson);
+		inventory.put("icons", icons);
+
+		for (final Entry<String, Property> entry : characters.entrySet()) {
+			final ObjectPersistencePacket packet = unwrapPacket(entry.getValue());
+			final boolean isPlayer =
+				packet.ObjectName.toLowerCase().startsWith("player_");
+			final String packComponent = isPlayer ? "PlayerInventory" : "Inventory";
+
+			// Stored/roster characters carry no inventory components at all.
+			if (!findComponent(packet.ComponentPackets, packComponent).isPresent()) {
+				continue;
+			}
+
+			final JSONObject characterJson = new JSONObject();
+			characterJson.put("guid", entry.getKey());
+			characterJson.put("objectName", packet.ObjectName);
+			characterJson.put("packComponent", packComponent);
+			characterJson.put("isPlayer", isPlayer);
+
+			// Which slots this character actually has is a function of their
+			// race and class — Equipment.HasEquipmentSlot gates the grimoire on
+			// being a wizard, the head slot on not being godlike, and the pet
+			// slot on being the player.
+			final String characterClass = characterStat(packet, "CharacterClass");
+			final String characterRace = characterStat(packet, "CharacterRace");
+			characterJson.put("characterClass", characterClass);
+			characterJson.put("characterRace", characterRace);
+
+			final JSONArray missing = new JSONArray();
+			if (!"Wizard".equals(characterClass)) {
+				missing.put("Grimoire");
+			}
+
+			if ("Godlike".equals(characterRace)) {
+				missing.put("Head");
+			}
+
+			if (!isPlayer) {
+				missing.put("Pet");
+			}
+
+			// Never populated by the game; shown by nobody.
+			missing.put("Cape");
+			characterJson.put("unavailableSlots", missing);
+
+			// Everyone starts with two weapon sets; the third and fourth only
+			// unlock through talents (CharacterStats.MaxWeaponSets is
+			// 2 + BonusWeaponSets), so the editor greys out the rest.
+			characterJson.put("maxWeaponSets", 2 + intStat(packet, "BonusWeaponSets"));
+			characterJson.put("pack", inventoryComponentToJSON(packet, packComponent, icons));
+			characterJson.put(
+				"quickbar", inventoryComponentToJSON(packet, "QuickbarInventory", icons));
+			characterJson.put("equipment", equipmentToJSON(packet, itemNamesByID, icons));
+
+			if (isPlayer) {
+				inventory.put(
+					"stash", inventoryComponentToJSON(packet, "StashInventory", icons));
+			}
+
+			charactersJson.put(characterJson);
+		}
+
+		return inventory;
+	}
+
+	private static int intStat (
+		final ObjectPersistencePacket packet, final String variable) {
+
+		return findComponent(packet.ComponentPackets, "CharacterStats")
+			.map(stats -> stats.Variables.get(variable))
+			.filter(value -> value instanceof Integer)
+			.map(value -> (Integer) value)
+			.orElse(0);
+	}
+
+	private static String characterStat (
+		final ObjectPersistencePacket packet, final String variable) {
+
+		return findComponent(packet.ComponentPackets, "CharacterStats")
+			.map(stats -> stats.Variables.get(variable))
+			.map(Object::toString)
+			.orElse("");
+	}
+
+	// Order comes from EquipmentSet.SerializedEquipment, NOT from the
+	// Equippable.EquipmentSlot enum — the two disagree (the enum puts the rings
+	// before Hands, the serialized array puts Hands first), and following the
+	// enum mislabels every character's gear. Index 6 is the deprecated cape
+	// slot and is always empty in real saves.
+	private static final String[] EQUIPMENT_SLOTS = {
+		"Head", "Neck", "Chest", "Hands", "RightRing", "LeftRing"
+		, "Cape", "Feet", "Waist", "Grimoire", "Pet"
+	};
+
+	// The Equippable flag that an item must carry to be legal in each slot,
+	// so the UI can refuse to put a sword on someone's feet.
+	private static final String[] EQUIPMENT_SLOT_FLAGS = {
+		"HeadSlot", "NeckSlot", "ArmorSlot", "HandSlot", "RingRightHandSlot"
+		, "RingLeftHandSlot", "", "FeetSlot", "WaistSlot", "GrimoireSlot", "PetSlot"
+	};
+
+	private JSONObject equipmentToJSON (
+		final ObjectPersistencePacket packet
+		, final Map<String, String> itemNamesByID
+		, final JSONObject icons) {
+
+		final JSONObject json = new JSONObject();
+		final JSONArray slots = new JSONArray();
+		final JSONArray weaponSets = new JSONArray();
+		json.put("slots", slots);
+		json.put("weaponSets", weaponSets);
+		json.put("selectedSet", 0);
+
+		final Optional<ComponentPersistencePacket> equipment =
+			findComponent(packet.ComponentPackets, "Equipment");
+
+		if (!equipment.isPresent()) {
+			return json;
+		}
+
+		final List<String> equipped =
+			guidList(equipment.get().Variables.get("EquipmentSetSerialized"));
+
+		for (int i = 0; i < EQUIPMENT_SLOTS.length; i++) {
+			final JSONObject slot = new JSONObject();
+			slot.put("slot", EQUIPMENT_SLOTS[i]);
+			slot.put("flag", EQUIPMENT_SLOT_FLAGS[i]);
+			slot.put("index", i);
+			slot.put("item", i < equipped.size()
+				? equippedItemToJSON(equipped.get(i), itemNamesByID, icons)
+				: JSONObject.NULL);
+
+			slots.put(slot);
+		}
+
+		// WeaponSetsSerialized is a flat list of primary/secondary pairs.
+		final List<String> weapons =
+			guidList(equipment.get().Variables.get("WeaponSetsSerialized"));
+
+		for (int i = 0; i + 1 < weapons.size(); i += 2) {
+			final JSONObject set = new JSONObject();
+			set.put("index", i / 2);
+			set.put("primary", equippedItemToJSON(weapons.get(i), itemNamesByID, icons));
+			set.put("secondary", equippedItemToJSON(weapons.get(i + 1), itemNamesByID, icons));
+			weaponSets.put(set);
+		}
+
+		final Object selected = equipment.get().Variables.get("SelectedWeaponSetSerialized");
+		if (selected instanceof Integer) {
+			json.put("selectedSet", selected);
+		}
+
+		return json;
+	}
+
+	private static final String EMPTY_GUID = "00000000-0000-0000-0000-000000000000";
+
+	private Object equippedItemToJSON (
+		final String guid
+		, final Map<String, String> itemNamesByID
+		, final JSONObject icons) {
+
+		if (guid == null || guid.isEmpty() || EMPTY_GUID.equals(guid)) {
+			return JSONObject.NULL;
+		}
+
+		final String objectName = itemNamesByID.get(guid.toLowerCase());
+		if (objectName == null) {
+			return JSONObject.NULL;
+		}
+
+		// "PX2_War_Hammer_Abydons_Hammer(Clone)" -> the catalog key.
+		final String prefabName = objectName.replace("(Clone)", "").trim();
+		final JSONObject json = new JSONObject();
+		json.put("guid", guid);
+		json.put("baseItem", prefabName);
+		json.put("stackSize", 1);
+		json.put("uiSlot", -1);
+		decorateWithCatalog(json, prefabName, icons);
+
+		return json;
+	}
+
+	private static List<String> guidList (final Object value) {
+		final List<String> guids = new ArrayList<>();
+		if (!(value instanceof CSharpCollection)) {
+			return guids;
+		}
+
+		final Iterator iterator = ((CSharpCollection) value).iterator();
+		while (iterator.hasNext()) {
+			final Object guid = iterator.next();
+			guids.add(guid == null ? "" : guid.toString());
+		}
+
+		return guids;
+	}
+
+	private JSONObject inventoryComponentToJSON (
+		final ObjectPersistencePacket ownerPacket
+		, final String component
+		, final JSONObject icons) {
+
+		final JSONObject json = new JSONObject();
+		final JSONArray items = new JSONArray();
+		json.put("component", component);
+		json.put("items", items);
+		json.put("maxItems", 0);
+
+		final Optional<ComponentPersistencePacket> inventoryComponent =
+			findComponent(ownerPacket.ComponentPackets, component);
+
+		if (!inventoryComponent.isPresent()) {
+			return json;
+		}
+
+		final Object maxItems = inventoryComponent.get().Variables.get("MaxItems");
+		if (maxItems instanceof Integer) {
+			json.put("maxItems", maxItems);
+		}
+
+		final Object itemList = inventoryComponent.get().Variables.get("ItemList");
+		final Object serializedItemList =
+			inventoryComponent.get().Variables.get("SerializedItemList");
+
+		if (!(itemList instanceof CSharpCollection) || !(serializedItemList instanceof CSharpCollection)) {
+			logger.error("%s has no ItemList/SerializedItemList.%n", component);
+			return json;
+		}
+
+		final Iterator itemIterator = ((CSharpCollection) itemList).iterator();
+		final Iterator guidIterator = ((CSharpCollection) serializedItemList).iterator();
+		while (itemIterator.hasNext() && guidIterator.hasNext()) {
+			final Object item = itemIterator.next();
+			final Object guid = guidIterator.next();
+			if (!(item instanceof InventoryItem)) continue;
+
+			final InventoryItem inventoryItem = (InventoryItem) item;
+			final JSONObject itemJson = new JSONObject();
+			itemJson.put("guid", guid.toString());
+			itemJson.put("baseItem", inventoryItem.BaseItem);
+			itemJson.put("stackSize", inventoryItem.StackSize);
+			itemJson.put("uiSlot", inventoryItem.uiSlot);
+			decorateWithCatalog(itemJson, inventoryItem.BaseItem, icons);
+			items.put(itemJson);
+		}
+
+		return json;
+	}
+
+	// Real names and icons come from the catalog extracted out of the game's
+	// asset bundles; without one we degrade to a prettified file name.
+	private void decorateWithCatalog (
+		final JSONObject itemJson, final String baseItem, final JSONObject icons) {
+
+		final String key = ItemCatalog.keyOf(baseItem);
+		itemJson.put("key", key);
+
+		final ItemCatalog catalog = ItemCatalog.getInstance();
+		final Optional<ItemCatalog.Entry> entry = catalog.lookup(baseItem);
+
+		if (!entry.isPresent()) {
+			itemJson.put("displayName", prettifyItemName(baseItem));
+			itemJson.put("maxStack", 1);
+			return;
+		}
+
+		itemJson.put("displayName", entry.get().name.isEmpty()
+			? prettifyItemName(baseItem)
+			: entry.get().name);
+		itemJson.put("maxStack", entry.get().maxStack);
+		itemJson.put("quest", entry.get().quest);
+		itemJson.put("quality", entry.get().quality);
+		itemJson.put("filter", entry.get().filter);
+
+		final JSONArray slots = new JSONArray();
+		entry.get().slots.forEach(slots::put);
+		itemJson.put("slots", slots);
+
+		final JSONArray classes = new JSONArray();
+		entry.get().classes.forEach(classes::put);
+		itemJson.put("classes", classes);
+
+		// Icons repeat constantly across a party, so they're sent once in a
+		// shared map keyed by catalog key rather than inline per item.
+		if (!entry.get().icon.isEmpty() && !icons.has(key)) {
+			final String data = catalog.iconData(entry.get().icon);
+			if (!data.isEmpty()) {
+				icons.put(key, data);
+			}
+		}
+	}
+
+	// The save only stores a prefab file path — the real display names live
+	// in the game's binary asset bundles, which would need a separate
+	// item-catalog project to parse. This is an honest approximation:
+	// "Rings/Ring_PREORDER_Gauns_Pledge.prefab" -> "Ring PREORDER Gauns Pledge".
+	private static String prettifyItemName (final String baseItem) {
+		if (baseItem == null || baseItem.isEmpty()) {
+			return "(unknown item)";
+		}
+
+		final String fileName = baseItem.substring(baseItem.lastIndexOf('/') + 1);
+		final String withoutExtension = fileName.endsWith(".prefab")
+			? fileName.substring(0, fileName.length() - ".prefab".length())
+			: fileName;
+
+		return withoutExtension.replace('_', ' ').trim();
+	}
+
 	private static JSONObject globalsToJSON(final Property globalProperty) {
 		final ObjectPersistencePacket global = unwrapPacket(globalProperty);
 		final JSONObject json = new JSONObject();
@@ -144,6 +564,7 @@ public class SavedGameOpener implements Runnable {
 
 			if (packet.isPresent()) {
 				final Map<String, JSONObject> variables = packet.get().Variables.entrySet().stream()
+						.filter(entry -> entry.getValue() != null)
 						.filter(entry -> isSupportedType(entry.getValue()))
 						.map(entry -> new SimpleEntry<>(entry.getKey(), recordType(entry.getValue())))
 						.collect(Collectors.toMap(Entry::getKey, Entry::getValue));
@@ -200,12 +621,16 @@ public class SavedGameOpener implements Runnable {
 	}
 
 	private void sendJSON(
-			final float currency, final Map<String, Property> globals, final Map<String, Property> characters) {
+			final float currency, final Map<String, Property> globals,
+			final Map<String, Property> characters, final List<JSONObject> deadCompanions,
+			final JSONObject inventory) {
 
 		final JSONObject json = new JSONObject();
 		json.put("isWindowStoreSave", false);
 
 		json.put("currency", currency);
+		json.put("achievementsDisabled", detectAchievementsDisabled(globals));
+		json.put("inventory", inventory);
 
 		final Map<String, JSONObject> jsonGlobals = globals.entrySet().stream()
 				.map(entry -> new SimpleEntry<>(entry.getKey(), globalsToJSON(entry.getValue())))
@@ -217,9 +642,35 @@ public class SavedGameOpener implements Runnable {
 				.filter(Optional::isPresent)
 				.map(Optional::get)
 				.toArray(JSONObject[]::new);
-		json.put("characters", new JSONArray(jsonCharacters));
+		final JSONArray charactersArray = new JSONArray(jsonCharacters);
+		deadCompanions.forEach(charactersArray::put);
+		json.put("characters", charactersArray);
 
 		callback.success(json.toString());
+	}
+
+	// The game gates achievement unlocks on exactly one flag:
+	// AchievementTracker.m_disableAchievements (set by the console's
+	// IRoll20s). GameState.CheatsEnabled is intentionally NOT considered —
+	// it only gates runtime cheat effects, and the editor's achievements
+	// toggle leaves it alone so those effects keep working.
+	private boolean detectAchievementsDisabled(final Map<String, Property> globals) {
+		for (final Property global : globals.values()) {
+			final ObjectPersistencePacket packet = unwrapPacket(global);
+			if (packet.ComponentPackets == null) {
+				continue;
+			}
+
+			final Optional<ComponentPersistencePacket> component =
+					findComponent(packet.ComponentPackets, "AchievementTracker");
+
+			if (component.isPresent()
+					&& Boolean.TRUE.equals(component.get().Variables.get("m_disableAchievements"))) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	private boolean detectCompanion(final ObjectPersistencePacket packet) {
@@ -311,7 +762,6 @@ public class SavedGameOpener implements Runnable {
 	private String extractPortrait(
 			final ObjectPersistencePacket packet, final boolean isCompanion) {
 
-		final JSONObject settings = Settings.getInstance().json;
 		Optional<String> portraitSubPath = findComponent(packet.ComponentPackets, "Portrait")
 				.map(c -> (String) c.Variables.get("m_textureLargePath"));
 
@@ -322,6 +772,12 @@ public class SavedGameOpener implements Runnable {
 							Environment.getInstance().config().companionPortraitPath(),
 							name.toLowerCase().replace(" ", "_")));
 		}
+
+		return portraitFromSubPath(portraitSubPath);
+	}
+
+	private String portraitFromSubPath(final Optional<String> portraitSubPath) {
+		final JSONObject settings = Settings.getInstance().json;
 
 		if (!portraitSubPath.isPresent()) {
 			return "";

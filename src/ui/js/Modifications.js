@@ -36,7 +36,11 @@ var Modifications = function () {
 		self.html.saveChanges.click(self.save.bind(self));
 		self.html.dontSaveChanges.click(self.discardChanges.bind(self));
 		self.html.saveNameBtn.click(self.saveName.bind(self));
-		self.html.saveNameDialog.on('shown.bs.modal', () => self.html.newSaveName[0].select());
+		self.html.saveNameDialog.on('shown.bs.modal', () => {
+			self.html.newSaveName[0].select();
+			self.refreshSaveTarget();
+		});
+		self.html.saveTargetBrowse.click(self.chooseSaveFolder.bind(self));
 		self.html.menuOpen.click(self.switchPrompt.bind(self));
 
 		$(document).keyup(e => {
@@ -50,11 +54,60 @@ var Modifications = function () {
 		self.state = $.extend({}, defaultState, newState);
 		self.html.saveButton.prop('disabled', !self.state.modifications || self.state.saving);
 		self.html.saveNameBtn.prop('disabled', self.state.saving);
+
+		// Writing a save takes a moment (clone, reserialize, rezip) — show
+		// the user that work is happening.
+		self.html.saveButton.html(self.state.saving
+			? '<i class="fa fa-spinner fa-pulse"></i> Saving&hellip;'
+			: '<i class="fa fa-floppy-o"></i> Save');
+		self.html.saveNameBtn.html(self.state.saving
+			? '<i class="fa fa-spinner fa-pulse"></i> Saving&hellip;'
+			: 'Save changes');
 	};
 };
 
 Modifications.prototype.suggestSaveName = function (info) {
-	return ((info.userSaveName) ? info.userSaveName : info.systemName) + ' (edited)';
+	return (info.userSaveName || info.sceneTitle || info.systemName) + ' (edited)';
+};
+
+// The name typed above only becomes the save's display name; on disk the game
+// insists on "<session id> <game id> <SceneTitle>.savegame", which is why the
+// file is so hard to find afterwards. Show the real thing.
+Modifications.prototype.refreshSaveTarget = function () {
+	var self = this;
+	var info = Eternity.SavedGame.state.info || {};
+
+	self.html.saveTargetFile.text('working it out…');
+	self.html.saveTargetFolder.text('');
+
+	window.saveTarget({
+		request: JSON.stringify({action: 'preview', oldSave: info.absolutePath || ''})
+		, onSuccess: response => {
+			var target = JSON.parse(response);
+			self.html.saveTargetFile.text(target.fileName || '(unknown)');
+			self.html.saveTargetFolder.text(target.directory || '(not set)')
+				.attr('title', target.directory || '');
+		}
+		, onFailure: () => {
+			self.html.saveTargetFile.text('(unknown)');
+			self.html.saveTargetFolder.text('(unknown)');
+		}
+	});
+};
+
+Modifications.prototype.chooseSaveFolder = function () {
+	var self = this;
+
+	window.saveTarget({
+		request: JSON.stringify({action: 'choose'})
+		, onSuccess: response => {
+			var target = JSON.parse(response);
+			self.html.saveTargetFolder.text(target.directory).attr('title', target.directory);
+		}
+		, onFailure: () => {
+			// Cancelling the picker just leaves the current folder alone.
+		}
+	});
 };
 
 // Fades the confirmation toast in and back out again a moment later.

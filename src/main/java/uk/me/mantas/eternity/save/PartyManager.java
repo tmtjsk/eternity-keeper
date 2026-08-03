@@ -448,7 +448,7 @@ public class PartyManager {
 
 	// -------------------- component builders --------------------
 
-	private ComplexProperty buildPartyMemberAI (
+	static ComplexProperty buildPartyMemberAI (
 		final int slot
 		, final boolean secondary
 		, final AISummonType summonType
@@ -569,7 +569,7 @@ public class PartyManager {
 		return record;
 	}
 
-	private ComplexProperty buildComponent (
+	static ComplexProperty buildComponent (
 		final String typeString
 		, final LinkedHashMap<String, Property> variables) {
 
@@ -599,7 +599,7 @@ public class PartyManager {
 		return component;
 	}
 
-	private SimpleProperty simple (
+	static SimpleProperty simple (
 		final Class javaType
 		, final String cSharpType
 		, final Object value) {
@@ -681,13 +681,13 @@ public class PartyManager {
 
 	// -------------------- tree surgery helpers --------------------
 
-	private Optional<SingleDimensionalArrayProperty> componentArray (final Property root) {
+	static Optional<SingleDimensionalArrayProperty> componentArray (final Property root) {
 		return Property.find(root, "ComponentPackets")
 			.filter(p -> p instanceof SingleDimensionalArrayProperty)
 			.map(p -> (SingleDimensionalArrayProperty) p);
 	}
 
-	private Optional<ComplexProperty> findComponentProperty (
+	static Optional<ComplexProperty> findComponentProperty (
 		final Property root
 		, final String typeString) {
 
@@ -713,7 +713,7 @@ public class PartyManager {
 		return Optional.empty();
 	}
 
-	private boolean removeComponent (final Property root, final String typeString) {
+	static boolean removeComponent (final Property root, final String typeString) {
 		final Optional<ComplexProperty> component = findComponentProperty(root, typeString);
 		if (!component.isPresent()) {
 			return false;
@@ -723,7 +723,7 @@ public class PartyManager {
 		return true;
 	}
 
-	private void addComponent (final Property root, final ComplexProperty component) {
+	static void addComponent (final Property root, final ComplexProperty component) {
 		componentArray(root).ifPresent(array -> array.items.add(component));
 	}
 

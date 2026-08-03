@@ -73,6 +73,22 @@
 							<input id="newSaveName" type="text" class="form-control" data-bound="Modifications">
 						</div>
 					</form>
+					<div class="save-target">
+						<div class="save-target-row">
+							<span class="save-target-label">File</span>
+							<span class="save-target-value" id="saveTargetFile"
+							      data-bound="Modifications"></span>
+						</div>
+						<div class="save-target-row">
+							<span class="save-target-label">Folder</span>
+							<span class="save-target-value save-target-path" id="saveTargetFolder"
+							      data-bound="Modifications"></span>
+							<button type="button" class="save-target-browse" id="saveTargetBrowse"
+							        data-bound="Modifications" title="Choose a different folder">
+								<i class="fa fa-folder-open"></i>
+							</button>
+						</div>
+					</div>
 				</div>
 				<div class="modal-footer">
 					<button type="button" class="btn btn-primary btn-sm" id="saveNameBtn"
@@ -261,6 +277,35 @@
 		</div>
 	</div>
 
+	<div class="modal fade" id="stackDialog" role="dialog" data-bound="InventoryEditor">
+		<div class="modal-dialog pm-dialog stack-dialog">
+			<div class="modal-content pm-content">
+				<div class="pm-titlebar">
+					<span id="stackDialogTitle" data-bound="InventoryEditor">Quantity</span>
+					<button type="button" class="close pm-close" data-dismiss="modal">
+						<span>&times;</span>
+					</button>
+				</div>
+				<div class="pm-body stack-body">
+					<div class="stack-icon" id="stackIcon" data-bound="InventoryEditor"></div>
+					<input type="number" class="form-control" id="stackAmount" min="0"
+					       data-bound="InventoryEditor" />
+					<div class="stack-hint" id="stackHint" data-bound="InventoryEditor"></div>
+				</div>
+				<div class="pm-footer">
+					<button type="button" id="stackAccept" class="pm-btn"
+					        data-bound="InventoryEditor">
+						<i>&#10094;</i> Accept <i>&#10095;</i>
+					</button>
+					<button type="button" id="stackCancel" class="pm-btn"
+					        data-bound="InventoryEditor" data-dismiss="modal">
+						<i>&#10094;</i> Cancel <i>&#10095;</i>
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
 	<div class="modal fade" id="importOverwriteDialog" role="dialog" data-bound="ImportCharacter">
 		<div class="modal-dialog modal-sm">
 			<div class="modal-content">
@@ -305,6 +350,32 @@
 					</button>
 					<button type="button" class="btn btn-primary btn-sm" id="currencyEditorSet"
 					        data-bound="CurrencyEditor">
+						Done
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div class="modal fade" id="difficultyDialog" role="dialog" data-bound="DifficultyEditor">
+		<div class="modal-dialog difficulty-dialog">
+			<div class="modal-content">
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal">
+						<span>&times;</span>
+					</button>
+					<h4 class="modal-title">Edit difficulty level</h4>
+				</div>
+				<div class="modal-body">
+					<div class="console-settings">
+						<div class="console-difficulties" id="difficultyRow" data-bound="DifficultyEditor"></div>
+						<div class="console-modes" id="modesRow" data-bound="DifficultyEditor"></div>
+						<div class="console-setting-desc" id="settingDesc" data-bound="DifficultyEditor"></div>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-primary btn-sm" id="difficultyEditorDone"
+					        data-bound="DifficultyEditor">
 						Done
 					</button>
 				</div>
@@ -393,7 +464,24 @@
 										<i class="fa fa-fw fa-money"></i> Edit party currency&hellip;
 									</a>
 								</li>
+								<li class="disabled">
+									<a href="javascript:void(0);" id="menuDifficultyEditor"
+									   data-bound="DifficultyEditor">
+										<i class="fa fa-fw fa-shield"></i> Edit difficulty level&hellip;
+									</a>
+								</li>
 							</ul>
+						</li>
+						<li id="menuInventory" class="disabled">
+							<a href="javascript:void(0);" id="menuInventoryEditor"
+							   data-bound="InventoryEditor">
+								Inventory
+							</a>
+						</li>
+						<li id="menuConsole" class="disabled">
+							<a href="javascript:void(0);" id="menuOpenConsole" data-bound="SavedGame">
+								Console
+							</a>
 						</li>
 					</ul>
 					<button type="button" class="btn btn-sm theme-toggle" id="themeToggle">
@@ -406,8 +494,12 @@
 
 	<div class="container-fluid dark-theme">
 		<div class="row">
-			<div class="sidebar sidebar-width">
+			<div class="sidebar sidebar-width" id="sidebar" data-bound="SavedGame">
 				<ul class="characters" id="characterList" data-bound="SavedGame"></ul>
+				<button type="button" class="sidebar-toggle" id="sidebarToggle"
+				        data-bound="SavedGame" title="Hide the character list">
+					<i class="fa fa-chevron-left"></i>
+				</button>
 			</div>
 			<div class="main-panel">
 				<div class="row" id="error" data-bound="GenericError">
@@ -520,6 +612,155 @@
 						<tbody></tbody>
 					</table>
 				</div>
+				<div class="row view inventory-view" id="inventoryView" data-bound="InventoryEditor">
+					<div class="inv-doll-panel">
+						<div class="inv-doll-name" id="invCharacterName"
+						     data-bound="InventoryEditor"></div>
+						<div class="inv-doll">
+							<div class="inv-slot-column" id="invSlotsLeft"
+							     data-bound="InventoryEditor"></div>
+							<div class="inv-portrait" id="invPortrait"
+							     data-bound="InventoryEditor"></div>
+							<div class="inv-slot-column" id="invSlotsRight"
+							     data-bound="InventoryEditor"></div>
+						</div>
+						<div class="inv-doll-lower">
+							<div class="inv-quick">
+								<div class="inv-sub-label">Quick Items</div>
+								<div class="inv-quick-slots" id="invQuickSlots"
+								     data-bound="InventoryEditor"></div>
+							</div>
+							<div class="inv-weapons">
+								<div class="inv-sub-label">Weapon Sets</div>
+								<div class="inv-weapon-sets" id="invWeaponSets"
+								     data-bound="InventoryEditor"></div>
+							</div>
+						</div>
+					</div>
+
+					<div class="inv-pack-panel">
+						<div class="inv-panel-head">
+							<span id="invPackTitle" data-bound="InventoryEditor">Party</span>
+							<button type="button" class="pm-btn inv-apply" id="invApply"
+							        data-bound="InventoryEditor">
+								<i>&#10094;</i> Apply changes <i>&#10095;</i>
+							</button>
+							<button type="button" class="pm-btn inv-revert" id="invRevert"
+							        data-bound="InventoryEditor">
+								<i>&#10094;</i> Revert <i>&#10095;</i>
+							</button>
+						</div>
+						<div class="inv-packs" id="invPacks" data-bound="InventoryEditor"></div>
+					</div>
+
+					<div class="inv-carry" id="invCarry" data-bound="InventoryEditor"></div>
+
+					<div class="inv-stash-panel">
+						<div class="inv-panel-head">
+							<span>Stash</span>
+							<span class="inv-count" id="invStashCount"
+							      data-bound="InventoryEditor"></span>
+						</div>
+						<div class="inv-search">
+							<input type="text" class="form-control" id="invStashSearch"
+							       data-bound="InventoryEditor" placeholder="Search stash..." />
+							<span class="inv-filters" id="invStashFilters"
+							      data-bound="InventoryEditor"></span>
+						</div>
+						<div class="inv-stash-grid" id="invStashGrid"
+						     data-bound="InventoryEditor"></div>
+					</div>
+
+					<div class="inv-browser-panel">
+						<div class="inv-panel-head">
+							<span>All items in the game</span>
+							<span class="inv-count" id="invBrowseCount"
+							      data-bound="InventoryEditor"></span>
+						</div>
+						<div class="inv-search">
+							<input type="text" class="form-control" id="invBrowseSearch"
+							       data-bound="InventoryEditor" placeholder="Search all items..." />
+							<span class="inv-filters" id="invBrowseFilters"
+							      data-bound="InventoryEditor"></span>
+							<span class="inv-browse-target">
+								Add to
+								<select class="form-control" id="invBrowseTarget"
+								        data-bound="InventoryEditor"></select>
+							</span>
+						</div>
+						<div class="inv-browse-grid" id="invBrowseGrid"
+						     data-bound="InventoryEditor"></div>
+						<div class="inv-browse-pager">
+							<button type="button" class="pm-btn" id="invBrowsePrev"
+							        data-bound="InventoryEditor">
+								<i>&#10094;</i> Previous
+							</button>
+							<span class="inv-browse-page" id="invBrowsePage"
+							      data-bound="InventoryEditor"></span>
+							<button type="button" class="pm-btn" id="invBrowseNext"
+							        data-bound="InventoryEditor">
+								Next <i>&#10095;</i>
+							</button>
+						</div>
+					</div>
+
+					<div class="inv-status" id="invStatus" data-bound="InventoryEditor"></div>
+				</div>
+				<div class="row view console-view" id="consoleView" data-bound="ConsoleTab">
+					<div class="console-achievements">
+						<button type="button" id="achievementsToggle" class="pm-btn"
+						        data-bound="ConsoleTab"></button>
+						<span class="console-achievements-note">
+							Toggles only the achievement lock &mdash; active cheats are
+							left untouched.
+						</span>
+					</div>
+					<div class="console-warning">
+						<i class="fa fa-exclamation-triangle"></i>
+						Some commands can break your save in ways that are hard to undo
+						&mdash; keep a backup copy of the save file before experimenting.
+					</div>
+					<div class="console-repl">
+						<div class="console-output" id="consoleOutput" data-bound="ConsoleTab"></div>
+						<form id="consoleForm" data-bound="ConsoleTab" onsubmit="return false;">
+							<div class="input-group">
+								<span class="console-prompt">&gt;</span>
+								<input type="text" id="consoleInput" class="form-control"
+								       data-bound="ConsoleTab" autocomplete="off"
+								       placeholder="Type a command &mdash; try 'help'" />
+							</div>
+						</form>
+					</div>
+					<div class="console-reference">
+						<div class="console-reference-title">
+							In-game console commands
+							<span class="console-reference-subtitle">
+								These run in the game's own console (press <kbd>`</kbd> after
+								<code>IRoll20s</code>) &mdash; the editor cannot execute them,
+								they are listed here for reference only.
+							</span>
+						</div>
+						<form>
+							<div class="form-group">
+								<div class="input-group">
+									<input type="text" class="form-control icon-left table-search"
+									       id="searchReference" data-bound="ConsoleTab"
+									       placeholder="Search commands..." />
+									<span class="icon-left"><i class="fa fa-search"></i></span>
+								</div>
+							</div>
+						</form>
+						<table class="table dark-theme" id="referenceTable" data-bound="ConsoleTab">
+							<thead>
+								<tr>
+									<th>Command</th>
+									<th>Description</th>
+								</tr>
+							</thead>
+							<tbody></tbody>
+						</table>
+					</div>
+				</div>
 			</div>
 		</div>
 	</div>
@@ -582,6 +823,9 @@
 	<script src="js/SaveSearch.js"></script>
 	<script src="js/SavedGame.js"></script>
 	<script src="js/CurrencyEditor.js"></script>
+	<script src="js/DifficultyEditor.js"></script>
+	<script src="js/InventoryEditor.js"></script>
+	<script src="js/ConsoleTab.js"></script>
 	<script src="js/Modifications.js"></script>
 	<script src="js/ImportCharacter.js"></script>
 	<script src="js/ExportCharacter.js"></script>

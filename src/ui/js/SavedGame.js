@@ -22,7 +22,18 @@ var SavedGame = function () {
 		'BaseMight', 'BaseConstitution', 'BaseDexterity', 'BaseIntellect', 'BasePerception'
 		, 'BaseResolve'];
 
-	self.views = Object.freeze({ATTR: 0, RAW: 1, GLOBALS: 2});
+	// The stats players most commonly want to edit, pinned to the top of the
+	// Raw view in this order. Everything else follows alphabetically.
+	var importantStats = [
+		'Experience', 'Level', 'RemainingSkillPoints'
+		, 'AthleticsSkill', 'LoreSkill', 'MechanicsSkill', 'StealthSkill'
+		, 'SurvivalSkill', 'CraftingSkill'
+		, 'MaxHealth', 'MaxStamina'
+		, 'BaseMight', 'BaseConstitution', 'BaseDexterity', 'BasePerception'
+		, 'BaseIntellect', 'BaseResolve'
+		, 'BaseDeflection', 'BaseFortitude', 'BaseReflexes', 'BaseWill'];
+
+	self.views = Object.freeze({ATTR: 0, RAW: 1, GLOBALS: 2, CONSOLE: 3, INVENTORY: 4});
 
 	var defaultState = {
 		saveData: {}
@@ -43,9 +54,8 @@ var SavedGame = function () {
 		});
 
 		container.append(
-			sorted.map(
-				character =>
-					$('<li>')
+			sorted.map(character => {
+				var row = $('<li>')
 					.data('guid', character.GUID)
 					.append($('<i>').addClass(
 						character.isMainCharacter
@@ -53,7 +63,24 @@ var SavedGame = function () {
 							: 'fa fa-heartbeat'))
 					.append(document.createTextNode(' ' + character.name))
 					.addClass(character.isDead ? 'dead' : '')
-					.click(self.switchCharacter.bind(self, character.GUID))));
+					.click(self.switchCharacter.bind(self, character.GUID));
+
+				// Every living party member carries their own pack, so give
+				// each one a direct way into their inventory rather than
+				// making people select the character and then find the tab.
+				if (!character.isDead) {
+					row.append($('<i>')
+						.addClass('fa fa-briefcase character-inventory')
+						.attr('title', 'Open ' + character.name + "'s inventory")
+						.click(event => {
+							event.stopPropagation();
+							self.switchCharacter(character.GUID);
+							self.switchView(self.views.INVENTORY);
+						}));
+				}
+
+				return row;
+			}));
 	};
 
 	var sortData = unsorted => {
@@ -81,7 +108,7 @@ var SavedGame = function () {
 				$('<option></option>').prop('selected', v == initialValue).text(v).val(v)));
 	};
 
-	var createRawEditor = (key, fullkey, value) => {
+	var createRawEditor = (key, fullkey, value, locked) => {
 		var row = $('<tr></tr>');
 		var keyCol = $('<td></td>');
 		var valCol = $('<td></td>');
@@ -90,6 +117,18 @@ var SavedGame = function () {
 		keyCol.text(key);
 		valCol.data('key', key);
 		valCol.data('fullkey', fullkey);
+
+		// The game rebuilds companion base attributes from their character
+		// template on every load, so editing them here would silently do
+		// nothing in-game — show them read-only instead.
+		if (locked) {
+			valCol.text(value.value)
+				.addClass('raw-locked')
+				.attr('title', 'The game recalculates companion attributes from their '
+					+ 'template on load; this value cannot be edited.');
+			row.append(keyCol, valCol);
+			return row;
+		}
 
 		if (value.type === 'java.lang.Boolean') {
 			editor = createBooleanEditor(value.value);
@@ -133,15 +172,45 @@ var SavedGame = function () {
 	};
 
 	var populateCharacter = (container, data) => {
-		container.find('.portrait')
+		var portrait = container.find('.portrait')
 			.empty()
 			.css('background-image', 'url(data:image/png;base64,' + data.portrait + ')')
 			.css('background-repeat', 'no-repeat')
 			.html((data.isDead) ? '<div>DEAD</div>' : '');
 
+		if (data.resurrectable) {
+			portrait.append(
+				$('<button type="button">')
+					.addClass('pm-btn pm-btn-dialog resurrect-btn')
+					.html('<i>&#10094;</i> Resurrect <i>&#10095;</i>')
+					.click(self.resurrect.bind(self, data.GUID)));
+		}
+
+		// Synthetic dead-companion entries carry no stats; clear the inputs
+		// so the previous character's values don't linger, and lock them.
+		container.find('.stats input')
+			.val('')
+			.prop('disabled', !!data.resurrectable);
+
 		var sortedData = sortData(data.stats);
 		var rawTable = self.html.rawTable.find('tbody');
 		rawTable.empty();
+
+		var sectionHeader = text =>
+			$('<tr>').addClass('raw-section-header')
+				.append($('<td>').attr('colspan', 2).text(text));
+
+		var lockedStat = stat =>
+			data.isCompanion && disabledForCompanions.indexOf(stat) > -1;
+
+		// Pinned section first, in curated order...
+		var pinned = importantStats.filter(stat => data.stats[stat] !== undefined);
+		if (pinned.length > 0) {
+			rawTable.append(sectionHeader('Most useful'));
+			pinned.forEach(stat =>
+				rawTable.append(createRawEditor(stat, stat, data.stats[stat], lockedStat(stat))));
+			rawTable.append(sectionHeader('All stats (A–Z)'));
+		}
 
 		sortedData.forEach(tuple => {
 			var stat = tuple[0];
@@ -151,9 +220,11 @@ var SavedGame = function () {
 				.find('.stats')
 				.find('input[data-fullkey="' + stat + '"]')
 				.val(value.value.toString())
-				.prop('disabled', data.isCompanion && disabledForCompanions.indexOf(stat) > -1);
+				.prop('disabled', lockedStat(stat));
 
-			rawTable.append(createRawEditor(stat, stat, value));
+			if (pinned.indexOf(stat) < 0) {
+				rawTable.append(createRawEditor(stat, stat, value, lockedStat(stat)));
+			}
 		});
 
 		container
@@ -172,13 +243,46 @@ var SavedGame = function () {
 
 		var matches =
 			table.find('td:last-child')
-				.filter((i, el) => $(el).data('key').toLowerCase().includes(searchString));
+				.filter((i, el) => {
+					// Section-header rows carry no key.
+					var key = $(el).data('key');
+					return key && key.toLowerCase().includes(searchString);
+				});
 
 		table.find('tbody tr').hide();
 		matches.each((i, el) => $(el).parent().show());
 	};
 
 	self.init = () => {
+		// Collapsing the character list gives the inventory grids room on
+		// smaller screens; the choice sticks between sessions.
+		var applySidebar = collapsed => {
+			$('body').toggleClass('sidebar-collapsed', collapsed);
+			self.html.sidebarToggle
+				.attr('title', collapsed ? 'Show the character list' : 'Hide the character list')
+				.find('i')
+				.attr('class', collapsed ? 'fa fa-chevron-right' : 'fa fa-chevron-left');
+		};
+
+		var collapsed = false;
+		try {
+			collapsed = localStorage.getItem('ekSidebar') === 'collapsed';
+		} catch (e) {
+			// localStorage may be unavailable; default to expanded.
+		}
+
+		applySidebar(collapsed);
+		self.html.sidebarToggle.click(() => {
+			collapsed = !collapsed;
+			applySidebar(collapsed);
+
+			try {
+				localStorage.setItem('ekSidebar', collapsed ? 'collapsed' : 'open');
+			} catch (e) {
+				// Not persisting the choice is harmless.
+			}
+		});
+
 		self.html.searchRaw.keyup(filterTable.bind(self, self.html.searchRaw, self.html.rawTable));
 		self.html.searchGlobals.keyup(
 			filterTable.bind(self, self.html.searchGlobals, self.html.globalsTable));
@@ -198,6 +302,11 @@ var SavedGame = function () {
 		self.html.menuCharacterRaw.click(self.switchView.bind(self, self.views.RAW));
 		self.html.menuEditGlobals.off();
 		self.html.menuEditGlobals.click(self.switchView.bind(self, self.views.GLOBALS));
+		self.html.menuOpenConsole.off();
+		self.html.menuOpenConsole.click(self.switchView.bind(self, self.views.CONSOLE));
+		Eternity.InventoryEditor.html.menuInventoryEditor.off();
+		Eternity.InventoryEditor.html.menuInventoryEditor.click(
+			self.switchView.bind(self, self.views.INVENTORY));
 
 		Eternity.CurrencyEditor.render({enabled: true, amount: self.state.saveData.currency});
 		Eternity.Modifications.html.newSaveName.val(
@@ -216,7 +325,10 @@ var SavedGame = function () {
 				populateCharacter(self.html.character, character[0]);
 			}
 		} else {
-			self.switchCharacter(self.state.saveData.characters[0].GUID);
+			// A freshly opened save always starts on the main character.
+			var characters = self.state.saveData.characters;
+			var main = characters.filter(c => c.isMainCharacter)[0] || characters[0];
+			self.switchCharacter(main.GUID);
 		}
 
 		$('.view').hide();
@@ -231,6 +343,17 @@ var SavedGame = function () {
 				filterTable(self.html.searchGlobals, self.html.globalsTable);
 				break;
 
+			case self.views.CONSOLE:
+				Eternity.ConsoleTab.html.consoleView.show();
+				Eternity.ConsoleTab.transition({enabled: true});
+				break;
+
+			case self.views.INVENTORY:
+				Eternity.InventoryEditor.html.inventoryView.show();
+				Eternity.InventoryEditor.transition({
+					enabled: true, character: self.state.activeCharacter});
+				break;
+
 			default:
 				self.html.character.show();
 		}
@@ -240,6 +363,70 @@ var SavedGame = function () {
 SavedGame.prototype.switchCharacter = function (guid) {
 	var self = this;
 	self.transition({activeCharacter: guid});
+};
+
+SavedGame.prototype.resurrect = function (guid) {
+	var self = this;
+	var button = self.html.character.find('.resurrect-btn');
+	button.prop('disabled', true)
+		.html('<i class="fa fa-spinner fa-pulse"></i> Resurrecting&hellip;');
+
+	var success = response => {
+		response = JSON.parse(response);
+
+		if (response.error) {
+			button.prop('disabled', false).html('<i>&#10094;</i> Resurrect <i>&#10095;</i>');
+			Eternity.GenericError.render({msg: response.error});
+			return;
+		}
+
+		// The fresh saveData must replace ours (a new character exists now),
+		// but replacing it wholesale would discard unsaved edits. Existing
+		// characters and the party currency are untouched by resurrection,
+		// so the UI's current copies — edits included — stay authoritative.
+		// Globals are taken fresh: resurrection just cleared death flags in
+		// them, and carrying old values over would revert that.
+		var previous = self.state.saveData;
+		if (previous && previous.characters) {
+			var byGuid = {};
+			previous.characters.forEach(c => { byGuid[c.GUID] = c; });
+			response.characters.forEach(c => {
+				if (byGuid[c.GUID] && byGuid[c.GUID].stats && c.stats) {
+					c.stats = byGuid[c.GUID].stats;
+				}
+			});
+
+			if (previous.currency !== undefined) {
+				response.currency = previous.currency;
+			}
+		}
+
+		// The synthetic "dead:" entry is gone from the re-opened save;
+		// falling back to the default selection re-picks the main character.
+		self.render({
+			saveData: response
+			, info: self.state.info
+			, view: self.state.view
+		});
+
+		Eternity.Modifications.transition({modifications: true});
+	};
+
+	var failure = (errno, response) => {
+		button.prop('disabled', false).html('<i>&#10094;</i> Resurrect <i>&#10095;</i>');
+		Eternity.GenericError.render({msg: response});
+	};
+
+	window.resurrectCharacter({
+		request: JSON.stringify({
+			oldSave: self.state.info.absolutePath
+			, savedYet: Eternity.Modifications.state.savedYet
+			// Synthetic dead-companion GUIDs look like "dead:<registry key>".
+			, companion: guid.replace(/^dead:/, '')
+		})
+		, onSuccess: success
+		, onFailure: failure
+	});
 };
 
 SavedGame.prototype.switchView = function (view) {

@@ -10,7 +10,10 @@ Several dependencies are already bundled with the project. In order to build and
 * [JDK 1.8](http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html) or above
 
 # Support
-Currently there is support for Windows and Linux versions.
+Windows and Linux. The game itself is found automatically in the usual Steam and
+GOG locations on the system drive; if your library lives on another drive or you
+use Epic, set the path by hand in the settings dialog for now — broader detection
+is the next thing on the roadmap.
 
 # Contributing
 This is a clone of the code from https://bitbucket.org/Fyorl/eternity-keeper/src/master/ but with
@@ -54,32 +57,51 @@ This alpha release includes initial code by ktully allowing you to generate Stea
 
 # Features
 
-* Auto updater (currently broken)
 * Windows and Linux support
-* Modify character attributes
-* Modify all raw numeric character variables
+* Modify character attributes, skills and all raw numeric variables
 * Modify character names (including companions)
-* Character importing/exporting (`Character > Export character to file` saves a `.chr` file; `Character > Import character from file` adds a previously exported character to the currently open save, anchored next to the player). If the imported character already exists in the target save (the main character, or a companion already in the party), Eternity Keeper asks for confirmation and then overwrites the existing character in place instead of duplicating them.
+* Character importing/exporting (`Character > Export character to file` saves a `.chr` file; `Character > Import character from file` adds a previously exported character to the currently open save, anchored next to the player). If the imported character already exists in the target save, Eternity Keeper asks for confirmation and overwrites in place instead of duplicating
 * Light and dark mode (toggle in the top-right corner)
-* Party management from anywhere (`Character > Party management`): move companions between the active party and the stronghold roster without travelling to Caed Nua. The editor replicates the game's own structures — the `PartyMemberAI`/`AIPackageController` component swap, the physical move to the Great Hall, the `_stored` roster records and the stronghold's stored-GUID lists.
+* Party management from anywhere (`Character > Party management`): move companions between the active party and the stronghold roster without travelling to Caed Nua
+* **Resurrect dead companions** — dead companions are detected from the save's own death flags and revived by transplanting a donor record, including clearing the death flags, restoring their auto-failed personal quest, and bringing back Sagani's pet
+* **Inventory tab** — a near-replica of the game's inventory screen. Every party member's own 16-slot pack, their equipment, quick items and weapon sets, plus the shared stash. Real item names and icons pulled from your own game install. Click to pick an item up, click again to drop it; double-click a stackable to set its quantity
+* **Add any item in the game** — a browsable, searchable catalog of all 2,184 items; adding one mints a real object the game loads
+* **Equipment rules are enforced** — the editor refuses illegal gear the same way the game does: godlike have no head slot, only wizards carry a grimoire, only the player has a pet slot, and class-restricted items stay restricted
+* **Console tab** — re-enable achievements, and run the save-representable Pillars console commands (experience, attributes, skills, money, globals, stronghold) plus a searchable reference of the in-game-only ones
+* Edit difficulty level (difficulty, Expert Mode, Trial of Iron, Tactical mode)
+* Edit party currency
+* Save dialog shows the exact file name and folder that will be written, with a folder picker
+* Converts Windows Store saves to Steam/GOG format
 
-**Note about the Raw tab**: The 'Raw' tab is basically a dump of all a character's stats from the save file. Changing most of the values here has not been tested and could result in a corrupt save file. Eternity Keeper will never overwrite your save files, it will just create a new, edited one, so you don't need to worry too much.
+**Note about the Raw tab**: The 'Raw' tab is a dump of all a character's stats from the save file. Changing most of these has not been tested and could result in a corrupt save. Eternity Keeper never overwrites your save files — it always writes a new, edited one.
 
-The values in the other tabs have been tested and will be accepted by the game. The plan is to fill out these other tabs with more stats once they have been tested. Things in the Raw tab such as 'BaseWill', etc. in which it is pretty obvious what they do, should be quite safe to modify.
+## Item names and icons
+
+The Inventory tab shows real item names and icons. These live inside the game's
+Unity asset bundles, which Java 8 can't realistically parse, so they're extracted
+once by a helper script from **your own game installation** (the same policy the
+editor already follows for portraits):
+
+    cd tools/itemdata-extract
+    pip install UnityPy
+    python extract_catalog.py
+
+The result lands outside the repository and is picked up automatically. Without
+it, everything still works — item names just fall back to prettified file names.
 
 # Planned Features
-* Faster conversion from Windows to Steam format
-* Mac support
-* Bring dead characters back to life
-* Clean up vendors (i.e. delete all the crap you sold to vendors from the save files to make them smaller and faster to save in future)
-* Modify inventory and stash
-* Modify skills and talents
-* Modify culture and race
-* Modify grimoires
-* Item editor
+
+See [ROADMAP.md](ROADMAP.md) for the full plan, including priorities and effort
+estimates. In short:
+
+* Detect the game across every store (Steam libraries on any drive, GOG, Epic), not just the system drive
+* Skills and talents editor
+* Vendor cleanup (delete everything you sold to vendors to shrink saves)
 * Stronghold editor
-* Modify global variables
-* Modify companion portraits (note that you can already do this by just renaming and shuffling around files in the game's portraits directory)
+* Culture, race and class editing
+* Grimoire editor
+* Mac support
+* Faster Windows Store conversion
 
 # Eternity Keeper as a platform
 One of the long-term goals of this project will be to allow people to create and edit items, talents, quests, etc. using an intuitive UI and to save them in a format that allows them to be inserted into a saved game that Pillars of Eternity will recognise.

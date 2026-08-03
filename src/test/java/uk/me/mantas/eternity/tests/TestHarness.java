@@ -27,6 +27,7 @@ import uk.me.mantas.eternity.Logger;
 import uk.me.mantas.eternity.Settings;
 import uk.me.mantas.eternity.environment.*;
 import uk.me.mantas.eternity.factory.SharpSerializerFactory;
+import uk.me.mantas.eternity.save.ItemCatalog;
 import uk.me.mantas.eternity.serializer.SerializerFormat;
 import uk.me.mantas.eternity.serializer.SharpSerializer;
 
@@ -57,6 +58,11 @@ public abstract class TestHarness {
 	public void setup () {
 		Environment.initialise();
 		Settings.clear();
+
+		// Item names and icons are read from the user's own game install, so
+		// tests pin them off — otherwise extraction output would differ
+		// between a machine with a game installed and one without.
+		ItemCatalog.useNoCatalog();
 	}
 
 	@After

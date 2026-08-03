@@ -43,7 +43,7 @@ public class Configuration {
 	}};
 
 	private List<String> usefulGlobals =
-		ImmutableList.of("GameState", "WorldTime", "GlobalVariables");
+		ImmutableList.of("GameState", "WorldTime", "GlobalVariables", "Stronghold");
 	public List<String> usefulGlobals () { return usefulGlobals; }
 
 	public long maxLogSize () { return 0x20000; }

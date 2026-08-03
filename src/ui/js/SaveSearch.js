@@ -28,9 +28,12 @@ var SaveSearch = function () {
 		, busy: false
 	};
 
+	// Prefer the scene title from saveinfo.xml: the game strips non-ASCII
+	// characters (Polish diacritics included) when building filenames, so the
+	// filename-derived system name is mangled for localized area names.
 	var saveName = info => {
 		var userSaveName = info.userSaveName ? ' (' + info.userSaveName + ')' : '';
-		return info.playerName + ' - ' + info.systemName + userSaveName;
+		return info.playerName + ' - ' + (info.sceneTitle || info.systemName) + userSaveName;
 	};
 
 	var populateSaveBlocks = (container, template, data, opening, selected) => {
@@ -233,7 +236,7 @@ SaveSearch.prototype.renamePrompt = function () {
 		return;
 	}
 
-	self.html.renameSaveInput.val(info.userSaveName || info.systemName);
+	self.html.renameSaveInput.val(info.userSaveName || info.sceneTitle || info.systemName);
 	self.html.renameSaveDialog.find('.pm-dialog-subject').text(saveNameOf(info));
 	self.html.renameSaveDialog.modal({backdrop: 'static', keyboard: false});
 };
@@ -344,7 +347,7 @@ SaveSearch.prototype.deleteConfirmed = function () {
 // Shared helper for dialog subjects.
 function saveNameOf (info) {
 	var userSaveName = info.userSaveName ? ' (' + info.userSaveName + ')' : '';
-	return info.playerName + ' - ' + info.systemName + userSaveName;
+	return info.playerName + ' - ' + (info.sceneTitle || info.systemName) + userSaveName;
 }
 
 $.extend(SaveSearch.prototype, Renderer.prototype);

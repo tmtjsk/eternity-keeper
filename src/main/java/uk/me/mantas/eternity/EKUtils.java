@@ -45,22 +45,79 @@ import java.util.function.Function;
 public class EKUtils {
 	private static final Logger logger = Logger.getLogger(EKUtils.class);
 
+	// A window needs at least this much of itself on a monitor, and its title
+	// bar within this much of the monitor's top edge, to be seen and dragged.
+	private static final int MIN_VISIBLE = 100;
+	private static final int TITLE_BAR_GRACE = 50;
+
 	public static Rectangle getDefaultWindowBounds () {
 		final double multiplier = 2d / 3d;
-		Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+		final Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
 
-		double w = screenSize.width * multiplier;
-		double h = screenSize.height * multiplier;
-		double x = screenSize.width / 2 - w / 2;
-		double y = screenSize.height / 2 - h / 2;
+		final double defaultW = screenSize.width * multiplier;
+		final double defaultH = screenSize.height * multiplier;
+		final Rectangle fallback = new Rectangle(
+			(int) (screenSize.width / 2 - defaultW / 2)
+			, (int) (screenSize.height / 2 - defaultH / 2)
+			, (int) defaultW
+			, (int) defaultH);
 
-		JSONObject settings = Settings.getInstance().json;
+		double w = fallback.width;
+		double h = fallback.height;
+		double x = fallback.x;
+		double y = fallback.y;
+
+		final JSONObject settings = Settings.getInstance().json;
 		try { w = settings.getDouble("width"); } catch (final JSONException ignore) {}
 		try { h = settings.getDouble("height"); } catch (final JSONException ignore) {}
 		try { x = settings.getDouble("x"); } catch (final JSONException ignore) {}
 		try { y = settings.getDouble("y"); } catch (final JSONException ignore) {}
 
-		return new Rectangle((int) x, (int) y, (int) w, (int) h);
+		final Rectangle saved = new Rectangle((int) x, (int) y, (int) w, (int) h);
+		return reachableBounds(saved, fallback, screenBounds());
+	}
+
+	// Keeps the saved bounds if a usable portion sits on some monitor;
+	// otherwise recentres. Screens are injected so this is unit-testable
+	// without a display. A window saved on a machine with a monitor stacked
+	// above the primary (negative y) would otherwise open off-screen — visible
+	// on the taskbar but impossible to see or click.
+	public static Rectangle reachableBounds (
+		final Rectangle saved, final Rectangle fallback, final Rectangle[] screens) {
+
+		return isReachable(saved, screens) ? saved : fallback;
+	}
+
+	public static boolean isReachable (final Rectangle bounds, final Rectangle[] screens) {
+		for (final Rectangle screen : screens) {
+			final int overlapX =
+				Math.min(bounds.x + bounds.width, screen.x + screen.width)
+				- Math.max(bounds.x, screen.x);
+
+			final boolean titleBarReachable =
+				bounds.y >= screen.y - TITLE_BAR_GRACE
+				&& bounds.y <= screen.y + screen.height - MIN_VISIBLE;
+
+			if (overlapX >= MIN_VISIBLE && titleBarReachable) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	private static Rectangle[] screenBounds () {
+		try {
+			final GraphicsDevice[] devices =
+				GraphicsEnvironment.getLocalGraphicsEnvironment().getScreenDevices();
+			final Rectangle[] bounds = new Rectangle[devices.length];
+			for (int i = 0; i < devices.length; i++) {
+				bounds[i] = devices[i].getDefaultConfiguration().getBounds();
+			}
+			return bounds;
+		} catch (final HeadlessException e) {
+			return new Rectangle[0];
+		}
 	}
 
 	public static Optional<File> createTempDir (String prefix) {

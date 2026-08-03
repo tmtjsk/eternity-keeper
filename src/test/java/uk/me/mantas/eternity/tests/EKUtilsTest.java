@@ -30,6 +30,7 @@ import uk.me.mantas.eternity.serializer.properties.ComplexProperty;
 import uk.me.mantas.eternity.serializer.properties.Property;
 import uk.me.mantas.eternity.serializer.properties.SingleDimensionalArrayProperty;
 
+import java.awt.Rectangle;
 import java.util.*;
 
 import static org.junit.Assert.*;
@@ -141,6 +142,45 @@ public class EKUtilsTest {
 
 		assertFalse(findSubComponent(haystack, "404").isPresent());
 		assertSame(needleProperty, findSubComponent(haystack, "FINDME").get());
+	}
+
+	// Two side-by-side 2560x1440 monitors, both top-aligned at y=0 — the same
+	// layout as the machine that first hit the off-screen-window bug.
+	private static final Rectangle[] TWO_MONITORS = new Rectangle[] {
+		new Rectangle(0, 0, 2560, 1440)
+		, new Rectangle(2560, 0, 2560, 1440)
+	};
+
+	@Test
+	public void isReachableAcceptsOnScreenBounds () {
+		// A normal window on the primary monitor.
+		assertTrue(EKUtils.isReachable(new Rectangle(120, 80, 1600, 1048), TWO_MONITORS));
+		// A window on the secondary monitor.
+		assertTrue(EKUtils.isReachable(new Rectangle(2700, 100, 1600, 1000), TWO_MONITORS));
+		// A maximised window with the usual few pixels of overscan.
+		assertTrue(EKUtils.isReachable(new Rectangle(-8, -8, 2576, 1456), TWO_MONITORS));
+	}
+
+	@Test
+	public void isReachableRejectsOffScreenBounds () {
+		// The actual bug: title bar ~1088px above both monitors.
+		assertFalse(EKUtils.isReachable(new Rectangle(-8, -1088, 1936, 1048), TWO_MONITORS));
+		// Entirely to the right of every monitor.
+		assertFalse(EKUtils.isReachable(new Rectangle(6000, 100, 800, 600), TWO_MONITORS));
+		// Title bar below the bottom edge, so it can't be grabbed.
+		assertFalse(EKUtils.isReachable(new Rectangle(100, 1430, 800, 600), TWO_MONITORS));
+		// No monitors at all (e.g. headless) is never reachable.
+		assertFalse(EKUtils.isReachable(new Rectangle(120, 80, 800, 600), new Rectangle[0]));
+	}
+
+	@Test
+	public void reachableBoundsFallsBackWhenOffScreen () {
+		final Rectangle fallback = new Rectangle(427, 240, 1706, 960);
+		final Rectangle offScreen = new Rectangle(-8, -1088, 1936, 1048);
+		final Rectangle onScreen = new Rectangle(120, 80, 1600, 1048);
+
+		assertSame(onScreen, EKUtils.reachableBounds(onScreen, fallback, TWO_MONITORS));
+		assertSame(fallback, EKUtils.reachableBounds(offScreen, fallback, TWO_MONITORS));
 	}
 
 	private enum Enum {A, B}

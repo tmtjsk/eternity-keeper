@@ -80,6 +80,28 @@ public class JSHandlers {
 				new CefMessageRouterConfig("renameSavedGame", "renameSavedGameCancel"),
 				new RenameSavedGame());
 
+		final CefMessageRouter resurrectCharacterRouter = CefMessageRouter.create(
+				new CefMessageRouterConfig("resurrectCharacter", "resurrectCharacterCancel"),
+				new ResurrectCharacter());
+
+		final CefMessageRouter enableAchievementsRouter = CefMessageRouter.create(
+				new CefMessageRouterConfig("enableAchievements", "enableAchievementsCancel"),
+				new EnableAchievements());
+
+		final CefMessageRouter browseItemsRouter = CefMessageRouter.create(
+				new CefMessageRouterConfig("browseItems", "browseItemsCancel"),
+				new BrowseItems());
+		cefClient.addMessageRouter(browseItemsRouter);
+
+		final CefMessageRouter saveTargetRouter = CefMessageRouter.create(
+				new CefMessageRouterConfig("saveTarget", "saveTargetCancel"),
+				new SaveTarget());
+		cefClient.addMessageRouter(saveTargetRouter);
+
+		final CefMessageRouter updateInventoryRouter = CefMessageRouter.create(
+				new CefMessageRouterConfig("updateInventory", "updateInventoryCancel"),
+				new UpdateInventory());
+
 		cefClient.addMessageRouter(getDefaultSaveLocationRouter);
 		cefClient.addMessageRouter(listSavedGamesRouter);
 		cefClient.addMessageRouter(openSavedGameRouter);
@@ -96,5 +118,8 @@ public class JSHandlers {
 		cefClient.addMessageRouter(deleteSavedGameRouter);
 		cefClient.addMessageRouter(updatePartyRouter);
 		cefClient.addMessageRouter(renameSavedGameRouter);
+		cefClient.addMessageRouter(resurrectCharacterRouter);
+		cefClient.addMessageRouter(enableAchievementsRouter);
+		cefClient.addMessageRouter(updateInventoryRouter);
 	}
 }

@@ -139,13 +139,23 @@ var Editor = function () {
 		self.SavedGame.html.character.hide();
 		self.SavedGame.html.rawTable.hide();
 		self.SavedGame.html.globalsTable.hide();
+		self.ConsoleTab.html.consoleView.hide();
+		self.InventoryEditor.html.inventoryView.hide();
 		self.SavedGame.html.characterList.empty();
+
+		// The collapse handle only makes sense next to an actual character list.
+		$('body').toggleClass('list-view', !!self.state.listView);
 
 		if (self.state.listView) {
 			self.SaveSearch.html.searchContainer.show();
 			self.SaveSearch.html.saveBlocks.show();
 			self.CurrencyEditor.transition({enabled: false});
+			self.DifficultyEditor.transition({enabled: false});
+			self.InventoryEditor.transition({enabled: false});
+			self.ConsoleTab.transition({enabled: false});
 			self.SavedGame.html.menuEditGlobals.off().parent().addClass('disabled');
+			self.SavedGame.html.menuOpenConsole.off().parent().addClass('disabled');
+			self.InventoryEditor.html.menuInventoryEditor.off().parent().addClass('disabled');
 			disableMenu('menuCharacter');
 			disableMenu('menuGlobals');
 			self.ImportCharacter.transition({enabled: false});
@@ -156,8 +166,13 @@ var Editor = function () {
 
 		if (self.state.saveView) {
 			self.SavedGame.html.menuEditGlobals.parent().removeClass('disabled');
+			self.SavedGame.html.menuOpenConsole.parent().removeClass('disabled');
+			self.InventoryEditor.html.menuInventoryEditor.parent().removeClass('disabled');
 			enableMenu('menuCharacter');
 			enableMenu('menuGlobals');
+			self.DifficultyEditor.transition({enabled: true});
+			self.InventoryEditor.transition({enabled: true});
+			self.ConsoleTab.transition({enabled: true});
 			self.ImportCharacter.transition({enabled: true});
 			self.ExportCharacter.transition({enabled: true});
 			self.PartyManagement.transition({enabled: true});
@@ -174,6 +189,9 @@ var Editor = function () {
 	self.SaveSearch = new SaveSearch();
 	self.SavedGame = new SavedGame();
 	self.CurrencyEditor = new CurrencyEditor();
+	self.DifficultyEditor = new DifficultyEditor();
+	self.InventoryEditor = new InventoryEditor();
+	self.ConsoleTab = new ConsoleTab();
 	self.Modifications = new Modifications();
 	self.ImportCharacter = new ImportCharacter();
 	self.ExportCharacter = new ExportCharacter();
