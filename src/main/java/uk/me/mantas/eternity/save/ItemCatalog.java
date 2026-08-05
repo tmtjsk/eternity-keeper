@@ -188,10 +188,15 @@ public class ItemCatalog {
 		return Collections.unmodifiableList(values);
 	}
 
+	private static Optional<File> locateCatalogDirectory () {
+		return locateDataDirectory("catalog.json");
+	}
+
 	// The catalog is derived from the user's own game install, so it lives
 	// outside the source tree. Prefer an explicit setting, then the usual
-	// spots relative to wherever the app was launched from.
-	private static Optional<File> locateCatalogDirectory () {
+	// spots relative to wherever the app was launched from. Shared with
+	// AbilityCatalog, which sits in the same directory.
+	static Optional<File> locateDataDirectory (final String requiredFile) {
 		final List<File> candidates = new ArrayList<>();
 
 		// Settings are mocked out in tests, so treat anything here as absent
@@ -216,7 +221,7 @@ public class ItemCatalog {
 		}
 
 		for (final File candidate : candidates) {
-			if (candidate != null && new File(candidate, "catalog.json").isFile()) {
+			if (candidate != null && new File(candidate, requiredFile).isFile()) {
 				return Optional.of(candidate);
 			}
 		}

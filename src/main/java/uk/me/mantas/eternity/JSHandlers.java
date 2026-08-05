@@ -102,6 +102,16 @@ public class JSHandlers {
 				new CefMessageRouterConfig("updateInventory", "updateInventoryCancel"),
 				new UpdateInventory());
 
+		final CefMessageRouter browseAbilitiesRouter = CefMessageRouter.create(
+				new CefMessageRouterConfig("browseAbilities", "browseAbilitiesCancel"),
+				new BrowseAbilities());
+		cefClient.addMessageRouter(browseAbilitiesRouter);
+
+		final CefMessageRouter updateAbilitiesRouter = CefMessageRouter.create(
+				new CefMessageRouterConfig("updateAbilities", "updateAbilitiesCancel"),
+				new UpdateAbilities());
+		cefClient.addMessageRouter(updateAbilitiesRouter);
+
 		cefClient.addMessageRouter(getDefaultSaveLocationRouter);
 		cefClient.addMessageRouter(listSavedGamesRouter);
 		cefClient.addMessageRouter(openSavedGameRouter);

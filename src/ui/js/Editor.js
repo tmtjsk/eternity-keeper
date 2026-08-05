@@ -141,6 +141,7 @@ var Editor = function () {
 		self.SavedGame.html.globalsTable.hide();
 		self.ConsoleTab.html.consoleView.hide();
 		self.InventoryEditor.html.inventoryView.hide();
+		self.AbilityEditor.html.abilitiesView.hide();
 		self.SavedGame.html.characterList.empty();
 
 		// The collapse handle only makes sense next to an actual character list.
@@ -152,10 +153,12 @@ var Editor = function () {
 			self.CurrencyEditor.transition({enabled: false});
 			self.DifficultyEditor.transition({enabled: false});
 			self.InventoryEditor.transition({enabled: false});
+			self.AbilityEditor.transition({enabled: false});
 			self.ConsoleTab.transition({enabled: false});
 			self.SavedGame.html.menuEditGlobals.off().parent().addClass('disabled');
 			self.SavedGame.html.menuOpenConsole.off().parent().addClass('disabled');
 			self.InventoryEditor.html.menuInventoryEditor.off().parent().addClass('disabled');
+			self.AbilityEditor.html.menuCharacterAbilities.off().parent().addClass('disabled');
 			disableMenu('menuCharacter');
 			disableMenu('menuGlobals');
 			self.ImportCharacter.transition({enabled: false});
@@ -168,10 +171,12 @@ var Editor = function () {
 			self.SavedGame.html.menuEditGlobals.parent().removeClass('disabled');
 			self.SavedGame.html.menuOpenConsole.parent().removeClass('disabled');
 			self.InventoryEditor.html.menuInventoryEditor.parent().removeClass('disabled');
+			self.AbilityEditor.html.menuCharacterAbilities.parent().removeClass('disabled');
 			enableMenu('menuCharacter');
 			enableMenu('menuGlobals');
 			self.DifficultyEditor.transition({enabled: true});
 			self.InventoryEditor.transition({enabled: true});
+			self.AbilityEditor.transition({enabled: true});
 			self.ConsoleTab.transition({enabled: true});
 			self.ImportCharacter.transition({enabled: true});
 			self.ExportCharacter.transition({enabled: true});
@@ -191,6 +196,7 @@ var Editor = function () {
 	self.CurrencyEditor = new CurrencyEditor();
 	self.DifficultyEditor = new DifficultyEditor();
 	self.InventoryEditor = new InventoryEditor();
+	self.AbilityEditor = new AbilityEditor();
 	self.ConsoleTab = new ConsoleTab();
 	self.Modifications = new Modifications();
 	self.ImportCharacter = new ImportCharacter();

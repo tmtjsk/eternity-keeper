@@ -33,7 +33,8 @@ var SavedGame = function () {
 		, 'BaseIntellect', 'BaseResolve'
 		, 'BaseDeflection', 'BaseFortitude', 'BaseReflexes', 'BaseWill'];
 
-	self.views = Object.freeze({ATTR: 0, RAW: 1, GLOBALS: 2, CONSOLE: 3, INVENTORY: 4});
+	self.views = Object.freeze({
+		ATTR: 0, RAW: 1, GLOBALS: 2, CONSOLE: 3, INVENTORY: 4, ABILITIES: 5});
 
 	var defaultState = {
 		saveData: {}
@@ -407,6 +408,9 @@ var SavedGame = function () {
 		Eternity.InventoryEditor.html.menuInventoryEditor.off();
 		Eternity.InventoryEditor.html.menuInventoryEditor.click(
 			self.switchView.bind(self, self.views.INVENTORY));
+		Eternity.AbilityEditor.html.menuCharacterAbilities.off();
+		Eternity.AbilityEditor.html.menuCharacterAbilities.click(
+			self.switchView.bind(self, self.views.ABILITIES));
 
 		Eternity.CurrencyEditor.render({enabled: true, amount: self.state.saveData.currency});
 		Eternity.Modifications.html.newSaveName.val(
@@ -451,6 +455,12 @@ var SavedGame = function () {
 			case self.views.INVENTORY:
 				Eternity.InventoryEditor.html.inventoryView.show();
 				Eternity.InventoryEditor.transition({
+					enabled: true, character: self.state.activeCharacter});
+				break;
+
+			case self.views.ABILITIES:
+				Eternity.AbilityEditor.html.abilitiesView.show();
+				Eternity.AbilityEditor.transition({
 					enabled: true, character: self.state.activeCharacter});
 				break;
 

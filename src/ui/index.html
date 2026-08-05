@@ -431,6 +431,12 @@
 									</a>
 								</li>
 								<li class="disabled">
+									<a href="javascript:void(0);" id="menuCharacterAbilities"
+									   data-bound="AbilityEditor">
+										<i class="fa fa-fw fa-magic"></i> Edit abilities and talents
+									</a>
+								</li>
+								<li class="disabled">
 									<a href="javascript:void(0);" id="menuCharacterRaw" data-bound="SavedGame">
 										<i class="fa fa-fw fa-table"></i> Edit raw stats
 									</a>
@@ -718,6 +724,82 @@
 
 					<div class="inv-status" id="invStatus" data-bound="InventoryEditor"></div>
 				</div>
+				<div class="row view abilities-view" id="abilitiesView" data-bound="AbilityEditor">
+					<div class="abl-head">
+						<span class="abl-character" id="ablCharacterName"
+						      data-bound="AbilityEditor"></span>
+						<span class="abl-character-meta" id="ablCharacterMeta"
+						      data-bound="AbilityEditor"></span>
+						<span class="abl-pending" id="ablPending" data-bound="AbilityEditor"></span>
+						<button type="button" class="pm-btn abl-apply" id="ablApply"
+						        data-bound="AbilityEditor">
+							<i>&#10094;</i> Apply changes <i>&#10095;</i>
+						</button>
+						<button type="button" class="pm-btn abl-revert" id="ablRevert"
+						        data-bound="AbilityEditor">
+							<i>&#10094;</i> Revert <i>&#10095;</i>
+						</button>
+					</div>
+
+					<div class="abl-columns">
+						<div class="abl-panel">
+							<div class="abl-panel-head">
+								<span>Abilities and spells</span>
+								<span class="abl-count" id="ablCount"
+								      data-bound="AbilityEditor"></span>
+							</div>
+							<div class="abl-list" id="ablList" data-bound="AbilityEditor"></div>
+						</div>
+
+						<div class="abl-panel">
+							<div class="abl-panel-head">
+								<span>Talents</span>
+								<span class="abl-count" id="ablTalentCount"
+								      data-bound="AbilityEditor"></span>
+							</div>
+							<div class="abl-list" id="ablTalents" data-bound="AbilityEditor"></div>
+							<div class="abl-panel-head abl-panel-head-sub">
+								<span>Granted by talents</span>
+							</div>
+							<div class="abl-list abl-list-locked" id="ablGranted"
+							     data-bound="AbilityEditor"></div>
+						</div>
+					</div>
+
+					<div class="abl-browser-panel">
+						<div class="abl-panel-head">
+							<span>Add an ability, spell or talent</span>
+							<span class="abl-count" id="ablBrowseCount"
+							      data-bound="AbilityEditor"></span>
+						</div>
+						<div class="abl-search">
+							<input type="text" class="form-control" id="ablBrowseSearch"
+							       data-bound="AbilityEditor" placeholder="Search..." />
+							<span class="abl-kinds" id="ablBrowseKinds"
+							      data-bound="AbilityEditor"></span>
+							<label class="abl-any-class">
+								<input type="checkbox" id="ablAnyClass" data-bound="AbilityEditor" />
+								Show everything, not just what this class can take
+							</label>
+						</div>
+						<div class="abl-browse-grid" id="ablBrowseGrid"
+						     data-bound="AbilityEditor"></div>
+						<div class="abl-browse-pager">
+							<button type="button" class="pm-btn" id="ablBrowsePrev"
+							        data-bound="AbilityEditor">
+								<i>&#10094;</i> Previous
+							</button>
+							<span class="abl-browse-page" id="ablBrowsePage"
+							      data-bound="AbilityEditor"></span>
+							<button type="button" class="pm-btn" id="ablBrowseNext"
+							        data-bound="AbilityEditor">
+								Next <i>&#10095;</i>
+							</button>
+						</div>
+					</div>
+
+					<div class="abl-status" id="ablStatus" data-bound="AbilityEditor"></div>
+				</div>
 				<div class="row view console-view" id="consoleView" data-bound="ConsoleTab">
 					<div class="console-achievements">
 						<button type="button" id="achievementsToggle" class="pm-btn"
@@ -837,6 +919,7 @@
 	<script src="js/CurrencyEditor.js"></script>
 	<script src="js/DifficultyEditor.js"></script>
 	<script src="js/InventoryEditor.js"></script>
+	<script src="js/AbilityEditor.js"></script>
 	<script src="js/ConsoleTab.js"></script>
 	<script src="js/Modifications.js"></script>
 	<script src="js/ImportCharacter.js"></script>

@@ -24,7 +24,9 @@ enough to mint objects the game accepts.
 | Difficulty editor | Difficulty, Expert, Trial of Iron, Tactical mode |
 | Currency editor | Works |
 | **Inventory tab** | Per-character packs, equipment, quick items, weapon sets, stash, item browser |
-| **Item catalog** | 2,184 items with real names, 969 icons, stack sizes, slot rules, class restrictions, quality tiers |
+| **Item catalog** | 2,156 items with real names, icons, stack sizes, slot rules, class restrictions, quality tiers |
+| **Abilities tab** | Per-character abilities, spells and talents, with a class-aware browser |
+| **Ability catalog** | 1,440 abilities, spells and talents plus all 26 progression tables |
 | Polish/UTF-8 save names | Reads `sceneTitle` from `saveinfo.xml` |
 | Light/dark themes | Both audited |
 | Windows Store → Steam/GOG conversion | Works, slow |
@@ -80,11 +82,14 @@ and confirmation from the decompiled source that skills are *not* prefab-reset f
 companions (only the six base attributes are). Verified against a real save —
 Mechanics 0 → rank 5 wrote 15 points.
 
-**1.2 Talents and abilities**
-Add/remove talents and class abilities. Needs an ability catalog built the same
-way the item catalog was — the ability prefabs live in the same bundle structure
-and carry `DisplayName`/`Icon`, so the extractor generalises.
-*Effort: medium-high. Risk: medium — abilities are GUID-linked objects like items.*
+**1.2 Talents and abilities** — ✅ **done**
+Add and remove abilities, spells and talents, with the browser restricted to
+what each character could actually take (straight from the game's own
+`AbilityProgressionTable`, including per-companion tables). The extractor did
+generalise: the same script now emits `abilities.json` (1,440 entries) and
+`progression.json` alongside the item catalog. Verified end-to-end in the
+running editor against a level-16 party — 620 abilities and talents read back
+with full catalog coverage, and a staged talent applied and reloaded correctly.
 
 **1.3 Culture, race and class**
 Enums already reach the UI. Caveat to handle: changing race or class changes
@@ -198,8 +203,8 @@ Features first, per the project owner's direction; compatibility afterwards.
 
 1. ~~Commit the current work.~~ done
 2. ~~Skills editor (1.1)~~ done
-3. **Talents and abilities** (1.2) ← next; needs an ability catalog
-4. Vendor cleanup (2.1)
+3. ~~Talents and abilities (1.2)~~ done
+4. **Vendor cleanup** (2.1) ← next
 5. Stronghold editor (2.2)
 6. Culture / race / class (1.3)
 7. Grimoire editor (2.3), companion portraits (2.4)

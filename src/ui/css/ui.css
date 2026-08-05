@@ -2679,3 +2679,368 @@ body.theme-light .skills-remaining input {
 	border-color: rgba(107, 56, 18, .3);
 	color: #3a2a18;
 }
+
+/* ---- abilities and talents ------------------------------------------------
+   Same chrome as the inventory panels. No CSS Grid here either: the bundled
+   JCEF predates Chrome 57 and collapses every grid into one column. */
+
+.abilities-view {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-start;
+	padding: 14px 18px 24px;
+}
+
+.abl-head {
+	flex: 1 1 100%;
+	width: 100%;
+	padding-bottom: 10px;
+	margin-bottom: 12px;
+	border-bottom: 1px solid rgba(201, 180, 126, .22);
+}
+
+.abl-character {
+	font-size: 17px;
+	color: #e8d5a3;
+}
+
+.abl-character-meta {
+	margin-left: 10px;
+	font-size: 12px;
+	color: #8d7f63;
+}
+
+.abl-pending {
+	margin-left: 14px;
+	font-size: 12px;
+	color: #c9a227;
+}
+
+.abl-head .pm-btn {
+	float: right;
+	margin-left: 8px;
+	padding: 3px 10px;
+	font-size: 12px;
+}
+
+.abl-columns {
+	flex: 1 1 100%;
+	width: 100%;
+	font-size: 0;
+}
+
+.abl-panel,
+.abl-browser-panel {
+	background: rgba(0, 0, 0, .22);
+	border: 1px solid rgba(201, 180, 126, .28);
+	border-radius: 3px;
+	padding: 10px 12px 14px;
+	margin: 0 18px 18px 0;
+}
+
+.abl-panel {
+	display: inline-block;
+	vertical-align: top;
+	width: 46%;
+	min-width: 330px;
+	font-size: 13px;
+}
+
+.abl-browser-panel {
+	flex: 1 1 100%;
+	width: 100%;
+}
+
+.abl-panel-head {
+	font-size: 14px;
+	color: #e8d5a3;
+	padding-bottom: 8px;
+	border-bottom: 1px solid rgba(201, 180, 126, .22);
+	margin-bottom: 10px;
+}
+
+.abl-panel-head-sub {
+	margin-top: 14px;
+}
+
+.abl-count {
+	float: right;
+	font-size: 11px;
+	color: #8d7f63;
+	padding-top: 3px;
+}
+
+.abl-list {
+	max-height: 260px;
+	overflow-y: auto;
+}
+
+.abl-list-locked {
+	max-height: 150px;
+}
+
+.abl-browse-grid {
+	max-height: 300px;
+	overflow-y: auto;
+}
+
+.abl-row {
+	position: relative;
+	padding: 4px 34px 4px 4px;
+	border-radius: 3px;
+	border: 1px solid transparent;
+	margin-bottom: 2px;
+	white-space: nowrap;
+	overflow: hidden;
+}
+
+.abl-row:hover {
+	background: rgba(201, 180, 126, .09);
+	border-color: rgba(201, 180, 126, .22);
+}
+
+/* Anything staged but not yet written to the save is marked, so it is never a
+   surprise that closing the view without applying loses it. */
+.abl-row-staged {
+	border-color: rgba(201, 162, 39, .5);
+	background: rgba(201, 162, 39, .08);
+}
+
+.abl-row-locked {
+	opacity: .72;
+}
+
+.abl-icon {
+	display: inline-block;
+	vertical-align: middle;
+	width: 30px;
+	height: 30px;
+	margin-right: 8px;
+	border: 1px solid rgba(201, 180, 126, .25);
+	border-radius: 3px;
+	background: rgba(0, 0, 0, .45);
+	overflow: hidden;
+}
+
+.abl-icon img {
+	width: 100%;
+	height: 100%;
+}
+
+.abl-icon-empty {
+	background: rgba(0, 0, 0, .25);
+}
+
+.abl-text {
+	display: inline-block;
+	vertical-align: middle;
+	max-width: calc(100% - 44px);
+	overflow: hidden;
+}
+
+.abl-name {
+	display: block;
+	font-size: 13px;
+	color: #e0d2b0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.abl-meta {
+	display: block;
+	font-size: 11px;
+	color: #8d7f63;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.abl-remove,
+.abl-add {
+	position: absolute;
+	right: 4px;
+	top: 50%;
+	margin-top: -11px;
+	padding: 1px 7px;
+	font-size: 11px;
+	background: rgba(0, 0, 0, .35);
+	border: 1px solid rgba(201, 180, 126, .3);
+	color: #cdbb92;
+}
+
+.abl-remove:hover {
+	color: #e8b0a0;
+	border-color: rgba(190, 90, 70, .6);
+}
+
+.abl-add:hover {
+	color: #cbe8a0;
+	border-color: rgba(120, 180, 90, .6);
+}
+
+.abl-empty {
+	font-size: 12px;
+	color: #8d7f63;
+	padding: 6px 4px;
+}
+
+.abl-search {
+	margin-bottom: 10px;
+}
+
+.abl-search input {
+	display: inline-block;
+	width: 230px;
+	vertical-align: middle;
+	background: rgba(0, 0, 0, .35);
+	border: 1px solid rgba(201, 180, 126, .3);
+	color: #e8d5a3;
+}
+
+.abl-kinds {
+	display: inline-block;
+	vertical-align: middle;
+	margin-left: 12px;
+}
+
+.abl-kind {
+	margin-right: 4px;
+	padding: 3px 9px;
+	font-size: 11px;
+	background: rgba(0, 0, 0, .35);
+	border: 1px solid rgba(201, 180, 126, .25);
+	color: #9d8f73;
+}
+
+.abl-kind-on {
+	color: #e8d5a3;
+	border-color: rgba(201, 162, 39, .65);
+	background: rgba(201, 162, 39, .14);
+}
+
+.abl-any-class {
+	display: inline-block;
+	vertical-align: middle;
+	margin-left: 14px;
+	margin-bottom: 0;
+	font-size: 11px;
+	font-weight: normal;
+	color: #8d7f63;
+}
+
+.abl-any-class input {
+	margin-right: 5px;
+	vertical-align: middle;
+}
+
+.abl-browse-pager {
+	margin-top: 10px;
+	font-size: 12px;
+	color: #8d7f63;
+}
+
+.abl-browse-page {
+	display: inline-block;
+	margin: 0 10px;
+}
+
+.abl-status {
+	flex: 1 1 100%;
+	width: 100%;
+	min-height: 18px;
+	font-size: 12px;
+	color: #cdbb92;
+	padding: 2px 2px 0;
+}
+
+/* Light mode. The class is theme-light on the body — .light-theme matches
+   nothing, which is how an entire block of rules once did nothing at all. */
+body.theme-light .abl-panel,
+body.theme-light .abl-browser-panel {
+	background: rgba(0, 0, 0, .04);
+	border-color: rgba(107, 56, 18, .25);
+}
+
+body.theme-light .abl-head,
+body.theme-light .abl-panel-head {
+	border-bottom-color: rgba(107, 56, 18, .22);
+}
+
+body.theme-light .abl-character,
+body.theme-light .abl-panel-head {
+	color: #4a2f14;
+}
+
+body.theme-light .abl-name {
+	color: #3a2a18;
+}
+
+body.theme-light .abl-character-meta,
+body.theme-light .abl-meta,
+body.theme-light .abl-count,
+body.theme-light .abl-empty,
+body.theme-light .abl-browse-pager,
+body.theme-light .abl-browse-page,
+body.theme-light .abl-any-class,
+body.theme-light .abl-status {
+	color: #6d5433;
+}
+
+body.theme-light .abl-pending {
+	color: #8a6410;
+}
+
+body.theme-light .abl-row:hover {
+	background: rgba(107, 56, 18, .07);
+	border-color: rgba(107, 56, 18, .2);
+}
+
+body.theme-light .abl-row-staged {
+	border-color: rgba(160, 120, 20, .5);
+	background: rgba(201, 162, 39, .12);
+}
+
+body.theme-light .abl-search input,
+body.theme-light .abl-kind,
+body.theme-light .abl-remove,
+body.theme-light .abl-add {
+	background: #fff;
+	border-color: rgba(107, 56, 18, .3);
+	color: #3a2a18;
+}
+
+body.theme-light .abl-kind-on {
+	background: rgba(201, 162, 39, .2);
+	border-color: rgba(160, 120, 20, .6);
+	color: #4a2f14;
+}
+
+/* Ability icons keep their dark backing in light mode: the art is drawn for a
+   dark panel and washes out completely on parchment. */
+body.theme-light .abl-icon {
+	background: rgba(0, 0, 0, .45);
+	border-color: rgba(107, 56, 18, .3);
+}
+
+@media (max-width: 1100px) {
+	.abl-panel {
+		width: 100%;
+		min-width: 0;
+		margin-right: 0;
+	}
+}
+
+/* Already known: shown for context, but not offered a second time. */
+.abl-row-owned .abl-name,
+.abl-row-owned .abl-meta {
+	opacity: .55;
+}
+
+.abl-row-owned .abl-add {
+	opacity: .45;
+	cursor: default;
+}
+
+body.theme-light .abl-row-owned .abl-name,
+body.theme-light .abl-row-owned .abl-meta {
+	opacity: .6;
+}

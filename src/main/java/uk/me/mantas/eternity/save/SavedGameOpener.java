@@ -86,8 +86,9 @@ public class SavedGameOpener implements Runnable {
 		final Map<String, Property> characters = extractCharacters(gameObjects);
 		final List<JSONObject> deadCompanions = extractDeadCompanions(gameObjects, characters);
 		final JSONObject inventory = extractInventory(gameObjects, characters);
+		final JSONObject abilities = extractAbilities(gameObjects, characters);
 
-		sendJSON(currency, globals, characters, deadCompanions, inventory);
+		sendJSON(currency, globals, characters, deadCompanions, inventory, abilities);
 	}
 
 	// Companions who died in-game have no mobile object left in the save —
@@ -301,6 +302,233 @@ public class SavedGameOpener implements Runnable {
 		}
 
 		return inventory;
+	}
+
+	// Abilities, spells and talents, per character.
+	//
+	// Each ability is a standalone object parented to its owner, so what a
+	// character "knows" is just which objects hang off them — CharacterStats
+	// rebuilds its list from exactly that on load. Talents are the odd one out:
+	// they are only prefab names in CharacterStats.m_serializedTalents, with
+	// the abilities they grant existing as separate objects alongside.
+	private JSONObject extractAbilities (
+		final List<Property> gameObjects, final Map<String, Property> characters) {
+
+		final JSONObject abilities = new JSONObject();
+		final JSONArray charactersJson = new JSONArray();
+		final AbilityCatalog catalog = AbilityCatalog.getInstance();
+
+		abilities.put("characters", charactersJson);
+		abilities.put("catalogued", catalog.size());
+
+		for (final Entry<String, Property> entry : characters.entrySet()) {
+			final ObjectPersistencePacket packet = unwrapPacket(entry.getValue());
+			if (packet.ComponentPackets == null) {
+				continue;
+			}
+
+			// Stored/roster duplicates carry no stats to speak of.
+			if (!findComponent(packet.ComponentPackets, "CharacterStats").isPresent()) {
+				continue;
+			}
+
+			final JSONObject characterJson = new JSONObject();
+			characterJson.put("guid", entry.getKey());
+			characterJson.put("objectName", packet.ObjectName);
+
+			final String characterClass = characterStat(packet, "CharacterClass");
+			characterJson.put("characterClass", characterClass);
+			characterJson.put("characterSubrace", characterStat(packet, "CharacterSubrace"));
+			characterJson.put("level", intStat(packet, "Level"));
+
+			// A handful of abilities are the Watcher's alone, and the racial
+			// table is gated on subrace, so both have to reach the browser.
+			characterJson.put("isPlayer"
+				, packet.ObjectName != null
+					&& packet.ObjectName.toLowerCase().startsWith("player_"));
+
+			final JSONArray owned = new JSONArray();
+			for (final Entry<String, ObjectPersistencePacket> ability
+				: AbilityManager.abilitiesOf(gameObjects, packet.ObjectName).entrySet()) {
+
+				owned.put(abilityToJSON(ability.getKey(), ability.getValue()));
+			}
+
+			characterJson.put("abilities", owned);
+			characterJson.put("talents", talentsToJSON(packet));
+
+			// Which options this character may be offered, straight out of the
+			// game's own AbilityProgressionTable rather than guessed at.
+			characterJson.put(
+				"progressionTable", progressionTableFor(packet, characterClass));
+
+			charactersJson.put(characterJson);
+		}
+
+		return abilities;
+	}
+
+	private JSONObject abilityToJSON (
+		final String guid, final ObjectPersistencePacket packet) {
+
+		final JSONObject json = new JSONObject();
+		final String prefab = packet.ObjectName == null
+			? "" : packet.ObjectName.replace("(Clone)", "").trim();
+
+		json.put("guid", guid);
+		json.put("prefab", prefab);
+
+		// EffectType is what the object was instantiated as, which is how the
+		// game itself tells a talent's ability apart from a class ability.
+		for (final ComponentPersistencePacket component : packet.ComponentPackets) {
+			if (component == null || component.Variables == null
+				|| !component.Variables.containsKey("EffectType")) {
+
+				continue;
+			}
+
+			json.put("component", component.TypeString == null ? "" : component.TypeString);
+			final Object effect = component.Variables.get("EffectType");
+			json.put("effect", effect == null ? "" : effect.toString());
+			break;
+		}
+
+		decorateWithAbilityCatalog(json, prefab);
+		return json;
+	}
+
+	private JSONArray talentsToJSON (final ObjectPersistencePacket packet) {
+
+		final JSONArray talents = new JSONArray();
+		final Optional<ComponentPersistencePacket> stats =
+			findComponent(packet.ComponentPackets, "CharacterStats");
+
+		if (!stats.isPresent()) {
+			return talents;
+		}
+
+		final Object list = stats.get().Variables.get("m_serializedTalents");
+		if (!(list instanceof CSharpCollection)) {
+			return talents;
+		}
+
+		final Iterator<?> iterator = ((CSharpCollection) list).iterator();
+		while (iterator.hasNext()) {
+			final Object prefab = iterator.next();
+			if (prefab == null) {
+				continue;
+			}
+
+			final JSONObject json = new JSONObject();
+			json.put("prefab", prefab.toString());
+			decorateWithAbilityCatalog(json, prefab.toString());
+			talents.put(json);
+		}
+
+		return talents;
+	}
+
+	/**
+	 * The progression table whose options this character sees. Story companions
+	 * have their own on top of their class's, carrying the abilities only they
+	 * can take. The table is named after the companion, which is not always
+	 * what their object is called — Durance's object is Companion_GGP — so the
+	 * registry does the translating rather than the object name.
+	 */
+	private String progressionTableFor (
+		final ObjectPersistencePacket packet, final String characterClass) {
+
+		final String name = packet.ObjectName == null ? "" : packet.ObjectName;
+		if (!name.startsWith("Companion_")) {
+			return "";
+		}
+
+		final AbilityCatalog catalog = AbilityCatalog.getInstance();
+		final String lowered = name.toLowerCase();
+
+		for (final CompanionRegistry.Companion companion : CompanionRegistry.all()) {
+			if (!lowered.startsWith(companion.objectNamePrefix.toLowerCase())) {
+				continue;
+			}
+
+			// Most tables are named after the object (Companion_GM -> gm), the
+			// expansion companions carry their pack's prefix (px1_caroc), and
+			// Durance is named after himself rather than his object.
+			final String fromObject = companion.objectNamePrefix
+				.substring("Companion_".length()).toLowerCase();
+
+			final String fromKey = companion.key.toLowerCase();
+
+			for (final String candidate : new String[] {
+				fromObject, "px1_" + fromObject, "px2_" + fromObject
+				, fromKey, "px1_" + fromKey, "px2_" + fromKey}) {
+
+				if (catalog.hasProgressionTable(candidate)) {
+					return candidate;
+				}
+			}
+
+			return "";
+		}
+
+		return "";
+	}
+
+	// Deliberately records only the icon's file name, never its bytes. Ability
+	// art is as bulky as the item art the inventory already ships, and a save
+	// with a full party pushed the opener's single reply past what the JCEF
+	// bridge will carry — the UI asks BrowseAbilities for the handful of icons
+	// actually on screen instead.
+	private void decorateWithAbilityCatalog (
+		final JSONObject json, final String prefab) {
+
+		final Optional<AbilityCatalog.Entry> entry =
+			AbilityCatalog.getInstance().lookup(prefab);
+
+		if (!entry.isPresent()) {
+			json.put("name", prettifyPrefabName(prefab));
+			return;
+		}
+
+		final AbilityCatalog.Entry ability = entry.get();
+		json.put("name", ability.name.isEmpty() ? prettifyPrefabName(prefab) : ability.name);
+		json.put("key", AbilityCatalog.keyOf(prefab));
+
+		if (!ability.description.isEmpty()) {
+			json.put("description", ability.description);
+		}
+
+		if (!ability.kind.isEmpty()) {
+			json.put("kind", ability.kind);
+		}
+
+		if (!ability.characterClass.isEmpty()) {
+			json.put("class", ability.characterClass);
+		}
+
+		if (ability.spellLevel > 0) {
+			json.put("spellLevel", ability.spellLevel);
+		}
+
+		if (ability.level > 0) {
+			json.put("level", ability.level);
+		}
+
+		if (ability.passive) {
+			json.put("passive", true);
+		}
+
+		if (!ability.category.isEmpty()) {
+			json.put("category", ability.category);
+		}
+
+		if (!ability.icon.isEmpty()) {
+			json.put("icon", ability.icon);
+		}
+	}
+
+	private static String prettifyPrefabName (final String prefab) {
+		return prefab.replace('_', ' ').trim();
 	}
 
 	private static int intStat (
@@ -641,7 +869,7 @@ public class SavedGameOpener implements Runnable {
 	private void sendJSON(
 			final float currency, final Map<String, Property> globals,
 			final Map<String, Property> characters, final List<JSONObject> deadCompanions,
-			final JSONObject inventory) {
+			final JSONObject inventory, final JSONObject abilities) {
 
 		final JSONObject json = new JSONObject();
 		json.put("isWindowStoreSave", false);
@@ -649,6 +877,7 @@ public class SavedGameOpener implements Runnable {
 		json.put("currency", currency);
 		json.put("achievementsDisabled", detectAchievementsDisabled(globals));
 		json.put("inventory", inventory);
+		json.put("abilities", abilities);
 
 		final Map<String, JSONObject> jsonGlobals = globals.entrySet().stream()
 				.map(entry -> new SimpleEntry<>(entry.getKey(), globalsToJSON(entry.getValue())))

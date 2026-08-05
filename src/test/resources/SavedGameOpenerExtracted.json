@@ -9479,5 +9479,97 @@
    "component": "StashInventory",
    "items": []
   }
+ },
+ "abilities": {
+  "characters": [
+   {
+    "isPlayer": false,
+    "abilities": [
+     {
+      "prefab": "Second_Wind",
+      "component": "GenericAbility",
+      "effect": "Spell",
+      "name": "Second Wind",
+      "guid": "355a73b1-189e-4645-bcfe-2d7b20a9d584"
+     },
+     {
+      "prefab": "FightingSpirit",
+      "component": "GenericAbility",
+      "effect": "Racial",
+      "name": "FightingSpirit",
+      "guid": "db5c41f4-41ae-4d0a-ad85-f90aef68bd99"
+     },
+     {
+      "prefab": "ConstantRecovery",
+      "component": "GenericAbility",
+      "effect": "Ability",
+      "name": "ConstantRecovery",
+      "guid": "a3b27d39-0403-4f6e-a6ed-0f88b91e9a04"
+     },
+     {
+      "prefab": "KnockDown",
+      "component": "GenericAbility",
+      "effect": "Ability",
+      "name": "KnockDown",
+      "guid": "02f6782d-fe01-4b0c-9d20-1f40b065e2cf"
+     }
+    ],
+    "characterClass": "Fighter",
+    "level": 1,
+    "progressionTable": "",
+    "guid": "b1a7e809-0000-0000-0000-000000000000",
+    "objectName": "Companion_Calisca(Clone)_1",
+    "characterSubrace": "Meadow_Human",
+    "talents": []
+   },
+   {
+    "isPlayer": true,
+    "abilities": [
+     {
+      "prefab": "KnockDown",
+      "component": "GenericAbility",
+      "effect": "Ability",
+      "name": "KnockDown",
+      "guid": "3ffdbced-4efb-4a6a-afcc-686fed65381b"
+     },
+     {
+      "prefab": "ConstantRecovery",
+      "component": "GenericAbility",
+      "effect": "Ability",
+      "name": "ConstantRecovery",
+      "guid": "a96e5cd7-43dc-4c9d-b9e2-84760c0bf659"
+     },
+     {
+      "prefab": "WeaponSpecPreReq",
+      "component": "GenericAbility",
+      "effect": "Ability",
+      "name": "WeaponSpecPreReq",
+      "guid": "dc4a43ac-f964-4b47-a7ae-9fbff23180aa"
+     },
+     {
+      "prefab": "FightingSpirit",
+      "component": "GenericAbility",
+      "effect": "Racial",
+      "name": "FightingSpirit",
+      "guid": "ef0799aa-2ad1-45ab-9cf4-71c861fd5f77"
+     },
+     {
+      "prefab": "Second_Wind",
+      "component": "GenericAbility",
+      "effect": "Spell",
+      "name": "Second Wind",
+      "guid": "1ab23fc5-66ba-436f-9c53-1fbfa696bc12"
+     }
+    ],
+    "characterClass": "Fighter",
+    "level": 1,
+    "progressionTable": "",
+    "guid": "09517a0d-4fec-407c-a749-a531f3be64e0",
+    "objectName": "Player_Elwyn",
+    "characterSubrace": "Meadow_Human",
+    "talents": []
+   }
+  ],
+  "catalogued": 0
  }
 }
