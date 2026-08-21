@@ -26,6 +26,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import uk.me.mantas.eternity.Logger;
 import uk.me.mantas.eternity.environment.Environment;
+import uk.me.mantas.eternity.save.AbilityCatalog;
 import uk.me.mantas.eternity.save.AbilityManager;
 import uk.me.mantas.eternity.save.AbilityManager.Change;
 import uk.me.mantas.eternity.save.AbilityManager.NewAbility;
@@ -34,6 +35,7 @@ import uk.me.mantas.eternity.save.SavedGameOpener;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -121,7 +123,7 @@ public class UpdateAbilities extends CefMessageRouterHandlerAdapter {
 						changes.add(Change.removeTalent(
 							character
 							, change.getString("talent")
-							, prefabs(change.optJSONArray("grants"))
+							, prefabs(change.optJSONArray("grants"), change.getString("talent"))
 							, skills(change.optJSONObject("skills"))));
 
 						break;
@@ -171,20 +173,61 @@ public class UpdateAbilities extends CefMessageRouterHandlerAdapter {
 		return abilities;
 	}
 
-	/** Removal only needs the names of the objects the talent put there. */
-	private static List<String> prefabs (final JSONArray json) {
+	/**
+	 * Names of the objects a talent put on the character, so removing the
+	 * talent can take them away with it.
+	 *
+	 * <p>The catalog is the authority here, not the request. The UI only knows
+	 * a talent's grants for whatever its browser happens to have loaded, so
+	 * trusting it meant removing a talent nobody had searched for left its
+	 * ability behind — the character kept the effect with no talent explaining
+	 * it. Anything the client does send is merged in, which keeps the editor
+	 * working against an install with no catalog.
+	 */
+	private static List<String> prefabs (final JSONArray json, final String talent) {
 		final List<String> names = new ArrayList<>();
-		if (json == null) {
-			return names;
+
+		for (final String key : AbilityCatalog.getInstance().lookup(talent)
+			.map(entry -> entry.grants).orElse(Collections.emptyList())) {
+
+			AbilityCatalog.getInstance().lookup(key).ifPresent(granted ->
+				names.add(prefabNameOf(granted.path, key)));
 		}
 
-		for (int i = 0; i < json.length(); i++) {
-			final Object entry = json.get(i);
-			names.add(entry instanceof JSONObject
-				? ((JSONObject) entry).getString("prefab") : String.valueOf(entry));
+		if (json != null) {
+			for (int i = 0; i < json.length(); i++) {
+				final Object entry = json.get(i);
+				final String name = entry instanceof JSONObject
+					? ((JSONObject) entry).getString("prefab") : String.valueOf(entry);
+
+				if (!containsIgnoreCase(names, name)) {
+					names.add(name);
+				}
+			}
 		}
 
 		return names;
+	}
+
+	private static boolean containsIgnoreCase (final List<String> names, final String needle) {
+		for (final String name : names) {
+			if (name.equalsIgnoreCase(needle)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/** The prefab file name with the casing the catalog recorded. */
+	private static String prefabNameOf (final String path, final String fallback) {
+		if (path == null || path.isEmpty()) {
+			return fallback;
+		}
+
+		final String file = path.substring(path.lastIndexOf('/') + 1);
+		return file.endsWith(".prefab")
+			? file.substring(0, file.length() - ".prefab".length()) : file;
 	}
 
 	private static Map<String, Integer> skills (final JSONObject json) {

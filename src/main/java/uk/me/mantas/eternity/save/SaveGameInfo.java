@@ -182,6 +182,23 @@ public class SaveGameInfo {
 	static void updateSaveInfo (File saveDirectory, String newUserSaveName)
 			throws IOException {
 
+		updateSaveInfo(saveDirectory, newUserSaveName, Collections.emptyMap());
+	}
+
+	/**
+	 * Rewrites saveinfo.xml — the display name, plus any other fields the edit
+	 * touched.
+	 *
+	 * <p>saveinfo.xml is a summary the game reads to build its load list without
+	 * opening the save proper, so a few settings live in both places. Difficulty
+	 * is the one that shows: change it and only MobileObjects.save knew, leaving
+	 * the load screen advertising the old one until the game next saved for
+	 * itself.
+	 */
+	static void updateSaveInfo (
+			File saveDirectory, String newUserSaveName, Map<String, String> extraFields)
+			throws IOException {
+
 		File saveinfoXML = new File(saveDirectory, "saveinfo.xml");
 		String contents = new String(
 				EKUtils.removeBOM(FileUtils.readFileToByteArray(saveinfoXML))
@@ -191,6 +208,17 @@ public class SaveGameInfo {
 		try {
 			Match xml = $(contents);
 			xml.find("Simple[name='UserSaveName']").attr("value", newUserSaveName);
+
+			for (Map.Entry<String, String> field : extraFields.entrySet()) {
+				Match target = xml.find(
+						"Simple[name='" + field.getKey() + "']");
+
+				// Only ever updated, never added: a field this file doesn't
+				// already carry isn't one the game reads from here.
+				if (target.size() > 0) {
+					target.attr("value", field.getValue());
+				}
+			}
 
 			// Serialize with an explicit UTF-8 encoder; joox's write() uses
 			// the platform charset which silently replaces characters it

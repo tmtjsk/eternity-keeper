@@ -557,16 +557,22 @@ def main():
                     quality = "fine"
                     break
 
-        # The prefab path a save records in InventoryItem.BaseItem. Bundles
-        # only keep it lowercased, but that's fine: GameResources.LoadPrefab
-        # reduces the path to its file name and lowercases it anyway, so the
-        # directory and the casing never matter to the game.
+        # The prefab path a save records in InventoryItem.BaseItem. The bundle
+        # container only keeps it lowercased; Persistence.Prefab has the real
+        # casing, which is what the game itself writes into an object's name.
+        # Nothing depends on it — GameResources.LoadPrefab reduces the path to
+        # its lowercased file name — but an edited save that spells items the
+        # way the game does is a lot easier to compare against one that wasn't.
+        entry_path = ""
         for container_path in (env.container or {}):
             if container_path.endswith(".prefab"):
                 entry_path = container_path
                 break
-        else:
-            entry_path = ""
+
+        for (owner, cls), component in own_components.items():
+            if cls == "Persistence" and component.get("Prefab"):
+                entry_path = component["Prefab"]
+                break
 
         entry = {"name": name, "icon": icon_file}
         stack = tree.get("MaxStackSize")

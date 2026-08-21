@@ -905,6 +905,14 @@ span.danger {
 	box-shadow: inset 0 0 0 1px #5a4c38;
 }
 
+/* Half opacity reads as "off" against the dark theme, but on parchment it
+   washes the button out almost completely — enough that a disabled Apply
+   looks like a rendering glitch rather than a control waiting for input. */
+body.theme-light .pm-btn[disabled],
+body.theme-light .pm-close[disabled] {
+	opacity: .7;
+}
+
 /* -------------------- Theme transitions -------------------- */
 
 body
@@ -2738,10 +2746,14 @@ body.theme-light .skills-remaining input {
 	margin: 0 18px 18px 0;
 }
 
+/* Capped rather than stretched: a row is an icon, two short lines and a
+   button, so on a wide screen the full window width left ~850px of nothing
+   between the name and the button that acts on it. */
 .abl-panel {
 	display: inline-block;
 	vertical-align: top;
 	width: 46%;
+	max-width: 560px;
 	min-width: 330px;
 	font-size: 13px;
 }
@@ -2749,6 +2761,8 @@ body.theme-light .skills-remaining input {
 .abl-browser-panel {
 	flex: 1 1 100%;
 	width: 100%;
+	/* Lines up with the two panels above rather than running past them. */
+	max-width: 1138px;
 }
 
 .abl-panel-head {
@@ -2770,17 +2784,20 @@ body.theme-light .skills-remaining input {
 	padding-top: 3px;
 }
 
+/* Sized against the window rather than pinned: on a tall screen the fixed
+   heights left the lists scrolling inside a mostly empty page. */
 .abl-list {
-	max-height: 260px;
+	max-height: 30vh;
 	overflow-y: auto;
 }
 
 .abl-list-locked {
-	max-height: 150px;
+	max-height: 18vh;
 }
 
 .abl-browse-grid {
-	max-height: 300px;
+	max-height: 42vh;
+	min-height: 172px;
 	overflow-y: auto;
 }
 
@@ -2828,7 +2845,8 @@ body.theme-light .skills-remaining input {
 }
 
 .abl-icon-empty {
-	background: rgba(0, 0, 0, .25);
+	background: rgba(0, 0, 0, .5);
+	border-style: dashed;
 }
 
 .abl-text {
@@ -2887,7 +2905,9 @@ body.theme-light .skills-remaining input {
 	margin-bottom: 10px;
 }
 
-.abl-search input {
+/* Typed inputs only — the unqualified selector also caught the checkbox
+   below and stretched it to 230px, leaving it stranded from its own label. */
+.abl-search input[type="text"] {
 	display: inline-block;
 	width: 230px;
 	vertical-align: middle;
@@ -3043,4 +3063,50 @@ body.theme-light .abl-icon {
 body.theme-light .abl-row-owned .abl-name,
 body.theme-light .abl-row-owned .abl-meta {
 	opacity: .6;
+}
+
+/* ---- scrollbars -----------------------------------------------------------
+   Six panels scroll their own contents, and the platform default is a pale
+   strip that reads as a seam down the middle of a dark panel. Styling them is
+   safe here: the whole UI runs on one embedded Chromium, so the -webkit- rules
+   always apply. */
+
+::-webkit-scrollbar {
+	width: 10px;
+	height: 10px;
+}
+
+::-webkit-scrollbar-track {
+	background: rgba(0, 0, 0, .25);
+	border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb {
+	background: rgba(201, 180, 126, .28);
+	border-radius: 5px;
+	border: 2px solid transparent;
+	background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+	background: rgba(201, 180, 126, .45);
+	background-clip: padding-box;
+}
+
+::-webkit-scrollbar-corner {
+	background: transparent;
+}
+
+body.theme-light ::-webkit-scrollbar-track {
+	background: rgba(107, 56, 18, .08);
+}
+
+body.theme-light ::-webkit-scrollbar-thumb {
+	background: rgba(107, 56, 18, .3);
+	background-clip: padding-box;
+}
+
+body.theme-light ::-webkit-scrollbar-thumb:hover {
+	background: rgba(107, 56, 18, .45);
+	background-clip: padding-box;
 }

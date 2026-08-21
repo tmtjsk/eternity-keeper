@@ -404,6 +404,9 @@ public class AbilityManager {
 	private void removeOwnedAbilityNamed (
 		final List<Property> packets, final String ownerName, final String prefab) {
 
+		// Matched without regard to case: the game writes Cautious_Attack(Clone)
+		// while an object minted from a catalog path can be lowercased, and both
+		// name the same prefab as far as the game is concerned.
 		final String objectName = prefab + "(Clone)";
 		for (int i = 0; i < packets.size(); i++) {
 			final Property property = packets.get(i);
@@ -412,7 +415,7 @@ public class AbilityManager {
 			}
 
 			final ObjectPersistencePacket packet = (ObjectPersistencePacket) property.obj;
-			if (objectName.equals(packet.ObjectName) && ownerName != null
+			if (objectName.equalsIgnoreCase(packet.ObjectName) && ownerName != null
 				&& ownerName.equals(packet.Parent)) {
 
 				packets.remove(i);

@@ -372,9 +372,10 @@ var AbilityEditor = function () {
 			return;
 		}
 
-		// The grants come from the catalog entry, which the browser has and the
-		// save's own data does not — look it up so removal can take the talent's
-		// abilities away with it.
+		// Whatever the browser happens to have loaded is passed along, but the
+		// server looks the talent's grants up in the catalog itself — the UI
+		// only knows them for entries it has fetched, and a removal that misses
+		// them leaves the ability behind with no talent explaining it.
 		var catalogued = browseEntries.filter(e => e.prefab === entry.prefab)[0];
 		pending.push({
 			kind: 'removeTalent'
@@ -384,12 +385,7 @@ var AbilityEditor = function () {
 			, skills: catalogued ? catalogued.skills : {}
 		});
 
-		status = catalogued
-			? 'Staged removal of ' + (entry.name || entry.prefab) + '.'
-			: 'Staged removal of ' + (entry.name || entry.prefab)
-				+ ' — search for it below first if you want its granted '
-				+ 'abilities removed too.';
-
+		status = 'Staged removal of ' + (entry.name || entry.prefab) + '.';
 		redraw();
 	};
 
@@ -498,6 +494,11 @@ var AbilityEditor = function () {
 	};
 
 	var renderBrowse = () => {
+		// Redrawn here as well as in redraw(): choosing a kind goes straight to
+		// requestBrowse, so without this the highlight never leaves whichever
+		// filter was on when the view opened.
+		renderKindFilter();
+
 		var grid = self.html.ablBrowseGrid.empty();
 
 		if (!browseAvailable) {

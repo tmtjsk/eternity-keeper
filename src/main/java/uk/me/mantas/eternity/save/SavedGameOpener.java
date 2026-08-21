@@ -150,7 +150,7 @@ public class SavedGameOpener implements Runnable {
 
 			final JSONObject json = new JSONObject();
 			json.put("GUID", "dead:" + companion.key);
-			json.put("name", companion.displayName);
+			json.put("name", localizedName(gameObjects, companion));
 			json.put("isCompanion", true);
 			json.put("isMainCharacter", false);
 			json.put("isDead", true);
@@ -167,6 +167,45 @@ public class SavedGameOpener implements Runnable {
 		}
 
 		return dead;
+	}
+
+	/**
+	 * The name to show for a companion who is no longer in the save.
+	 *
+	 * <p>Living characters are listed under {@code CharacterStats.OverrideName},
+	 * which carries whatever the player's language calls them. A dead one has no
+	 * object left to read that from, so the registry's English name was used —
+	 * which reads oddly in a translated save, sitting in a list of localized
+	 * ones. Any leftover copy of that companion (a stronghold roster duplicate,
+	 * most often) still has the localized name, so prefer that where it exists.
+	 */
+	private String localizedName (
+		final List<Property> gameObjects, final CompanionRegistry.Companion companion) {
+
+		final String prefix = companion.objectNamePrefix.toLowerCase();
+		for (final Property property : gameObjects) {
+			final ObjectPersistencePacket packet = unwrapPacket(property);
+			if (packet.ObjectName == null
+				|| !packet.ObjectName.toLowerCase().startsWith(prefix)
+				|| packet.ComponentPackets == null) {
+
+				continue;
+			}
+
+			final Optional<ComponentPersistencePacket> stats =
+				findComponent(packet.ComponentPackets, "CharacterStats");
+
+			if (!stats.isPresent()) {
+				continue;
+			}
+
+			final Object name = stats.get().Variables.get("OverrideName");
+			if (name != null && !name.toString().trim().isEmpty()) {
+				return name.toString().trim();
+			}
+		}
+
+		return companion.displayName;
 	}
 
 	private boolean isObjectPersistencePacket(final Property property) {

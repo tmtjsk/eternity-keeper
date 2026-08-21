@@ -61,6 +61,47 @@ public class ChangesSaver implements Runnable {
 		packetDeserializer = Environment.getInstance().factory().packetDeserializer();
 	}
 
+	// The handful of settings saveinfo.xml keeps its own copy of, so the load
+	// screen agrees with what the save actually contains. GameState is the
+	// authority; this just mirrors the values the edit put there.
+	private static final String[] SUMMARY_FIELDS = {
+		"Difficulty", "TrialOfIron", "TacticalMode"
+	};
+
+	private static Map<String, String> summaryFields (final JSONObject saveData) {
+		final Map<String, String> fields = new LinkedHashMap<>();
+		final JSONObject globals = saveData.optJSONObject("globals");
+		if (globals == null) {
+			return fields;
+		}
+
+		for (final String objectName : globals.keySet()) {
+			final JSONObject components = globals.optJSONObject(objectName);
+			if (components == null) {
+				continue;
+			}
+
+			final JSONObject gameState = components.optJSONObject("GameState");
+			if (gameState == null) {
+				continue;
+			}
+
+			for (final String field : SUMMARY_FIELDS) {
+				final JSONObject value = gameState.optJSONObject(field);
+				if (value == null) {
+					continue;
+				}
+
+				final String written = value.optString("value", "");
+				if (!written.isEmpty()) {
+					fields.put(field, written);
+				}
+			}
+		}
+
+		return fields;
+	}
+
 	@Override
 	public void run() {
 		final Environment environment = Environment.getInstance();
@@ -84,7 +125,8 @@ public class ChangesSaver implements Runnable {
 				environment.state().previousSaveDirectory(saveDirectory);
 			}
 
-			SaveGameInfo.updateSaveInfo(saveDirectory, saveName);
+			SaveGameInfo.updateSaveInfo(
+					saveDirectory, saveName, summaryFields(saveData));
 			updateMobileObjects(saveDirectory, saveData);
 			packageSaveGame(saveDirectory);
 			callback.success("{\"success\":true}");

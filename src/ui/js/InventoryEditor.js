@@ -127,12 +127,22 @@ var InventoryEditor = function () {
 
 	// ---- working copy -------------------------------------------------------
 
+	// Which characters the current working copy was built from. A resurrection
+	// or a party change adds someone, and rebuilding only when the copy is
+	// empty left them out of the view entirely — the save knew about them, the
+	// screen did not.
+	var builtFor = '';
+
+	var partyFingerprint = () =>
+		(inventory().characters || []).map(c => c.guid).sort().join(',');
+
 	var buildWorkingCopy = () => {
 		containers = {};
 		original = {};
 		equipment = {};
 		originalEquipment = {};
 		selected = null;
+		builtFor = partyFingerprint();
 
 		var data = inventory();
 		(data.characters || []).forEach(character => {
@@ -1374,6 +1384,7 @@ var InventoryEditor = function () {
 		weapons = {};
 		originalWeapons = {};
 		selected = null;
+		builtFor = '';
 	};
 
 	self.setStatus = message => self.html.invStatus.text(message).show();
@@ -1431,9 +1442,13 @@ var InventoryEditor = function () {
 			return;
 		}
 
-		// Only rebuild when we have nothing staged, so switching characters
-		// doesn't quietly discard edits that haven't been applied yet.
-		if (Object.keys(containers).length < 1) {
+		// Rebuild when there is nothing to lose, or when the party itself has
+		// changed under us. Switching characters must not discard edits that
+		// haven't been applied yet, but a party member who has just appeared
+		// has to get a pack on screen.
+		if (Object.keys(containers).length < 1
+			|| partyFingerprint() !== builtFor) {
+
 			buildWorkingCopy();
 		}
 

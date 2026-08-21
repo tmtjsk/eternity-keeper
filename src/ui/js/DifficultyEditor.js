@@ -104,7 +104,7 @@ var DifficultyEditor = function () {
 		modes.forEach(m => {
 			var entry = gameState(m.key);
 			var on = entry && (m.key === 'TacticalMode'
-				? entry.value === 'TurnBased'
+				? entry.value === 'RoundBased'
 				: entry.value === true || entry.value === 'true');
 
 			var option = $('<div>')
@@ -117,7 +117,9 @@ var DifficultyEditor = function () {
 			if (entry) {
 				option.click(() => {
 					if (m.key === 'TacticalMode') {
-						entry.value = on ? 'RealTime' : 'TurnBased';
+						// The game's own names for this enum, which saveinfo.xml
+						// carries as text for the load screen.
+						entry.value = on ? 'Disabled' : 'RoundBased';
 					} else {
 						entry.value = on ? 'false' : 'true';
 					}

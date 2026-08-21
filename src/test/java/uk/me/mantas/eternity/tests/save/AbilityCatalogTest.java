@@ -51,6 +51,9 @@ public class AbilityCatalogTest extends TestHarness {
 		+ ",\"carnage\":{\"name\":\"Carnage\",\"kind\":\"ability\",\"component\":\"Carnage\""
 		+ ",\"effect\":5,\"class\":\"Barbarian\""
 		+ ",\"path\":\"Assets/Data/Prefabs/RPG/Abilities/Barbarian/Carnage.prefab\"}"
+		+ ",\"cautious_attack\":{\"name\":\"Cautious Attack\",\"kind\":\"ability\""
+		+ ",\"component\":\"GenericAbility\",\"effect\":5"
+		+ ",\"path\":\"Assets/Data/Prefabs/RPG/Talents/Talent_Abilities/Cautious_Attack.prefab\"}"
 		+ ",\"tln_cautious_attack\":{\"name\":\"Cautious Attack\",\"kind\":\"talent\""
 		+ ",\"type\":\"GrantNewAbility\",\"grants\":[\"cautious_attack\"]"
 		+ ",\"path\":\"Assets/Data/Prefabs/RPG/Talents/TLN_Cautious_Attack.prefab\"}"
@@ -97,7 +100,7 @@ public class AbilityCatalogTest extends TestHarness {
 	@Test
 	public void readsEntriesAndTheirComponentClass () throws IOException {
 		final AbilityCatalog catalog = catalog();
-		assertEquals(6, catalog.size());
+		assertEquals(7, catalog.size());
 
 		final Optional<AbilityCatalog.Entry> fireball = catalog.lookup("Fireball(Clone)");
 		assertTrue(fireball.isPresent());
@@ -208,6 +211,26 @@ public class AbilityCatalogTest extends TestHarness {
 
 		assertTrue(accurate.grants.isEmpty());
 		assertEquals(java.util.Collections.singletonList("carnage"), accurate.modifies);
+	}
+
+	@Test
+	public void knowsWhatATalentGrantsWithoutBeingToldByTheUI () throws IOException {
+		final AbilityCatalog catalog = catalog();
+
+		// Removing a talent has to take away the ability it granted, and the UI
+		// only knows that for entries its browser happens to have fetched. The
+		// server looks it up here instead, so removing a talent nobody searched
+		// for no longer leaves the ability behind.
+		final AbilityCatalog.Entry talent =
+			catalog.lookup("TLN_Cautious_Attack").get();
+
+		assertEquals(
+			java.util.Collections.singletonList("cautious_attack"), talent.grants);
+
+		final AbilityCatalog.Entry granted = catalog.lookup("cautious_attack").get();
+		assertEquals(
+			"Assets/Data/Prefabs/RPG/Talents/Talent_Abilities/Cautious_Attack.prefab"
+			, granted.path);
 	}
 
 	@Test
