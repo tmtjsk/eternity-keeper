@@ -793,6 +793,18 @@ public class SavedGameOpener implements Runnable {
 		itemJson.put("quality", entry.get().quality);
 		itemJson.put("filter", entry.get().filter);
 
+		// What a store would pay for one, so the UI can total a selection
+		// without asking again. Sent per item rather than per stack: the stack
+		// size is the UI's to change while items are being moved around.
+		final int sellValue = catalog.sellValue(baseItem, 1);
+		if (sellValue > 0) {
+			itemJson.put("sellValue", sellValue);
+		}
+
+		if (entry.get().value > 0) {
+			itemJson.put("value", entry.get().value);
+		}
+
 		final JSONArray slots = new JSONArray();
 		entry.get().slots.forEach(slots::put);
 		itemJson.put("slots", slots);

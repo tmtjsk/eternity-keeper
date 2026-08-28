@@ -61,6 +61,11 @@ var InventoryEditor = function () {
 	var browseLimit = 60;
 	var browseItems = [];
 	var browseTimer = null;
+	// Selling is a mode rather than a gesture: picking a dozen things to get
+	// rid of is a different act from moving one item, and the two would fight
+	// over the same click.
+	var sellMode = false;
+	var forSale = {};         // itemGuid -> true, across every pack and the stash
 
 	var saveData = () => Eternity.SavedGame.state.saveData || {};
 	var inventory = () => saveData().inventory || {};
@@ -108,7 +113,191 @@ var InventoryEditor = function () {
 		, {value: 128, icon: 'fa-ellipsis-h', label: 'Miscellaneous'}
 	];
 
+	// Tooltips are plain text, so the only way to break a line is the
+	// character itself.
+	var TOOLTIP_BREAK = String.fromCharCode(10);
+
 	var containerKey = (characterGuid, component) => characterGuid + '|' + component;
+
+	// ---- selling ------------------------------------------------------------
+
+	// In sell mode a tile says whether it is ticked, and whether it could be.
+	var decorateForSale = (tile, item) => {
+		if (!sellMode || !item) {
+			return;
+		}
+
+		if (item.quest || (item.sellValue || 0) < 1) {
+			tile.addClass('inv-tile-unsellable');
+			return;
+		}
+
+		tile.addClass('inv-tile-sellable');
+		if (forSale[item.guid]) {
+			tile.addClass('inv-tile-for-sale');
+		}
+	};
+
+
+	// Every item a player could reasonably part with: their own packs and the
+	// stash. Worn gear and quick items are left out — the game will not sell
+	// something you are holding either.
+	var sellableContainers = () => {
+		var keys = [];
+		(inventory().characters || []).forEach(character => {
+			keys.push(containerKey(character.guid, character.packComponent));
+			if (character.isPlayer) {
+				keys.push(containerKey(character.guid, STASH));
+			}
+		});
+
+		return keys.filter(key => containers[key]);
+	};
+
+	var eachSellable = visit => {
+		sellableContainers().forEach(key => {
+			containers[key].items.forEach(item => visit(item, key));
+		});
+	};
+
+	// A store pays per item, so a stack is worth its count. The price came from
+	// the catalog with the save; anything the catalog has no price for is worth
+	// nothing and says so rather than quietly counting as zero.
+	var sellValueOf = item =>
+		(item.sellValue || 0) * Math.max(1, item.stackSize || 1);
+
+	// The cheapest enchantment the game sells costs 1000cp
+	// (EconomyManager.ItemModCostMultiplier), so anything worth less than that
+	// carries no enchantment at all. That is the line "junk" is drawn on: it is
+	// a property of the item rather than a guess, and it keeps the button from
+	// ticking something precious.
+	//
+	// The Unique and soulbound flags are honoured too, but they are not enough
+	// on their own — the game leaves plenty of desirable items unflagged
+	// (Gaun's Pledge, a 4,050cp ring, is marked as nothing at all).
+	var UNENCHANTED_BELOW = 1000;
+
+	// ...and only worn gear counts: UIInventoryFilter.ItemFilterType WEAPONS,
+	// ARMOR and CLOTHING. A potion is cheap, unenchanted and not unique, so a
+	// rule written on price alone would offer to sell the party's consumables
+	// in one click, and MISC is worse still — the game files grimoires (a
+	// wizard's entire spellbook), pets, hides and lockpicks there alongside
+	// the lore books nobody wants. What genuinely piles up unwanted is the
+	// plain weapons and armour every fight leaves behind, so that is the whole
+	// of what this offers; anything else is a deliberate click.
+	var JUNK_FILTERS = [1, 2, 8];
+
+	// Two kinds of gear are never junk however cheap they are. A grimoire is
+	// filed under WEAPONS and costs 100cp, but it carries a wizard's whole
+	// spellbook; a pet is 100cp of MISC that cannot be bought back. Both are
+	// recognisable by the slot they go in rather than by their category.
+	var NEVER_JUNK_SLOTS = ['GrimoireSlot', 'PetSlot'];
+
+	var goesInAProtectedSlot = item =>
+		(item.slots || []).some(slot => NEVER_JUNK_SLOTS.indexOf(slot) >= 0);
+
+	var isJunk = item =>
+		!item.quest
+		&& (item.sellValue || 0) > 0
+		&& (item.value || 0) < UNENCHANTED_BELOW
+		&& item.quality !== 'unique'
+		&& item.quality !== 'soulbound'
+		&& JUNK_FILTERS.indexOf(item.filter || 0) >= 0
+		&& !goesInAProtectedSlot(item);
+
+	var sellSelection = () => {
+		var items = [];
+		eachSellable(item => {
+			if (forSale[item.guid]) items.push(item);
+		});
+
+		return items;
+	};
+
+	// A stack of five lockpicks is five things sold, not one, so counts shown
+	// to the user are in items rather than in tiles.
+	var unitsIn = items =>
+		items.reduce((sum, item) => sum + Math.max(1, item.stackSize || 1), 0);
+
+	// Merging split stacks of the same thing, up to the cap the game enforces.
+	// Pure tidy-up: nothing leaves the save, the entries just stop being spread
+	// over several tiles.
+	//
+	// Each container is repacked on its own. Items cannot merge across owners —
+	// that would be moving them between characters, which is a different act —
+	// so a pack and the stash each end up as full as they can be.
+	var tidyStacks = () => {
+		var merged = 0;
+
+		sellableContainers().forEach(key => {
+			var container = containers[key];
+			var groups = {};
+
+			container.items.forEach(item => {
+				var cap = item.maxStack || 1;
+				if (cap < 2) return;
+				(groups[item.key] = groups[item.key] || []).push(item);
+			});
+
+			Object.keys(groups).forEach(name => {
+				var lots = groups[name];
+				if (lots.length < 2) return;
+
+				var cap = lots[0].maxStack || 1;
+				var total = lots.reduce((sum, item) => sum + (item.stackSize || 1), 0);
+				var wanted = Math.ceil(total / cap);
+				if (wanted >= lots.length) return;
+
+				merged += lots.length - wanted;
+
+				// Fill the first few lots to the brim and drop the rest, keeping
+				// the tiles they already occupy so nothing appears to jump.
+				var left = total;
+				lots.forEach((item, index) => {
+					if (index < wanted) {
+						item.stackSize = Math.min(cap, left);
+						left -= item.stackSize;
+						return;
+					}
+
+					container.items.splice(container.items.indexOf(item), 1);
+				});
+			});
+		});
+
+		return merged;
+	};
+
+	var sell = () => {
+		var items = sellSelection();
+		if (items.length < 1) {
+			redraw('Pick something to sell first.');
+			return;
+		}
+
+		var total = 0;
+		items.forEach(item => {
+			total += sellValueOf(item);
+			var key = null;
+			sellableContainers().forEach(candidate => {
+				if (containers[candidate].items.indexOf(item) >= 0) key = candidate;
+			});
+
+			if (key) {
+				containers[key].items.splice(containers[key].items.indexOf(item), 1);
+			}
+		});
+
+		// The purse rides the normal save path, the same as the currency
+		// editor's own edits, so nothing new has to reach the server for it.
+		saveData().currency = (saveData().currency || 0) + total;
+		Eternity.Modifications.transition({modifications: true});
+
+		forSale = {};
+		sellMode = false;
+		redraw('Sold ' + unitsIn(items) + ' item(s) for ' + total
+			+ ' cp. Apply changes to write it to the save.');
+	};
 
 	var lookupCharacter = guid => {
 		var match = (saveData().characters || []).filter(c => c.GUID === guid);
@@ -458,9 +647,22 @@ var InventoryEditor = function () {
 			tile.addClass('inv-quality-' + item.quality);
 		}
 
+		// While selling, the tooltip has to answer the only question that
+		// matters -- what is this worth -- rather than explain a gesture that
+		// isn't available.
+		var hint = options.readOnly
+			? ''
+			: (sellMode
+				? (item.quest
+					? TOOLTIP_BREAK + 'Quest item, which the game will not sell'
+					: ((item.sellValue || 0) > 0
+						? TOOLTIP_BREAK + 'Sells for ' + sellValueOf(item) + ' cp'
+						: TOOLTIP_BREAK + 'Worth nothing to a store'))
+				: TOOLTIP_BREAK + 'Click to pick up, double-click for quantity');
+
 		tile.attr('title', (item.displayName || item.baseItem)
 			+ (item.stackSize > 1 ? ' ×' + item.stackSize : '')
-			+ (options.readOnly ? '' : '\nClick to pick up, double-click for quantity'));
+			+ hint);
 
 		return tile;
 	};
@@ -613,6 +815,7 @@ var InventoryEditor = function () {
 				tile.addClass('inv-tile-selected');
 			}
 
+			decorateForSale(tile, item);
 			bindTile(tile, key, slot, item);
 			host.append(tile);
 		}
@@ -690,6 +893,7 @@ var InventoryEditor = function () {
 				tile.addClass('inv-tile-selected');
 			}
 
+			decorateForSale(tile, item);
 			bindTile(tile, key, item.uiSlot, item);
 			self.html.invStashGrid.append(tile);
 		});
@@ -701,6 +905,34 @@ var InventoryEditor = function () {
 			empty.on('click', () => onTileClick(key, -1, null));
 			self.html.invStashGrid.append(empty);
 		}
+	};
+
+	// Only on screen while selling, so the panel keeps its usual shape the rest
+	// of the time.
+	var renderSellBar = () => {
+		self.html.invSellMode.toggleClass('inv-mode-on', sellMode);
+		self.html.invSellMode.text(sellMode ? 'Done selling' : 'Sell items');
+
+		if (!sellMode) {
+			self.html.invSellBar.hide();
+			return;
+		}
+
+		var items = sellSelection();
+		var total = 0;
+		items.forEach(item => total += sellValueOf(item));
+
+		var sellable = 0;
+		eachSellable(item => { if (isJunk(item)) sellable++; });
+
+		self.html.invSellBar.show();
+		self.html.invSellSummary.text(items.length < 1
+			? 'Click items to sell them — ' + sellable
+				+ ' unenchanted piece(s) of gear look like junk'
+			: unitsIn(items) + ' item(s) selected · +' + total
+				+ " cp to the party's money");
+
+		self.html.invSellConfirm.prop('disabled', items.length < 1);
 	};
 
 	// The game's category filters: nothing is selected to begin with, clicking
@@ -777,6 +1009,7 @@ var InventoryEditor = function () {
 		renderCarry();
 		renderPacks();
 		renderStash();
+		renderSellBar();
 		renderBrowseTargets();
 		renderStatus(message);
 		self.html.invApply.prop('disabled', !!self.state.working);
@@ -946,6 +1179,26 @@ var InventoryEditor = function () {
 	// ---- interaction --------------------------------------------------------
 
 	var onTileClick = (key, slot, item) => {
+		if (sellMode) {
+			if (!item) {
+				return;
+			}
+
+			if (item.quest) {
+				redraw(item.displayName + ' is a quest item — the game won’t sell it.');
+				return;
+			}
+
+			if (forSale[item.guid]) {
+				delete forSale[item.guid];
+			} else {
+				forSale[item.guid] = true;
+			}
+
+			redraw();
+			return;
+		}
+
 		if (!selected) {
 			if (item) {
 				selected = {key: key, itemGuid: item.guid};
@@ -1385,6 +1638,8 @@ var InventoryEditor = function () {
 		originalWeapons = {};
 		selected = null;
 		builtFor = '';
+		sellMode = false;
+		forSale = {};
 	};
 
 	self.setStatus = message => self.html.invStatus.text(message).show();
@@ -1394,6 +1649,46 @@ var InventoryEditor = function () {
 		self.html.invRevert.click(() => {
 			buildWorkingCopy();
 			redraw('Reverted to the save’s current contents.');
+		});
+
+		self.html.invSellMode.click(() => {
+			sellMode = !sellMode;
+			// Nothing may be in hand while ticking things off, and a stale
+			// selection would be a nasty surprise on the way back in.
+			selected = null;
+			forSale = {};
+			redraw(sellMode
+				? 'Click items in the packs or the stash to sell them.'
+				: '');
+		});
+
+		self.html.invSellJunk.click(() => {
+			forSale = {};
+			eachSellable(item => { if (isJunk(item)) forSale[item.guid] = true; });
+			redraw();
+		});
+
+		self.html.invSellAll.click(() => {
+			forSale = {};
+			eachSellable(item => {
+				if (!item.quest && (item.sellValue || 0) > 0) forSale[item.guid] = true;
+			});
+
+			redraw();
+		});
+
+		self.html.invSellNone.click(() => {
+			forSale = {};
+			redraw();
+		});
+
+		self.html.invSellConfirm.click(sell);
+
+		self.html.invTidy.click(() => {
+			var merged = tidyStacks();
+			redraw(merged > 0
+				? 'Merged ' + merged + ' item(s) into fewer stacks.'
+				: 'Nothing to merge — every stack is already whole.');
 		});
 
 		self.html.stackAccept.click(applyStack);

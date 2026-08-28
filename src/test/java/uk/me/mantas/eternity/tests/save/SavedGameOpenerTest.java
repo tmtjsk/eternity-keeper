@@ -24,6 +24,7 @@ import com.google.common.primitives.UnsignedInteger;
 import org.apache.commons.io.FileUtils;
 import org.cef.callback.CefQueryCallback;
 import org.jooq.lambda.tuple.Tuple2;
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import org.junit.Test;
@@ -35,6 +36,7 @@ import uk.me.mantas.eternity.Settings;
 import uk.me.mantas.eternity.environment.Environment;
 import uk.me.mantas.eternity.factory.PacketDeserializerFactory;
 import uk.me.mantas.eternity.game.*;
+import uk.me.mantas.eternity.save.ItemCatalog;
 import uk.me.mantas.eternity.save.SavedGameOpener;
 import uk.me.mantas.eternity.serializer.PacketDeserializer;
 import uk.me.mantas.eternity.serializer.properties.Property;
@@ -103,6 +105,62 @@ public class SavedGameOpenerTest extends TestHarness {
 
 		verify(mockCallback).success(
 			argThat(new EquivalentJSON(extractedJSONString)));
+	}
+
+	@Test
+	public void inventoryItemsCarryWhatAStoreWouldPayForThem ()
+		throws URISyntaxException, IOException {
+
+		// The fixture's Player_Elwyn is carrying Gaun's Pledge; price it and the
+		// opener should pass a store's offer through to the UI, which is what
+		// lets a selection be totalled without asking the server again.
+		final Optional<File> catalogDir = EKUtils.createTempDir(PREFIX);
+		assertTrue(catalogDir.isPresent());
+		FileUtils.write(new File(catalogDir.get(), "catalog.json")
+			, "{\"ring_preorder_gauns_pledge\":{\"name\":\"Gaun's Pledge\""
+			+ ",\"value\":1000,\"filter\":128"
+			+ ",\"path\":\"Assets/Data/Prefabs/Items/Rings/"
+			+ "Ring_PREORDER_Gauns_Pledge.prefab\"}}"
+			, "UTF-8");
+
+		ItemCatalog.useCatalogAt(catalogDir.get());
+		try {
+			final File resources = new File(getClass().getResource("/").toURI());
+			final CefQueryCallback mockCallback = mock(CefQueryCallback.class);
+			final Settings mockSettings = mockSettings();
+			final JSONObject mockJSON = mock(JSONObject.class);
+			mockSettings.json = mockJSON;
+			when(mockJSON.getString("gameLocation")).thenReturn(
+				new File(resources, "SavedGameOpenerTest").getAbsolutePath());
+
+			new SavedGameOpener(resources.getAbsolutePath(), mockCallback).run();
+
+			final ArgumentCaptor<String> response = ArgumentCaptor.forClass(String.class);
+			verify(mockCallback).success(response.capture());
+
+			final JSONObject json = new JSONObject(response.getValue());
+			final JSONArray characters =
+				json.getJSONObject("inventory").getJSONArray("characters");
+
+			int priced = 0;
+			for (int i = 0; i < characters.length(); i++) {
+				final JSONArray items = characters.getJSONObject(i)
+					.getJSONObject("pack").getJSONArray("items");
+
+				for (int j = 0; j < items.length(); j++) {
+					final JSONObject item = items.getJSONObject(j);
+					if ("Gaun's Pledge".equals(item.optString("displayName"))) {
+						// floor(1000 * 0.2)
+						assertEquals(200, item.optInt("sellValue"));
+						priced++;
+					}
+				}
+			}
+
+			assertEquals(1, priced);
+		} finally {
+			ItemCatalog.useNoCatalog();
+		}
 	}
 
 	private class EquivalentJSON implements ArgumentMatcher<String> {

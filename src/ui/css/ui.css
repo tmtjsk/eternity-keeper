@@ -3110,3 +3110,88 @@ body.theme-light ::-webkit-scrollbar-thumb:hover {
 	background: rgba(107, 56, 18, .45);
 	background-clip: padding-box;
 }
+
+/* ---- selling and tidying ---------------------------------------------------
+   Picking a dozen things to get rid of is a different act from moving one item,
+   so it gets its own mode rather than overloading the click. */
+
+.inv-mode-btn {
+	float: right;
+	margin-left: 8px;
+	padding: 3px 10px;
+	font-size: 12px;
+}
+
+.inv-mode-on {
+	color: #ffe9a8;
+	box-shadow: inset 0 0 0 1px #c9a227;
+}
+
+.inv-sell-bar {
+	display: none;
+	margin: 0 0 10px;
+	padding: 7px 10px;
+	border: 1px solid rgba(201, 162, 39, .35);
+	border-radius: 3px;
+	background: rgba(201, 162, 39, .08);
+	white-space: nowrap;
+}
+
+.inv-sell-summary {
+	display: inline-block;
+	vertical-align: middle;
+	font-size: 13px;
+	color: #e8d5a3;
+}
+
+.inv-sell-actions {
+	float: right;
+}
+
+.inv-sell-pick,
+.inv-sell-go {
+	margin-left: 6px;
+	padding: 3px 10px;
+	font-size: 12px;
+}
+
+.inv-sell-go {
+	box-shadow: inset 0 0 0 1px #c9a227;
+}
+
+/* A tile that can be sold invites the click; one that can't says so quietly
+   rather than looking broken. */
+.inv-tile-sellable {
+	cursor: pointer;
+}
+
+.inv-tile-unsellable {
+	opacity: .4;
+	cursor: default;
+}
+
+.inv-tile-for-sale {
+	box-shadow: 0 0 0 2px #c9a227 inset;
+	border-color: #c9a227;
+}
+
+/* A tick in the corner, so the choice survives a busy grid of similar art. */
+.inv-tile-for-sale:after {
+	content: "\2713";
+	position: absolute;
+	right: 2px;
+	bottom: 0;
+	font-size: 12px;
+	line-height: 1;
+	color: #ffe9a8;
+	text-shadow: 0 0 3px #000, 0 0 3px #000;
+}
+
+body.theme-light .inv-sell-bar {
+	border-color: rgba(160, 120, 20, .45);
+	background: rgba(201, 162, 39, .14);
+}
+
+body.theme-light .inv-sell-summary {
+	color: #4a2f14;
+}

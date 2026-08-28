@@ -80,6 +80,14 @@ public class ItemCatalog {
 		public final List<String> classes;
 		/** Prefab path as a save records it in InventoryItem.BaseItem. */
 		public final String path;
+		/**
+		 * What the item is worth, as {@code Item.GetValue()} computes it: the
+		 * base value plus every item mod's cost, which the catalog sums during
+		 * extraction. 0 when the game gives no price.
+		 */
+		public final int value;
+		/** Stores buy these back at full price rather than the usual fifth. */
+		public final boolean fullValueSell;
 
 		Entry (
 			final String name
@@ -90,7 +98,9 @@ public class ItemCatalog {
 			, final String quality
 			, final int filter
 			, final List<String> classes
-			, final String path) {
+			, final String path
+			, final int value
+			, final boolean fullValueSell) {
 
 			this.name = name;
 			this.icon = icon;
@@ -101,6 +111,8 @@ public class ItemCatalog {
 			this.filter = filter;
 			this.classes = classes;
 			this.path = path;
+			this.value = value;
+			this.fullValueSell = fullValueSell;
 		}
 	}
 
@@ -125,6 +137,15 @@ public class ItemCatalog {
 	 */
 	public static synchronized void useNoCatalog () {
 		instance = new ItemCatalog(Optional.empty(), true);
+	}
+
+	/**
+	 * Testing seam — reads a catalog from a directory of the caller's choosing,
+	 * so pricing can be tested against a fixture rather than against whatever
+	 * the machine's game install happens to contain.
+	 */
+	public static synchronized void useCatalogAt (final File directory) {
+		instance = new ItemCatalog(Optional.of(directory), true);
 	}
 
 	private ItemCatalog (final Optional<File> directory) {
@@ -166,7 +187,9 @@ public class ItemCatalog {
 					, item.optString("quality", "")
 					, item.optInt("filter", 0)
 					, stringList(item.optJSONArray("classes"))
-					, item.optString("path", "")));
+					, item.optString("path", "")
+					, item.optInt("value", 0)
+					, item.optInt("fullValueSell", 0) != 0));
 			}
 
 			logger.info("Loaded %d catalogued items.%n", entries.size());
@@ -253,6 +276,28 @@ public class ItemCatalog {
 
 	public int size () {
 		return entries.size();
+	}
+
+	/**
+	 * What a store would pay for {@code count} of this item, following
+	 * {@code Item.GetDefaultSellValue}: a fifth of the value, rounded down, or
+	 * the whole value for the items flagged {@code FullValueSell} — ingredients
+	 * and the like.
+	 *
+	 * <p>Rounding is per item and then multiplied, which is what selling a
+	 * stack one at a time would come to. A quest item is worth nothing here:
+	 * the game will not let you sell one either.
+	 */
+	public int sellValue (final String baseItem, final int count) {
+		if (count <= 0) {
+			return 0;
+		}
+
+		return lookup(baseItem)
+			.filter(entry -> !entry.quest)
+			.map(entry -> (entry.fullValueSell
+				? entry.value : (int) Math.floor(entry.value * 0.2)) * count)
+			.orElse(0);
 	}
 
 	/**

@@ -53,6 +53,10 @@ SUBRACES = [
     "Advanced_Construct",
 ]
 
+# EconomyManager.ItemModCostMultiplier: "The currency value of an item mod is
+# determined by multiplying its 'Cost' by this."
+ITEM_MOD_COST_MULTIPLIER = 1000
+
 # CharacterStats.SkillType, in enum order — talents award their bonus by index.
 SKILLS = ["Stealth", "Athletics", "Lore", "Mechanics", "Survival", "Crafting"]
 
@@ -586,10 +590,32 @@ def main():
         # the obvious isinstance check silently dropped every price. Base value
         # only: Equippable.GetValue adds each item mod's Cost on top, so an
         # enchanted weapon is worth more than this says.
+        # What the game would price this at. Item.GetValue returns the base
+        # Value, and Equippable.GetValue adds every mod's Cost on top —
+        # multiplied by the economy's ItemModCostMultiplier, and doubled for a
+        # weapon that occupies both hands. Fine/Exceptional/Superb versions are
+        # separate prefabs carrying the mod, so summing here covers almost
+        # everything a save contains.
         value = tree.get("Value")
         if isinstance(value, dict):
             value = value.get("v")
-        if isinstance(value, (int, float)) and value:
+        if not isinstance(value, (int, float)):
+            value = 0
+
+        hands = 2 if tree.get("BothPrimaryAndSecondarySlot") else 1
+        for reference in (tree.get("ItemMods") or []):
+            mod = by_id.get(reference.get("m_PathID"))
+            if mod is None:
+                continue
+            try:
+                mod_tree = mod.read_typetree()
+            except Exception:
+                continue
+            cost = mod_tree.get("Cost")
+            if isinstance(cost, (int, float)):
+                value += cost * ITEM_MOD_COST_MULTIPLIER * hands
+
+        if value:
             entry["value"] = int(value)
         if tree.get("FullValueSell"):
             # Stores buy these back at full price instead of the usual fifth.

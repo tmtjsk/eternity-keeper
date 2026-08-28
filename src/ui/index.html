@@ -684,6 +684,35 @@
 							       data-bound="InventoryEditor" placeholder="Search stash..." />
 							<span class="inv-filters" id="invStashFilters"
 							      data-bound="InventoryEditor"></span>
+							<button type="button" class="pm-btn inv-mode-btn" id="invSellMode"
+							        data-bound="InventoryEditor"
+							        title="Pick items to sell instead of moving them">
+								Sell items
+							</button>
+							<button type="button" class="pm-btn inv-mode-btn" id="invTidy"
+							        data-bound="InventoryEditor"
+							        title="Merge split stacks of the same item together">
+								Tidy stacks
+							</button>
+						</div>
+						<div class="inv-sell-bar" id="invSellBar" data-bound="InventoryEditor">
+							<span class="inv-sell-summary" id="invSellSummary"
+							      data-bound="InventoryEditor"></span>
+							<span class="inv-sell-actions">
+								<button type="button" class="pm-btn inv-sell-pick" id="invSellJunk"
+								        data-bound="InventoryEditor"
+								        title="Unenchanted odds and ends &mdash; nothing unique, soulbound, enchanted or quest-related">
+									Select junk
+								</button>
+								<button type="button" class="pm-btn inv-sell-pick" id="invSellAll"
+								        data-bound="InventoryEditor">Select all</button>
+								<button type="button" class="pm-btn inv-sell-pick" id="invSellNone"
+								        data-bound="InventoryEditor">Clear</button>
+								<button type="button" class="pm-btn inv-sell-go" id="invSellConfirm"
+								        data-bound="InventoryEditor">
+									<i>&#10094;</i> Sell <i>&#10095;</i>
+								</button>
+							</span>
 						</div>
 						<div class="inv-stash-grid" id="invStashGrid"
 						     data-bound="InventoryEditor"></div>
