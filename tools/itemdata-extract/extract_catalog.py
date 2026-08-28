@@ -582,9 +582,18 @@ def main():
             entry["slots"] = slots
         if tree.get("IsQuestItem"):
             entry["quest"] = 1
+        # Value is a CurrencyValue struct ({"v": 50.0}), not a bare number, so
+        # the obvious isinstance check silently dropped every price. Base value
+        # only: Equippable.GetValue adds each item mod's Cost on top, so an
+        # enchanted weapon is worth more than this says.
         value = tree.get("Value")
+        if isinstance(value, dict):
+            value = value.get("v")
         if isinstance(value, (int, float)) and value:
             entry["value"] = int(value)
+        if tree.get("FullValueSell"):
+            # Stores buy these back at full price instead of the usual fifth.
+            entry["fullValueSell"] = 1
         if quality:
             entry["quality"] = quality
         if entry_path:

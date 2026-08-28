@@ -104,6 +104,35 @@ Every item ever sold to a vendor is stored forever. Purging them shrinks saves
 and speeds up load/save. The "purge, don't orphan" machinery already exists.
 *Effort: low-medium. Risk: low — deleting provably unreferenced objects.*
 
+**2.1b Bulk tidy-up and sell — requested on Reddit**
+"Stack all identical items, remove them, and add their sell value to the party
+purse." A natural companion to vendor cleanup, and every piece is already here:
+`InventoryManager` removes an item in the three places it lives, and currency is
+a scalar the currency editor already writes.
+
+What the game says, from the decompiled `Item`:
+
+    GetDefaultSellValue() = floor(GetValue() * 0.2), or floor(GetValue())
+                            when the item's FullValueSell flag is set
+
+so a dump-everything button should pay a fifth of value, the way a store does.
+Two things need doing first:
+
+- The catalog carries no prices. `Value` is a `CurrencyValue` struct
+  (`{"v": 50.0}`) and the extractor's number check silently dropped every one —
+  fixed in the script, but the catalogs need regenerating to pick it up. It now
+  records `fullValueSell` too.
+- `Equippable.GetValue()` adds each item mod's `Cost * ItemModCostMultiplier`
+  (doubled for two-handers), so an enchanted weapon is worth well above its base
+  value. Pricing from the base alone would quietly short-change exactly the
+  items a player most wants to sell. Extracting mod costs is the honest version.
+
+Worth deciding before building: "stack identical items" only means something up
+to `MaxStackSize` — 501 of 2,156 items stack at all, and weapons and armour
+never do. The sensible reading of the request is *select a set, delete it,
+credit the purse*, with stacking as tidy-up where the cap allows.
+*Effort: medium, most of it in the catalog. Risk: low — deletion and a scalar.*
+
 **2.2 Stronghold editor**
 Prestige, security, debt and turns are plain scalars already extracted.
 Upgrades, hirelings and prisoners are structural lists; `PartyManager` already
@@ -165,8 +194,22 @@ Detection order, first hit wins:
 
 *Effort: medium. Risk: low — detection only, manual override intact.*
 
-### 4.2 Mac support
-Build and bundle JCEF for macOS.
+### 4.2 Mac support — asked for on Reddit
+Build and bundle JCEF for macOS. Concretely, what is missing today:
+
+- `pom.xml` has profiles for `win64`, `win32` and `linux64` only, and
+  `lib/native/` holds the matching three. There is no macOS JCEF/JOGL native
+  bundle, so the app cannot start there at all.
+- Everything above the browser layer is plain Java 8 and portable. Save paths
+  are the other platform-specific piece: macOS keeps saves under
+  `~/Library/Application Support/Pillars of Eternity/`, which the detection work
+  in 4.1 has to cover.
+- The item and ability catalogs come from the game's own asset bundles, so they
+  work anywhere the game is installed.
+
+This is the single most requested thing from outside, and it is packaging work
+rather than save-format work — worth pulling forward if the goal is other people
+using the editor rather than just this fork.
 
 ### 4.3 Faster Windows Store conversion
 
@@ -204,7 +247,7 @@ Features first, per the project owner's direction; compatibility afterwards.
 1. ~~Commit the current work.~~ done
 2. ~~Skills editor (1.1)~~ done
 3. ~~Talents and abilities (1.2)~~ done
-4. **Vendor cleanup** (2.1) ← next
+4. **Vendor cleanup** (2.1) ← next, with the bulk sell it enables (2.1b)
 5. Stronghold editor (2.2)
 6. Culture / race / class (1.3)
 7. Grimoire editor (2.3), companion portraits (2.4)
