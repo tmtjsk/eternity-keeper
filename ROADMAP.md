@@ -99,14 +99,58 @@ grimoire), so the editor must deal with gear that becomes illegal.
 
 ### Phase 2 — world and inventory
 
-**2.1 Vendor cleanup**
-Every item ever sold to a vendor is stored forever. Purging them shrinks saves
-and speeds up load/save. The "purge, don't orphan" machinery already exists.
-*Effort: low-medium. Risk: low — deleting provably unreferenced objects.*
+**2.1 Vendor cleanup** — *re-scoped after measuring; blocked on new save-pipeline
+support, and the one-button version is unsafe*
 
-**2.1b Bulk tidy-up and sell — requested on Reddit**
-"Stack all identical items, remove them, and add their sell value to the party
-purse." A natural companion to vendor cleanup, and every piece is already here:
+The premise is half right. Vendor stock does accumulate: a mid-game save carries
+**68 stores holding 3,772 items**. But two things measured on a real save change
+what can be built.
+
+*It is not in the file the editor edits.* A scan of that save found **0 stores in
+`MobileObjects.save`** — every one of the 68 lives in a `.lvl` area file. Those
+use the identical serializer and all 164 of them read in 9.9s (77 MB), so the
+data is reachable, but `ChangesSaver` has only ever re-written the world state
+and copies the area files through untouched. Editing them means teaching the
+save pipeline to rewrite `.lvl` files, which is a piece of work in its own right
+and carries the risk of a 77 MB blast radius rather than a 13 MB one.
+
+*A blanket purge would destroy real content.* `Store.RegenerateItems()` only
+destroys and re-adds the items named in that store's `RegenerationItemTable`.
+Anything else in a store's `ItemList` — including the unique items a player has
+not bought yet, and everything they sold and might want back — is there
+permanently and never regenerates. "Delete all vendor stock" would quietly
+remove purchasable uniques from the save.
+
+So this should not be a button. The shape that survives both findings is a
+**reviewable per-store list**: read the `.lvl` files, show what each store holds
+with catalog names and prices, and let the player delete what they choose,
+defaulting to nothing. Worth splitting into (a) `.lvl` read/write in the save
+pipeline and (b) the store browser on top of it.
+*Effort: high, most of it in (a). Risk: medium — a new class of file to write.*
+
+**2.1b Bulk tidy-up and sell — requested on Reddit** — *done*
+
+Shipped in the Inventory tab: a sell mode that turns every pack and the stash
+into a selection and credits the party's money with what a store would pay, and
+a "Tidy stacks" button that repacks each container up to the game's own cap.
+Prices come from the catalog, which the extractor now fills in properly (1,658
+of 2,156 items priced, 177 of them `FullValueSell`).
+
+"Select junk" ended up much narrower than first planned. Price alone sweeps up
+the party's whole stock of potions, and MISC is worse — the game files
+grimoires, pets, hides and lockpicks there next to the lore books. Junk is
+therefore unenchanted worn gear only: WEAPONS, ARMOR or CLOTHING, under the
+1000cp an enchantment costs, not unique or soulbound, and never something that
+goes in a grimoire or pet slot.
+
+Verified end to end: 13 items sold for 270cp produced a file with exactly 13
+fewer packets and 13 fewer inventory entries, the purse up by exactly 270, and
+the game itself then loaded it showing 1,000,313cp and the two unsold items
+still in the stash.
+
+The original note, kept because the reasoning still applies:
+
+A natural companion to vendor cleanup, and every piece is already here:
 `InventoryManager` removes an item in the three places it lives, and currency is
 a scalar the currency editor already writes.
 
@@ -247,8 +291,10 @@ Features first, per the project owner's direction; compatibility afterwards.
 1. ~~Commit the current work.~~ done
 2. ~~Skills editor (1.1)~~ done
 3. ~~Talents and abilities (1.2)~~ done
-4. **Vendor cleanup** (2.1) ← next, with the bulk sell it enables (2.1b)
-5. Stronghold editor (2.2)
+4. ~~Bulk tidy-up and sell (2.1b)~~ done
+5. **Stronghold editor (2.2)** ← next
+5b. Vendor cleanup (2.1) — deferred: needs `.lvl` read/write first, and has to
+    be a reviewable list rather than a purge (see above)
 6. Culture / race / class (1.3)
 7. Grimoire editor (2.3), companion portraits (2.4)
 8. Save validation pass (3.2) — cheap, pull earlier if bugs bite
