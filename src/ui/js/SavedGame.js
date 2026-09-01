@@ -34,7 +34,8 @@ var SavedGame = function () {
 		, 'BaseDeflection', 'BaseFortitude', 'BaseReflexes', 'BaseWill'];
 
 	self.views = Object.freeze({
-		ATTR: 0, RAW: 1, GLOBALS: 2, CONSOLE: 3, INVENTORY: 4, ABILITIES: 5});
+		ATTR: 0, RAW: 1, GLOBALS: 2, CONSOLE: 3, INVENTORY: 4, ABILITIES: 5
+		, STRONGHOLD: 6});
 
 	var defaultState = {
 		saveData: {}
@@ -411,6 +412,9 @@ var SavedGame = function () {
 		Eternity.AbilityEditor.html.menuCharacterAbilities.off();
 		Eternity.AbilityEditor.html.menuCharacterAbilities.click(
 			self.switchView.bind(self, self.views.ABILITIES));
+		Eternity.StrongholdEditor.html.menuStrongholdEditor.off();
+		Eternity.StrongholdEditor.html.menuStrongholdEditor.click(
+			self.switchView.bind(self, self.views.STRONGHOLD));
 
 		Eternity.CurrencyEditor.render({enabled: true, amount: self.state.saveData.currency});
 		Eternity.Modifications.html.newSaveName.val(
@@ -462,6 +466,13 @@ var SavedGame = function () {
 				Eternity.AbilityEditor.html.abilitiesView.show();
 				Eternity.AbilityEditor.transition({
 					enabled: true, character: self.state.activeCharacter});
+				break;
+
+			// The stronghold belongs to the party rather than to whoever
+			// happens to be selected, so no character rides along with it.
+			case self.views.STRONGHOLD:
+				Eternity.StrongholdEditor.html.strongholdView.show();
+				Eternity.StrongholdEditor.transition({enabled: true});
 				break;
 
 			default:

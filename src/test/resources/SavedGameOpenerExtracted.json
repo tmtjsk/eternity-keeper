@@ -9571,5 +9571,23 @@
    }
   ],
   "catalogued": 0
+ },
+ "stronghold": {
+  "activated": false,
+  "prestige": 0,
+  "security": 0,
+  "availableturns": 0,
+  "m_currentturn": 0,
+  "m_debt": 0,
+  "bonusturnmoney": 0,
+  "unviewedeventcount": 0,
+  "erlTax": false,
+  "disabled": false,
+  "upgrades": [],
+  "catalog": [],
+  "maxHirelings": 8,
+  "hirelings": 0,
+  "prisoners": 0,
+  "companionsStored": 0
  }
 }

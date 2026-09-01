@@ -112,6 +112,11 @@ public class JSHandlers {
 				new UpdateAbilities());
 		cefClient.addMessageRouter(updateAbilitiesRouter);
 
+		final CefMessageRouter updateStrongholdRouter = CefMessageRouter.create(
+				new CefMessageRouterConfig("updateStronghold", "updateStrongholdCancel"),
+				new UpdateStronghold());
+		cefClient.addMessageRouter(updateStrongholdRouter);
+
 		cefClient.addMessageRouter(getDefaultSaveLocationRouter);
 		cefClient.addMessageRouter(listSavedGamesRouter);
 		cefClient.addMessageRouter(openSavedGameRouter);

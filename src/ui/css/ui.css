@@ -3195,3 +3195,547 @@ body.theme-light .inv-sell-bar {
 body.theme-light .inv-sell-summary {
 	color: #4a2f14;
 }
+
+/* ---- Stronghold ------------------------------------------------------------
+   Laid out like the game's own stronghold screen: the upgrade list down the
+   middle, a rail of gauges and numbers on the right. No CSS Grid and no
+   flexbox gap — the bundled JCEF predates both and fails silently by
+   collapsing everything into one column. */
+
+.stronghold-view {
+	padding: 18px 0 40px 18px;
+}
+
+.sh-main {
+	display: block;
+}
+
+.sh-head {
+	padding: 0 18px 10px 0;
+	border-bottom: 1px solid rgba(201, 180, 126, .22);
+	margin-bottom: 14px;
+	white-space: nowrap;
+}
+
+.sh-title {
+	font-size: 20px;
+	color: #e8d5a3;
+	letter-spacing: .04em;
+}
+
+.sh-turn {
+	font-size: 13px;
+	color: #9c8c6a;
+	margin-left: 14px;
+}
+
+.sh-head .pm-btn {
+	float: right;
+	margin-left: 8px;
+	padding: 3px 10px;
+	font-size: 12px;
+}
+
+.sh-body {
+	display: flex;
+	align-items: flex-start;
+}
+
+.sh-upgrades-panel {
+	flex: 1 1 auto;
+	min-width: 0;
+	background: rgba(0, 0, 0, .22);
+	border: 1px solid rgba(201, 180, 126, .28);
+	border-radius: 3px;
+	padding: 10px 12px 12px;
+	margin-right: 18px;
+}
+
+.sh-side {
+	flex: 0 0 260px;
+	margin-right: 18px;
+}
+
+.sh-numbers-panel,
+.sh-residents-panel {
+	background: rgba(0, 0, 0, .22);
+	border: 1px solid rgba(201, 180, 126, .28);
+	border-radius: 3px;
+	padding: 10px 12px 12px;
+	margin-bottom: 14px;
+}
+
+.sh-panel-head {
+	font-size: 14px;
+	color: #e8d5a3;
+	padding-bottom: 8px;
+	border-bottom: 1px solid rgba(201, 180, 126, .22);
+	margin-bottom: 10px;
+}
+
+.sh-count {
+	font-size: 12px;
+	color: #8a7a5c;
+	margin-left: 10px;
+}
+
+.sh-filters {
+	float: right;
+}
+
+.sh-filter {
+	background: rgba(0, 0, 0, .25);
+	border: 1px solid rgba(201, 180, 126, .22);
+	border-radius: 3px;
+	color: #9c8c6a;
+	font-size: 11px;
+	padding: 2px 9px;
+	margin-left: 4px;
+}
+
+.sh-filter:hover {
+	color: #e8dcbc;
+	border-color: rgba(201, 180, 126, .5);
+}
+
+.sh-filter-on {
+	color: #f0e0b0;
+	border-color: #c9b47e;
+	background: rgba(201, 180, 126, .14);
+}
+
+/* ---- the upgrade rows --------------------------------------------------- */
+
+.sh-upgrade {
+	display: flex;
+	align-items: flex-start;
+	padding: 10px 6px;
+	border-bottom: 1px solid rgba(201, 180, 126, .12);
+}
+
+.sh-upgrade:last-child {
+	border-bottom: 0;
+}
+
+.sh-upgrade-icon {
+	flex: 0 0 64px;
+	height: 48px;
+	margin-right: 12px;
+	border: 1px solid rgba(201, 180, 126, .25);
+	border-radius: 2px;
+	background: rgba(0, 0, 0, .3);
+	overflow: hidden;
+	text-align: center;
+}
+
+.sh-upgrade-icon img {
+	width: 100%;
+	height: 100%;
+}
+
+.sh-upgrade-body {
+	flex: 1 1 auto;
+	min-width: 0;
+	margin-right: 12px;
+}
+
+.sh-upgrade-name {
+	font-size: 15px;
+	color: #e8d5a3;
+	margin-bottom: 2px;
+}
+
+.sh-upgrade-desc {
+	font-size: 12px;
+	color: #9c8c6a;
+	line-height: 1.45;
+}
+
+/* The game prints an unmet prerequisite in red under the name; a met one is
+   still worth showing, just not as a warning. */
+.sh-upgrade-req {
+	font-size: 12px;
+	color: #c98b7e;
+	margin-top: 4px;
+}
+
+.sh-upgrade-req-met {
+	color: #7f8a6a;
+}
+
+.sh-upgrade-stats {
+	flex: 0 0 150px;
+	text-align: right;
+	margin-right: 12px;
+}
+
+.sh-adj {
+	display: inline-block;
+	width: 46px;
+	font-size: 13px;
+	margin-left: 8px;
+	text-align: right;
+}
+
+.sh-adj i {
+	font-size: 10px;
+	margin-right: 4px;
+	opacity: .75;
+}
+
+.sh-adj-prestige {
+	color: #d9c47e;
+}
+
+.sh-adj-security {
+	color: #8fa8bd;
+}
+
+/* An upgrade worth nothing on one axis still occupies its column, but should
+   not draw the eye the way a real bonus does. */
+.sh-adj-none {
+	opacity: .45;
+}
+
+.sh-upgrade-cost {
+	font-size: 12px;
+	color: #9c8c6a;
+	margin-top: 3px;
+}
+
+.sh-upgrade-boon {
+	font-size: 11px;
+	color: #7f8a6a;
+	margin-top: 3px;
+}
+
+.sh-upgrade-action {
+	flex: 0 0 104px;
+	text-align: right;
+}
+
+.sh-upgrade-btn {
+	width: 100%;
+	padding: 4px 0;
+	font-size: 12px;
+}
+
+.sh-upgrade-btn-on {
+	color: #f0e0b0;
+	box-shadow: inset 0 0 0 1px #c9b47e;
+}
+
+/* Not built and the prerequisite is missing: the game greys these out. */
+.sh-upgrade-locked .sh-upgrade-icon,
+.sh-upgrade-locked .sh-upgrade-name {
+	opacity: .5;
+}
+
+.sh-upgrade-staged {
+	background: rgba(201, 180, 126, .07);
+	box-shadow: inset 2px 0 0 #c9b47e;
+}
+
+.sh-empty {
+	font-size: 13px;
+	color: #8a7a5c;
+	padding: 14px 6px;
+	line-height: 1.5;
+}
+
+/* ---- the right-hand rail ------------------------------------------------ */
+
+.sh-gauges {
+	margin-bottom: 14px;
+}
+
+.sh-gauge {
+	display: inline-block;
+	width: 48%;
+	margin-right: 3%;
+	vertical-align: top;
+	background: rgba(0, 0, 0, .28);
+	border: 1px solid rgba(201, 180, 126, .28);
+	border-radius: 3px;
+	padding: 10px 4px;
+	text-align: center;
+}
+
+.sh-gauge:last-child {
+	margin-right: 0;
+}
+
+.sh-gauge i {
+	display: block;
+	font-size: 15px;
+	color: #8a7a5c;
+	margin-bottom: 4px;
+}
+
+.sh-gauge-value {
+	display: block;
+	font-size: 22px;
+	color: #e8d5a3;
+	line-height: 1.35;
+}
+
+.sh-gauge-label {
+	display: block;
+	font-size: 11px;
+	color: #8a7a5c;
+	letter-spacing: .06em;
+	text-transform: uppercase;
+}
+
+.sh-gauge-changed .sh-gauge-value {
+	color: #f0e0b0;
+}
+
+.sh-gauge-changed {
+	border-color: #c9b47e;
+}
+
+.sh-gauge-delta {
+	display: block;
+	font-size: 10px;
+	color: #9c8c6a;
+	margin-top: 3px;
+}
+
+.sh-number {
+	margin-bottom: 8px;
+	white-space: nowrap;
+}
+
+.sh-number label {
+	display: inline-block;
+	width: 55%;
+	font-size: 12px;
+	font-weight: normal;
+	color: #9c8c6a;
+	margin: 0;
+	vertical-align: middle;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.sh-number-input {
+	display: inline-block;
+	width: 42%;
+	height: 26px;
+	padding: 2px 6px;
+	font-size: 13px;
+	vertical-align: middle;
+}
+
+.sh-number-total {
+	display: block;
+	font-size: 11px;
+	color: #d9c47e;
+	text-align: right;
+	margin-top: 2px;
+}
+
+.sh-resident {
+	font-size: 12px;
+	padding: 3px 0;
+	white-space: nowrap;
+}
+
+.sh-resident-label {
+	color: #9c8c6a;
+}
+
+.sh-resident-value {
+	float: right;
+	color: #e8d5a3;
+}
+
+.sh-resident-note {
+	font-size: 11px;
+	color: #8a7a5c;
+	line-height: 1.45;
+	margin-top: 8px;
+	padding-top: 8px;
+	border-top: 1px solid rgba(201, 180, 126, .12);
+	white-space: normal;
+}
+
+.sh-status {
+	font-size: 12px;
+	color: #9c8c6a;
+	margin: 12px 18px 0 0;
+	padding: 8px 10px;
+	background: rgba(0, 0, 0, .2);
+	border-left: 2px solid #c9b47e;
+	border-radius: 2px;
+}
+
+/* ---- no stronghold in this save ----------------------------------------- */
+
+.sh-unavailable {
+	max-width: 620px;
+	margin: 60px auto;
+	text-align: center;
+	padding: 28px 32px;
+	background: rgba(0, 0, 0, .22);
+	border: 1px solid rgba(201, 180, 126, .28);
+	border-radius: 3px;
+}
+
+.sh-unavailable-mark {
+	font-size: 34px;
+	color: #8a7a5c;
+	line-height: 1.3;
+	margin-bottom: 10px;
+}
+
+.sh-unavailable h3 {
+	font-size: 19px;
+	color: #e8d5a3;
+	line-height: 1.4;
+	margin: 0 0 12px;
+}
+
+.sh-unavailable p {
+	font-size: 13px;
+	color: #9c8c6a;
+	line-height: 1.6;
+	margin: 0 0 10px;
+}
+
+.sh-unavailable-note {
+	font-size: 12px;
+	color: #8a7a5c;
+	padding-top: 10px;
+	border-top: 1px solid rgba(201, 180, 126, .12);
+}
+
+/* ---- light mode --------------------------------------------------------- */
+
+body.theme-light .sh-upgrades-panel,
+body.theme-light .sh-numbers-panel,
+body.theme-light .sh-residents-panel,
+body.theme-light .sh-unavailable {
+	background: rgba(0, 0, 0, .04);
+	border-color: rgba(107, 56, 18, .25);
+}
+
+body.theme-light .sh-panel-head,
+body.theme-light .sh-title,
+body.theme-light .sh-unavailable h3 {
+	color: #4a2f14;
+	border-bottom-color: rgba(107, 56, 18, .2);
+}
+
+body.theme-light .sh-head {
+	border-bottom-color: rgba(107, 56, 18, .2);
+}
+
+body.theme-light .sh-upgrade {
+	border-bottom-color: rgba(107, 56, 18, .12);
+}
+
+body.theme-light .sh-upgrade-name,
+body.theme-light .sh-gauge-value,
+body.theme-light .sh-resident-value {
+	color: #4a2f14;
+}
+
+body.theme-light .sh-upgrade-desc,
+body.theme-light .sh-upgrade-cost,
+body.theme-light .sh-turn,
+body.theme-light .sh-count,
+body.theme-light .sh-empty,
+body.theme-light .sh-number label,
+body.theme-light .sh-resident-label,
+body.theme-light .sh-gauge-label,
+body.theme-light .sh-gauge-delta,
+body.theme-light .sh-resident-note,
+body.theme-light .sh-status,
+body.theme-light .sh-unavailable p {
+	color: #6b5030;
+}
+
+body.theme-light .sh-upgrade-req {
+	color: #9c4b3a;
+}
+
+body.theme-light .sh-upgrade-req-met {
+	color: #5c6b45;
+}
+
+/* The dark theme's gold and steel wash out completely on parchment; these are
+   the same hues taken down to something readable against it. */
+body.theme-light .sh-adj-prestige {
+	color: #8a6a1e;
+}
+
+body.theme-light .sh-adj-security {
+	color: #3f5f7a;
+}
+
+body.theme-light .sh-adj-none {
+	opacity: .6;
+}
+
+body.theme-light .sh-upgrade-boon {
+	color: #4f6135;
+}
+
+/* The gauge and icon tiles keep a darker ground in light mode for the same
+   reason the item tiles do: the gold and blue accents are only legible
+   against it. */
+body.theme-light .sh-gauge {
+	background: rgba(0, 0, 0, .06);
+	border-color: rgba(107, 56, 18, .25);
+}
+
+body.theme-light .sh-upgrade-icon {
+	background: rgba(0, 0, 0, .12);
+	border-color: rgba(107, 56, 18, .25);
+}
+
+body.theme-light .sh-filter {
+	background: rgba(0, 0, 0, .05);
+	border-color: rgba(107, 56, 18, .22);
+	color: #6b5030;
+}
+
+body.theme-light .sh-filter-on {
+	color: #4a2f14;
+	border-color: #8a6a3a;
+	background: rgba(138, 106, 58, .14);
+}
+
+body.theme-light .sh-status {
+	background: rgba(0, 0, 0, .05);
+	border-left-color: #8a6a3a;
+}
+
+body.theme-light .sh-unavailable-mark {
+	color: #8a6a3a;
+}
+
+/* ---- narrow windows ------------------------------------------------------
+   Below this the rail and the list stop fitting side by side; stacking keeps
+   the upgrade rows readable rather than squeezing the description to nothing. */
+@media (max-width: 1180px) {
+	.sh-body {
+		display: block;
+	}
+
+	.sh-upgrades-panel {
+		margin-right: 18px;
+		margin-bottom: 14px;
+	}
+
+	.sh-side {
+		margin-right: 18px;
+	}
+
+	.sh-gauge {
+		width: 24%;
+		margin-right: 1%;
+	}
+}

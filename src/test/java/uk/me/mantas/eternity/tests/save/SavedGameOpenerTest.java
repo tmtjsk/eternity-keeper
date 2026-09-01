@@ -37,6 +37,7 @@ import uk.me.mantas.eternity.environment.Environment;
 import uk.me.mantas.eternity.factory.PacketDeserializerFactory;
 import uk.me.mantas.eternity.game.*;
 import uk.me.mantas.eternity.save.ItemCatalog;
+import uk.me.mantas.eternity.save.StrongholdCatalog;
 import uk.me.mantas.eternity.save.SavedGameOpener;
 import uk.me.mantas.eternity.serializer.PacketDeserializer;
 import uk.me.mantas.eternity.serializer.properties.Property;
@@ -160,6 +161,87 @@ public class SavedGameOpenerTest extends TestHarness {
 			assertEquals(1, priced);
 		} finally {
 			ItemCatalog.useNoCatalog();
+		}
+	}
+
+	@Test
+	public void theOpenerSaysWhetherTheStrongholdIsEvenAvailable ()
+		throws URISyntaxException, IOException {
+
+		// Caed Nua only exists once the player has taken it. The fixture's
+		// SerializedIsActivated is false, and the editor has to be able to say
+		// so rather than offering to edit a stronghold that is not there.
+		final File resources = new File(getClass().getResource("/").toURI());
+		final CefQueryCallback mockCallback = mock(CefQueryCallback.class);
+		final Settings mockSettings = mockSettings();
+		final JSONObject mockJSON = mock(JSONObject.class);
+		mockSettings.json = mockJSON;
+		when(mockJSON.getString("gameLocation")).thenReturn(
+			new File(resources, "SavedGameOpenerTest").getAbsolutePath());
+
+		new SavedGameOpener(resources.getAbsolutePath(), mockCallback).run();
+
+		final ArgumentCaptor<String> response = ArgumentCaptor.forClass(String.class);
+		verify(mockCallback).success(response.capture());
+
+		final JSONObject stronghold =
+			new JSONObject(response.getValue()).getJSONObject("stronghold");
+
+		assertFalse(stronghold.getBoolean("activated"));
+		assertEquals(0, stronghold.getJSONArray("upgrades").length());
+		assertEquals(0, stronghold.getInt("prestige"));
+		assertEquals(0, stronghold.getInt("security"));
+	}
+
+	@Test
+	public void theOpenerNamesEveryUpgradeTheStrongholdHasBuilt ()
+		throws URISyntaxException, IOException {
+
+		// A save records m_upgradesBuilt by enum ordinal and nothing else, so
+		// the display name, price and adjustments have to come from the
+		// catalog before the UI can draw the game's own upgrade list.
+		final Optional<File> catalogDir = EKUtils.createTempDir(PREFIX);
+		assertTrue(catalogDir.isPresent());
+		FileUtils.write(new File(catalogDir.get(), "stronghold.json")
+			, "{\"maxHirelings\":8,\"upgrades\":{"
+			+ "\"EasternBarbican\":{\"ordinal\":27,\"name\":\"Eastern Barbican\""
+			+ ",\"cost\":0,\"days\":0,\"prestige\":1,\"security\":2,\"order\":1}"
+			+ ",\"MainKeep\":{\"ordinal\":4,\"name\":\"Main Keep\",\"cost\":1400"
+			+ ",\"days\":3,\"prestige\":3,\"security\":4,\"order\":4"
+			+ ",\"prerequisite\":\"EasternBarbican\"}}}"
+			, "UTF-8");
+
+		StrongholdCatalog.useCatalogAt(catalogDir.get());
+		try {
+			final File resources = new File(getClass().getResource("/").toURI());
+			final CefQueryCallback mockCallback = mock(CefQueryCallback.class);
+			final Settings mockSettings = mockSettings();
+			final JSONObject mockJSON = mock(JSONObject.class);
+			mockSettings.json = mockJSON;
+			when(mockJSON.getString("gameLocation")).thenReturn(
+				new File(resources, "SavedGameOpenerTest").getAbsolutePath());
+
+			new SavedGameOpener(resources.getAbsolutePath(), mockCallback).run();
+
+			final ArgumentCaptor<String> response = ArgumentCaptor.forClass(String.class);
+			verify(mockCallback).success(response.capture());
+
+			final JSONObject stronghold =
+				new JSONObject(response.getValue()).getJSONObject("stronghold");
+
+			// Nothing is built in the fixture, but the catalog still has to
+			// reach the UI so it knows what could be.
+			final JSONArray catalog = stronghold.getJSONArray("catalog");
+			assertEquals(2, catalog.length());
+			assertEquals("EasternBarbican", catalog.getJSONObject(0).getString("key"));
+			assertEquals("Main Keep", catalog.getJSONObject(1).getString("name"));
+			assertEquals(1400, catalog.getJSONObject(1).getInt("cost"));
+			assertEquals(
+				"EasternBarbican", catalog.getJSONObject(1).getString("prerequisite"));
+
+			assertEquals(8, stronghold.getInt("maxHirelings"));
+		} finally {
+			StrongholdCatalog.useNoCatalog();
 		}
 	}
 

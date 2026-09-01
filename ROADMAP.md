@@ -177,11 +177,40 @@ never do. The sensible reading of the request is *select a set, delete it,
 credit the purse*, with stacking as tidy-up where the cap allows.
 *Effort: medium, most of it in the catalog. Risk: low — deletion and a scalar.*
 
-**2.2 Stronghold editor**
-Prestige, security, debt and turns are plain scalars already extracted.
-Upgrades, hirelings and prisoners are structural lists; `PartyManager` already
-mutates `SerializedStoredGuids`.
-*Effort: medium. Risk: low for the scalars.*
+**2.2 Stronghold editor** — *the upgrades and scalars are done; hirelings and
+prisoners are not*
+
+Shipped as a Stronghold tab laid out like the game's own screen: the upgrade
+list down the middle, prestige and security gauges in a rail on the right. It
+refuses to touch a save where the player has not taken Caed Nua yet
+(`SerializedIsActivated`), and deliberately does not offer to grant it — the
+quest that hands over the keep also moves the party, advances its own state and
+spawns the steward, none of which a flag flip would do.
+
+The catch that shaped the whole thing: **Prestige and Security are plain
+persisted scalars.** `CompleteBuildingUpgrade()` adds an upgrade's own
+adjustments once, when it is built, and `DestroyUpgrade()` takes them back off;
+neither is ever recomputed from `m_upgradesBuilt`. Appending to that list alone
+would produce a stronghold with upgrades it gets no credit for. So the editor
+does the game's arithmetic itself, which means it needs the game's numbers — 25
+upgrades' worth of cost, build time, prestige, security, prerequisite, icon and
+`UpgradeCompletedGlobalVariableName`, none of which are in the save. They live
+on the `Stronghold` behaviour attached to the `InGameGlobal` prefab, and
+`tools/stronghold-extract` pulls them out. Demolishing also cascades: taking
+down an upgrade takes everything built on top of it, the way the game's own
+tree requires.
+
+Verified in the game: demolishing the Curio Shop and banking 7 turns produced a
+save the game loads with Prestige 47 (down the +1 it was worth), Security 44,
+every other upgrade still Completed, and the Curio Shop offered for purchase
+again at 1,800cp / 2 days — exactly the price the catalog carries.
+
+**Still to do:** hirelings and prisoners are shown read-only. Both are lists of
+manufactured objects rather than enum values — a `StrongholdHireling` carries a
+`CharacterStats` prefab reference — so adding one is the item-minting problem
+again. Dismissing and releasing are symmetric with demolishing (remove from the
+list, subtract the adjustments) and would be the cheap half.
+*Effort: medium for the remainder. Risk: low for removals, medium for minting.*
 
 **2.3 Grimoire editor**
 Which spells sit in which grimoire. Depends on 1.2's ability catalog.
@@ -292,10 +321,11 @@ Features first, per the project owner's direction; compatibility afterwards.
 2. ~~Skills editor (1.1)~~ done
 3. ~~Talents and abilities (1.2)~~ done
 4. ~~Bulk tidy-up and sell (2.1b)~~ done
-5. **Stronghold editor (2.2)** ← next
+5. ~~Stronghold editor (2.2)~~ upgrades and scalars done; hirelings and
+   prisoners still read-only
 5b. Vendor cleanup (2.1) — deferred: needs `.lvl` read/write first, and has to
     be a reviewable list rather than a purge (see above)
-6. Culture / race / class (1.3)
+6. **Culture / race / class (1.3)** ← next
 7. Grimoire editor (2.3), companion portraits (2.4)
 8. Save validation pass (3.2) — cheap, pull earlier if bugs bite
 9. **Then** compatibility: multi-store detection (4.1), Mac, faster conversion

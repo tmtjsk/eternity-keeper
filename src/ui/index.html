@@ -484,6 +484,12 @@
 								Inventory
 							</a>
 						</li>
+						<li id="menuStronghold" class="disabled">
+							<a href="javascript:void(0);" id="menuStrongholdEditor"
+							   data-bound="StrongholdEditor">
+								Stronghold
+							</a>
+						</li>
 						<li id="menuConsole" class="disabled">
 							<a href="javascript:void(0);" id="menuOpenConsole" data-bound="SavedGame">
 								Console
@@ -829,6 +835,82 @@
 
 					<div class="abl-status" id="ablStatus" data-bound="AbilityEditor"></div>
 				</div>
+				<div class="row view stronghold-view" id="strongholdView"
+				     data-bound="StrongholdEditor">
+
+					<!-- Shown instead of everything else when the player has not taken
+					     Caed Nua yet: until SerializedIsActivated is true the
+					     stronghold does not exist as far as the game is concerned. -->
+					<div class="sh-unavailable" id="shUnavailable"
+					     data-bound="StrongholdEditor">
+						<div class="sh-unavailable-mark"><i class="fa fa-lock"></i></div>
+						<h3>Caed Nua is not yours yet</h3>
+						<p>
+							This save has no stronghold to manage. The keep becomes
+							yours during <em>Never Far From the Queen</em>, in Act I,
+							and nothing here can be edited until it does.
+						</p>
+						<p class="sh-unavailable-note">
+							Granting it from the editor is deliberately not offered:
+							taking the keep moves the party, advances a quest and
+							spawns the steward, and flipping the ownership flag on its
+							own would leave a stronghold with none of that.
+						</p>
+					</div>
+
+					<div class="sh-main" id="shMain" data-bound="StrongholdEditor">
+						<div class="sh-head">
+							<span class="sh-title">Caed Nua</span>
+							<span class="sh-turn" id="shTurn"
+							      data-bound="StrongholdEditor"></span>
+							<button type="button" class="pm-btn sh-apply" id="shApply"
+							        data-bound="StrongholdEditor">
+								<i>&#10094;</i> Apply changes <i>&#10095;</i>
+							</button>
+							<button type="button" class="pm-btn sh-revert" id="shRevert"
+							        data-bound="StrongholdEditor">
+								<i>&#10094;</i> Revert <i>&#10095;</i>
+							</button>
+						</div>
+
+						<div class="sh-body">
+							<!-- The game's own upgrade list: icon, name, description,
+							     what it is worth, what it costs, what it needs. -->
+							<div class="sh-upgrades-panel">
+								<div class="sh-panel-head">
+									<span>Upgrades</span>
+									<span class="sh-count" id="shUpgradeCount"
+									      data-bound="StrongholdEditor"></span>
+									<span class="sh-filters" id="shUpgradeFilters"
+									      data-bound="StrongholdEditor"></span>
+								</div>
+								<div class="sh-upgrades" id="shUpgrades"
+								     data-bound="StrongholdEditor"></div>
+							</div>
+
+							<!-- The rail the game puts down the right of the screen. -->
+							<div class="sh-side">
+								<div class="sh-gauges" id="shGauges"
+								     data-bound="StrongholdEditor"></div>
+
+								<div class="sh-numbers-panel">
+									<div class="sh-panel-head"><span>Stronghold</span></div>
+									<div class="sh-numbers" id="shNumbers"
+									     data-bound="StrongholdEditor"></div>
+								</div>
+
+								<div class="sh-residents-panel">
+									<div class="sh-panel-head"><span>Residents</span></div>
+									<div class="sh-residents" id="shResidents"
+									     data-bound="StrongholdEditor"></div>
+								</div>
+							</div>
+						</div>
+
+						<div class="sh-status" id="shStatus"
+						     data-bound="StrongholdEditor"></div>
+					</div>
+				</div>
 				<div class="row view console-view" id="consoleView" data-bound="ConsoleTab">
 					<div class="console-achievements">
 						<button type="button" id="achievementsToggle" class="pm-btn"
@@ -949,6 +1031,7 @@
 	<script src="js/DifficultyEditor.js"></script>
 	<script src="js/InventoryEditor.js"></script>
 	<script src="js/AbilityEditor.js"></script>
+	<script src="js/StrongholdEditor.js"></script>
 	<script src="js/ConsoleTab.js"></script>
 	<script src="js/Modifications.js"></script>
 	<script src="js/ImportCharacter.js"></script>

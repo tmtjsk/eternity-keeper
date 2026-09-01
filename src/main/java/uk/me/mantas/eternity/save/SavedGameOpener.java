@@ -49,6 +49,13 @@ import static java.util.Map.Entry;
 import static uk.me.mantas.eternity.EKUtils.*;
 
 public class SavedGameOpener implements Runnable {
+	// Stronghold scalars the editor exposes. Prestige and Security are plain
+	// persisted numbers the game only ever adjusts at the moment an upgrade is
+	// built or a hireling is taken on, never recomputed from the lists.
+	private static final String[] STRONGHOLD_SCALARS = {
+		"Prestige", "Security", "AvailableTurns", "m_currentTurn", "m_Debt"
+		, "BonusTurnMoney", "UnviewedEventCount"};
+
 	private static final Logger logger = Logger.getLogger(SavedGameOpener.class);
 	private final String saveGameLocation;
 	private final CefQueryCallback callback;
@@ -929,6 +936,7 @@ public class SavedGameOpener implements Runnable {
 		json.put("achievementsDisabled", detectAchievementsDisabled(globals));
 		json.put("inventory", inventory);
 		json.put("abilities", abilities);
+		json.put("stronghold", extractStronghold(globals));
 
 		final Map<String, JSONObject> jsonGlobals = globals.entrySet().stream()
 				.map(entry -> new SimpleEntry<>(entry.getKey(), globalsToJSON(entry.getValue())))
@@ -945,6 +953,118 @@ public class SavedGameOpener implements Runnable {
 		json.put("characters", charactersArray);
 
 		callback.success(json.toString());
+	}
+
+	// Caed Nua, as far as a save records it: whether the player owns it at all
+	// (SerializedIsActivated), the handful of scalars the stronghold screen is
+	// built out of, and which StrongholdUpgrade.Type values are in
+	// m_upgradesBuilt.
+	//
+	// A save stores those upgrades by enum ordinal and nothing else, so the
+	// catalog rides along with them -- the display name, price, prerequisite
+	// and the Prestige/Security each one is worth all live in the game's own
+	// asset rather than in the save.
+	private JSONObject extractStronghold (final Map<String, Property> globals) {
+		final JSONObject json = new JSONObject();
+		final StrongholdCatalog catalog = StrongholdCatalog.getInstance();
+
+		final JSONArray upgrades = new JSONArray();
+		json.put("upgrades", upgrades);
+		json.put("activated", false);
+		json.put("maxHirelings", catalog.maxHirelings());
+
+		for (final String scalar : STRONGHOLD_SCALARS) {
+			json.put(scalar.toLowerCase(), 0);
+		}
+
+		final JSONArray catalogJson = new JSONArray();
+		for (final StrongholdCatalog.Upgrade upgrade : catalog.all()) {
+			final JSONObject entry = new JSONObject();
+			entry.put("key", upgrade.key);
+			entry.put("name", upgrade.name);
+			entry.put("description", upgrade.description);
+			entry.put("cost", upgrade.cost);
+			entry.put("days", upgrade.days);
+			entry.put("prestige", upgrade.prestige);
+			entry.put("security", upgrade.security);
+			entry.put("destructible", upgrade.destructible);
+			entry.put("hasBoon", upgrade.hasBoon);
+
+			if (upgrade.hasPrerequisite()) {
+				entry.put("prerequisite", upgrade.prerequisite);
+			}
+
+			final String icon = catalog.iconData(upgrade.icon);
+			if (!icon.isEmpty()) {
+				entry.put("icon", icon);
+			}
+
+			catalogJson.put(entry);
+		}
+
+		json.put("catalog", catalogJson);
+
+		final Optional<ComponentPersistencePacket> stronghold =
+			Optional.ofNullable(globals.get("InGameGlobal"))
+				.map(property -> unwrapPacket(property))
+				.flatMap(packet -> findComponent(packet.ComponentPackets, "Stronghold"));
+
+		if (!stronghold.isPresent()) {
+			return json;
+		}
+
+		final Map<String, Object> variables = stronghold.get().Variables;
+		json.put("activated",
+			Boolean.TRUE.equals(variables.get("SerializedIsActivated")));
+
+		for (final String scalar : STRONGHOLD_SCALARS) {
+			final Object value = variables.get(scalar);
+			if (value instanceof Integer) {
+				json.put(scalar.toLowerCase(), value);
+			}
+		}
+
+		json.put("erlTax", Boolean.TRUE.equals(variables.get("IsErlTaxActive")));
+		json.put("disabled", Boolean.TRUE.equals(variables.get("m_disabled")));
+
+		final Object built = variables.get("m_upgradesBuilt");
+		if (built instanceof CSharpCollection) {
+			for (final Iterator it = ((CSharpCollection) built).iterator();
+				it.hasNext();) {
+
+				final Object entry = it.next();
+				if (!(entry instanceof StrongholdUpgrade.Type)) {
+					continue;
+				}
+
+				// Match on the ordinal the save actually stores: our mirror
+				// enum and the game disagree about one spelling.
+				upgrades.put(catalog.lookup((StrongholdUpgrade.Type) entry)
+					.map(u -> u.key)
+					.orElse(String.valueOf(entry)));
+			}
+		}
+
+		json.put("hirelings", countOf(variables.get("m_hirelingsHired")));
+		json.put("prisoners", countOf(variables.get("m_prisoners")));
+		json.put("companionsStored", countOf(variables.get("SerializedStoredGuids")));
+
+		return json;
+	}
+
+	private static int countOf (final Object collection) {
+		if (!(collection instanceof CSharpCollection)) {
+			return 0;
+		}
+
+		int count = 0;
+		for (final Iterator it = ((CSharpCollection) collection).iterator();
+			it.hasNext(); it.next()) {
+
+			count++;
+		}
+
+		return count;
 	}
 
 	// The game gates achievement unlocks on exactly one flag:

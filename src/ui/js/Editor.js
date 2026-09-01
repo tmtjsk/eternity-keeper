@@ -142,6 +142,7 @@ var Editor = function () {
 		self.ConsoleTab.html.consoleView.hide();
 		self.InventoryEditor.html.inventoryView.hide();
 		self.AbilityEditor.html.abilitiesView.hide();
+		self.StrongholdEditor.html.strongholdView.hide();
 		self.SavedGame.html.characterList.empty();
 
 		// The collapse handle only makes sense next to an actual character list.
@@ -154,11 +155,13 @@ var Editor = function () {
 			self.DifficultyEditor.transition({enabled: false});
 			self.InventoryEditor.transition({enabled: false});
 			self.AbilityEditor.transition({enabled: false});
+			self.StrongholdEditor.transition({enabled: false});
 			self.ConsoleTab.transition({enabled: false});
 			self.SavedGame.html.menuEditGlobals.off().parent().addClass('disabled');
 			self.SavedGame.html.menuOpenConsole.off().parent().addClass('disabled');
 			self.InventoryEditor.html.menuInventoryEditor.off().parent().addClass('disabled');
 			self.AbilityEditor.html.menuCharacterAbilities.off().parent().addClass('disabled');
+			self.StrongholdEditor.html.menuStrongholdEditor.off().parent().addClass('disabled');
 			disableMenu('menuCharacter');
 			disableMenu('menuGlobals');
 			self.ImportCharacter.transition({enabled: false});
@@ -172,11 +175,13 @@ var Editor = function () {
 			self.SavedGame.html.menuOpenConsole.parent().removeClass('disabled');
 			self.InventoryEditor.html.menuInventoryEditor.parent().removeClass('disabled');
 			self.AbilityEditor.html.menuCharacterAbilities.parent().removeClass('disabled');
+			self.StrongholdEditor.html.menuStrongholdEditor.parent().removeClass('disabled');
 			enableMenu('menuCharacter');
 			enableMenu('menuGlobals');
 			self.DifficultyEditor.transition({enabled: true});
 			self.InventoryEditor.transition({enabled: true});
 			self.AbilityEditor.transition({enabled: true});
+			self.StrongholdEditor.transition({enabled: true});
 			self.ConsoleTab.transition({enabled: true});
 			self.ImportCharacter.transition({enabled: true});
 			self.ExportCharacter.transition({enabled: true});
@@ -197,6 +202,7 @@ var Editor = function () {
 	self.DifficultyEditor = new DifficultyEditor();
 	self.InventoryEditor = new InventoryEditor();
 	self.AbilityEditor = new AbilityEditor();
+	self.StrongholdEditor = new StrongholdEditor();
 	self.ConsoleTab = new ConsoleTab();
 	self.Modifications = new Modifications();
 	self.ImportCharacter = new ImportCharacter();
