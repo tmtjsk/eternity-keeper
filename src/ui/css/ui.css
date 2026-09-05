@@ -154,6 +154,13 @@ body {
 	color: #d6c9a8;
 }
 
+/* Modals keep their dark chrome in light mode, so only the ones out on the
+   parchment need re-colouring -- without this the whole attributes form is
+   pale gold on pale parchment. */
+body.theme-light .container-fluid.dark-theme label {
+	color: #4a2f14;
+}
+
 .form-control.icon-left {
 	padding-left: 30px;
 }
@@ -2906,9 +2913,12 @@ body.theme-light .skills-remaining input {
 }
 
 /* An empty tile used to be DARKER than a filled one, which on the dark theme
-   read as a black square rather than as a missing icon. */
+   read as a black square rather than as a missing icon. It has to end up
+   LIGHTER than a filled tile in each theme, and a filled tile is
+   rgba(0,0,0,.45) over very different grounds, so the fill and the label are
+   set per theme rather than shared. */
 .abl-icon-empty {
-	background: rgba(201, 180, 126, .07);
+	background: rgba(232, 213, 163, .18);
 	border-style: dashed;
 	text-align: center;
 	line-height: 28px;
@@ -2916,16 +2926,8 @@ body.theme-light .skills-remaining input {
 
 .abl-icon-fallback {
 	font-size: 11px;
-	color: #8d7f63;
+	color: #e8dcbc;
 	text-transform: uppercase;
-}
-
-body.theme-light .abl-icon-empty {
-	background: rgba(107, 56, 18, .07);
-}
-
-body.theme-light .abl-icon-fallback {
-	color: #6b5030;
 }
 
 .abl-text {
@@ -2946,7 +2948,7 @@ body.theme-light .abl-icon-fallback {
 .abl-meta {
 	display: block;
 	font-size: 11px;
-	color: #8d7f63;
+	color: #b3a488;
 	overflow: hidden;
 	text-overflow: ellipsis;
 }
@@ -3081,7 +3083,7 @@ body.theme-light .abl-browse-pager,
 body.theme-light .abl-browse-page,
 body.theme-light .abl-any-class,
 body.theme-light .abl-status {
-	color: #6d5433;
+	color: #4a3717;
 }
 
 body.theme-light .abl-pending {
@@ -3118,6 +3120,17 @@ body.theme-light .abl-kind-on {
 body.theme-light .abl-icon {
 	background: rgba(0, 0, 0, .45);
 	border-color: rgba(107, 56, 18, .3);
+}
+
+/* Same specificity as the rule above, so these have to come after it. On
+   parchment a filled tile composites to a mid grey, so the empty one goes
+   lighter still and takes dark text. */
+body.theme-light .abl-icon-empty {
+	background: rgba(255, 255, 255, .5);
+}
+
+body.theme-light .abl-icon-fallback {
+	color: #4f3a1f;
 }
 
 @media (max-width: 1100px) {
