@@ -710,14 +710,30 @@ span.danger {
 	text-shadow: none;
 }
 
+/* Bootstrap's own "button.close { padding: 0 }" is more specific than a bare
+   class, so matching its specificity is what makes this stick. Without it the
+   close glyph stays an 11px hit target. */
+button.close.pm-close {
+	padding: 2px 10px;
+	line-height: 1;
+	min-width: 26px;
+	min-height: 24px;
+}
+
 .pm-close:hover {
 	color: #fff;
 	opacity: 1;
 }
 
+/* This JCEF is Chrome 45, which does not support flexbox gap -- the property
+   is not even recognised, so every "gap" that used to be here laid out flush.
+   Margins on the children do the same job for a simple row or column. */
 .pm-body {
 	display: flex;
-	gap: 14px;
+}
+
+.pm-body > * + * {
+	margin-left: 14px;
 }
 
 .pm-column {
@@ -754,9 +770,14 @@ span.danger {
 .pm-grid {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 8px;
-	min-height: 216px;
+	min-height: 224px;
 	align-content: flex-start;
+}
+
+/* A wrapping grid cannot use the sibling trick: the first tile of each row
+   after the first would lose its spacing. */
+.pm-grid .pm-tile {
+	margin: 0 8px 8px 0;
 }
 
 .pm-tile {
@@ -804,11 +825,38 @@ span.danger {
 	opacity: 1;
 }
 
+/* ---- dead companions ------------------------------------------------------
+   A companion the game deleted on death has no object to move in or out of
+   the party, so its tile is inert. It stays in the roster rather than
+   vanishing, because a player who cannot see where Eder went assumes the
+   editor lost him. */
+
+.pm-tile.pm-dead img {
+	-webkit-filter: grayscale(1);
+	filter: grayscale(1);
+	opacity: .45;
+}
+
+/* The ordinary overlay only appears on hover; this one is the tile's whole
+   explanation, so it is always on. */
+.pm-tile-overlay-dead {
+	opacity: 1;
+	top: auto;
+	bottom: 6px;
+	color: #e3b8b8;
+	font-size: 12px;
+	letter-spacing: .08em;
+	text-transform: uppercase;
+}
+
 .pm-footer {
 	display: flex;
-	gap: 14px;
 	margin-top: 14px;
 	align-items: stretch;
+}
+
+.pm-footer > * + * {
+	margin-left: 14px;
 }
 
 .pm-info {
@@ -848,8 +896,11 @@ span.danger {
 	display: flex;
 	flex-direction: column;
 	justify-content: space-between;
-	gap: 10px;
 	width: 190px;
+}
+
+.pm-buttons > * + * {
+	margin-top: 10px;
 }
 
 .pm-btn {
@@ -1191,10 +1242,13 @@ body.theme-light table.dark-theme > tbody > tr > td.raw-locked {
 	max-width: 1180px;
 }
 
+.console-achievements > * + * {
+	margin-left: 18px;
+}
+
 .console-achievements {
 	display: flex;
 	align-items: center;
-	gap: 18px;
 	padding: 4px 2px 22px 2px;
 	margin-bottom: 22px;
 	border-bottom: 1px solid #3a2e1c;
@@ -1249,9 +1303,13 @@ body.theme-light .console-settings {
 .console-difficulties, .console-modes {
 	display: flex;
 	justify-content: center;
-	gap: 26px;
 	margin-bottom: 14px;
 	flex-wrap: wrap;
+}
+
+/* Symmetric margins rather than the sibling trick, because these wrap. */
+.console-difficulties > *, .console-modes > * {
+	margin: 0 13px 8px;
 }
 
 .console-option {
@@ -1342,10 +1400,13 @@ body.theme-light .console-setting-desc {
 
 /* ---- warning banner ------------------------------------------------------ */
 
+.console-warning > * + * {
+	margin-left: 10px;
+}
+
 .console-warning {
 	display: flex;
 	align-items: center;
-	gap: 10px;
 	background: rgba(120, 40, 20, .25);
 	border: 1px solid #7a3a1e;
 	border-radius: 3px;

@@ -36,27 +36,58 @@ var PartyManagement = function () {
 	var partySize = () =>
 		characters().filter(c => staged[c.GUID]).length;
 
+	// A companion the game deleted on death is synthesised by the opener under
+	// a "dead:<name>" id purely so it can be resurrected. There is no object to
+	// move in or out of the party, and sending that id would have PartyManager
+	// refuse the whole batch -- including everything else the player changed in
+	// the same dialog. Resurrecting is the only thing that can be done with
+	// one, and that lives in the character view.
+	var isGone = character => !!character.resurrectable;
+
+	var statusOf = character => {
+		if (isGone(character)) {
+			return 'Dead — resurrect from the character view';
+		}
+
+		if (character.isDead) {
+			return staged[character.GUID]
+				? 'In party, but dead'
+				: 'Dead, waiting at the stronghold';
+		}
+
+		return staged[character.GUID] ? 'In party' : 'Available for hire';
+	};
+
 	var showInfo = character => {
 		var info = self.html.partyManagementDialog.find('.pm-info');
 		info.find('.pm-info-name').text(character ? character.name : '');
-		info.find('.pm-info-class').text(character ? character.className : '');
-		info.find('.pm-info-level').text(character ? 'Level ' + character.level : '');
-		info.find('.pm-info-status').text(!character ? ''
-			: staged[character.GUID] ? 'In party' : 'Available for hire');
+		info.find('.pm-info-class').text(
+			!character ? '' : isGone(character) ? '' : character.className);
+		info.find('.pm-info-level').text(
+			!character || isGone(character) ? '' : 'Level ' + character.level);
+		info.find('.pm-info-status').text(character ? statusOf(character) : '');
 		info.toggleClass('pm-info-filled', !!character);
 	};
 
 	var tile = character => {
 		var inParty = staged[character.GUID];
+		var gone = isGone(character);
 		var element = $('<div>')
 			.addClass('pm-tile')
-			.toggleClass('pm-locked', !!character.isMainCharacter)
+			.toggleClass('pm-locked', !!character.isMainCharacter || gone)
+			.toggleClass('pm-dead', !!character.isDead)
 			.data('guid', character.GUID);
 
 		element.append($('<img>').attr(
 			'src', 'data:image/png;base64,' + character.portrait));
 
-		if (!character.isMainCharacter) {
+		if (gone) {
+			// Inert: labelled so the player can see where the companion went,
+			// rather than silently missing from the roster.
+			element.append($('<div>')
+				.addClass('pm-tile-overlay pm-tile-overlay-dead')
+				.text('Dead'));
+		} else if (!character.isMainCharacter) {
 			element.append($('<div>')
 				.addClass('pm-tile-overlay')
 				.text(inParty ? 'Dismiss' : 'Recruit'));
@@ -138,6 +169,12 @@ var PartyManagement = function () {
 
 		var changes = {};
 		characters().forEach(c => {
+			// Belt and braces: a synthetic "dead:<name>" id is not an ObjectID,
+			// and one of them in the batch makes PartyManager refuse the lot.
+			if (isGone(c)) {
+				return;
+			}
+
 			if (!!c.inParty !== staged[c.GUID]) {
 				changes[c.GUID] = staged[c.GUID];
 			}

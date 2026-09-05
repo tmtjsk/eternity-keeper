@@ -236,6 +236,56 @@ public class PartyManagerTest extends TestHarness {
 	}
 
 	@Test
+	public void aCharacterTheSaveDoesNotHaveIsRefusedWithoutTouchingTheFile ()
+		throws URISyntaxException
+		, IOException {
+
+		// A companion the game has deleted outright shows up in the character
+		// list under a synthetic "dead:<name>" id so it can be resurrected.
+		// That id is not an ObjectID and there is nothing to recruit; the
+		// party dialog must never send one, and if it does the save has to
+		// come through untouched rather than half-applied.
+		final File saveDir = setupSave();
+		final byte[] before =
+			FileUtils.readFileToByteArray(new File(saveDir, "MobileObjects.save"));
+
+		final Map<String, Boolean> desired = new LinkedHashMap<>();
+		desired.put("dead:Eder", true);
+
+		assertFalse(new PartyManager(saveDir).apply(desired));
+		assertArrayEquals(
+			before, FileUtils.readFileToByteArray(
+				new File(saveDir, "MobileObjects.save")));
+	}
+
+	@Test
+	public void oneUnknownCharacterDoesNotDiscardTheRestOfTheBatch ()
+		throws URISyntaxException
+		, IOException {
+
+		// The dialog sends every change at once. Refusing the whole batch on
+		// one bad id would silently throw away the edits that were fine, so
+		// the check happens before anything is written.
+		final File saveDir = setupSave();
+		final Map<String, Boolean> desired = new LinkedHashMap<>();
+		desired.put(COMPANION_GUID, false);   // a real dismissal
+		desired.put("dead:Eder", true);       // and one that cannot work
+
+		assertFalse(new PartyManager(saveDir).apply(desired));
+
+		// Calisca must still be in the party: nothing was applied.
+		final DeserializedPackets packets = deserialize(saveDir);
+		final Optional<Property> calisca = packets.getPackets().stream()
+			.filter(p -> p.obj instanceof ObjectPersistencePacket)
+			.filter(p -> COMPANION_GUID.equalsIgnoreCase(
+				((ObjectPersistencePacket) p.obj).ObjectID))
+			.findFirst();
+
+		assertTrue(calisca.isPresent());
+		assertTrue(new PartyManager(saveDir).isInParty(calisca.get()));
+	}
+
+	@Test
 	public void noopWhenAlreadyInDesiredState ()
 		throws URISyntaxException
 		, IOException {
