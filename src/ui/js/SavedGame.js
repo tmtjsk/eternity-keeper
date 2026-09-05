@@ -202,6 +202,206 @@ var SavedGame = function () {
 		return rank;
 	};
 
+	// ---- identity -----------------------------------------------------------
+	//
+	// Race, subrace, culture, class, background and gender are [Persistent]
+	// enums on CharacterStats, so they are written on Save by the ordinary
+	// scalar path -- there is nothing new to send. What needs care is the
+	// consequences, all of them from the decompiled game:
+	//
+	//   * RacialBodyType is NOT editable. Awake() sets it to CharacterRace for
+	//     anyone who is not godlike, and for a godlike it holds the body
+	//     underneath -- a Moon Godlike player really does carry an Aumaua
+	//     body. Writing it would either be pointless or break that.
+	//   * Equipment.HasEquipmentSlot means a grimoire slot exists only for a
+	//     wizard and a head slot only for a non-godlike. Nothing in the game
+	//     repairs an item left in a slot that stops existing, so the editor
+	//     says so rather than stranding it silently.
+	//   * Restored() rebuilds m_abilities from whatever ability objects exist;
+	//     it never checks them against the class. Changing class therefore
+	//     leaves the old class's abilities behind, which is worth saying.
+
+	// Only the races and classes a player character can actually be. The enums
+	// carry creature types too (Beast, Spirit, Troll, Ogre...) which have no
+	// portraits, no subraces and no progression table.
+	var PLAYABLE_RACES = ['Human', 'Elf', 'Dwarf', 'Godlike', 'Orlan', 'Aumaua'];
+	var PLAYABLE_CLASSES = [
+		'Fighter', 'Rogue', 'Priest', 'Wizard', 'Barbarian', 'Ranger'
+		, 'Druid', 'Paladin', 'Monk', 'Cipher', 'Chanter'];
+
+	// Which subraces belong to which race. The godlike set is exactly what
+	// CharacterStats.SubraceIsGodlike() tests for.
+	var SUBRACES_BY_RACE = {
+		Human: ['Meadow_Human', 'Ocean_Human', 'Savannah_Human']
+		, Elf: ['Wood_Elf', 'Snow_Elf']
+		, Dwarf: ['Mountain_Dwarf', 'Boreal_Dwarf']
+		, Godlike: ['Death_Godlike', 'Fire_Godlike', 'Nature_Godlike'
+			, 'Moon_Godlike', 'Avian_Godlike']
+		, Orlan: ['Hearth_Orlan', 'Wild_Orlan']
+		, Aumaua: ['Coastal_Aumaua', 'Island_Aumaua']
+	};
+
+	var IDENTITY = [
+		{stat: 'CharacterRace', label: 'Race', only: PLAYABLE_RACES}
+		, {stat: 'CharacterSubrace', label: 'Subrace'}
+		, {stat: 'CharacterClass', label: 'Class', only: PLAYABLE_CLASSES}
+		, {stat: 'CharacterCulture', label: 'Culture'}
+		, {stat: 'CharacterBackground', label: 'Background'}
+		, {stat: 'Gender', label: 'Gender'}
+		// Only these two classes have anything to choose.
+		, {stat: 'Deity', label: 'Deity', whenClass: 'Priest'}
+		, {stat: 'PaladinOrder', label: 'Order', whenClass: 'Paladin'}
+	];
+
+	// Sentinels, and the values the game itself marks as unusable.
+	var isRealOption = value =>
+		value !== 'Count' && value !== 'Undefined' && value.indexOf('DO_NOT_USE') < 0;
+
+	var statValue = (data, stat) =>
+		data.stats[stat] === undefined ? '' : String(data.stats[stat].value);
+
+	// Enum constants are either underscored (Moon_Godlike) or run together
+	// (IxamitlPlains, GoldpactKnights); the game shows them spaced.
+	var humanise = value => String(value)
+		.replace(/_/g, ' ')
+		.replace(/([a-z])([A-Z])/g, '$1 $2')
+		.replace(/\s+/g, ' ')
+		.trim();
+
+	// What this character has equipped in a named slot, or null. The inventory
+	// payload has already resolved slot names for us.
+	var equippedIn = (data, slot) => {
+		var inventory = (self.state.saveData || {}).inventory || {};
+		var found = (inventory.characters || []).filter(c => c.guid === data.GUID);
+		if (found.length < 1) {
+			return null;
+		}
+
+		// equipment.slots is an ordered array of {slot, flag, index, item},
+		// laid out by EquipmentSet.SerializedEquipment rather than keyed by
+		// name.
+		var slots = (found[0].equipment || {}).slots || [];
+		var match = slots.filter(entry => entry.slot === slot);
+		var item = match.length > 0 ? match[0].item : null;
+		return item && item.displayName ? item.displayName : null;
+	};
+
+	var optionsFor = (entry, data) => {
+		var type = data.stats[entry.stat] ? data.stats[entry.stat].type : '';
+		var all = Eternity.structures[type] || [];
+
+		if (entry.stat === 'CharacterSubrace') {
+			var race = statValue(data, 'CharacterRace');
+			return SUBRACES_BY_RACE[race] || all.filter(isRealOption);
+		}
+
+		if (entry.only) {
+			return entry.only.filter(value => all.indexOf(value) > -1);
+		}
+
+		return all.filter(isRealOption);
+	};
+
+	var identityWarnings = data => {
+		var warnings = [];
+
+		if (statValue(data, 'CharacterClass') !== 'Wizard') {
+			var grimoire = equippedIn(data, 'Grimoire');
+			if (grimoire) {
+				warnings.push('A non-wizard has no grimoire slot, so ' + grimoire
+					+ ' can no longer be reached. Unequip it in the Inventory tab.');
+			}
+		}
+
+		if (statValue(data, 'CharacterRace') === 'Godlike') {
+			var head = equippedIn(data, 'Head');
+			if (head) {
+				warnings.push('Godlike have no head slot, so ' + head
+					+ ' can no longer be reached. Unequip it in the Inventory tab.');
+			}
+		}
+
+		return warnings;
+	};
+
+	var populateIdentity = data => {
+		var grid = self.html.identityGrid.empty();
+		var note = self.html.identityNote.empty();
+
+		// A companion the game deleted carries no stats to edit.
+		if (data.resurrectable || !data.stats
+			|| data.stats.CharacterRace === undefined) {
+
+			self.html.identityPanel.hide();
+			return;
+		}
+
+		self.html.identityPanel.show();
+		var characterClass = statValue(data, 'CharacterClass');
+
+		IDENTITY.forEach(entry => {
+			if (entry.whenClass && entry.whenClass !== characterClass) {
+				return;
+			}
+
+			var current = data.stats[entry.stat];
+			if (current === undefined) {
+				return;
+			}
+
+			var options = optionsFor(entry, data);
+			var select = $('<select>')
+				.addClass('form-control identity-select')
+				.append(options.map(value => $('<option>')
+					.prop('selected', value === String(current.value))
+					.text(humanise(value))
+					.val(value)));
+
+			// A value the game holds that the list does not offer (an NPC race
+			// on a summoned creature, say) still has to be visible rather than
+			// silently reassigned to the first option.
+			if (options.indexOf(String(current.value)) < 0) {
+				select.prepend($('<option>')
+					.prop('selected', true)
+					.text(humanise(current.value) + ' (unusual)')
+					.val(String(current.value)));
+			}
+
+			select.on('change', () => {
+				current.value = select.val();
+
+				// A subrace has to belong to its race, or the save ends up
+				// with a Wood Elf dwarf.
+				if (entry.stat === 'CharacterRace') {
+					var valid = SUBRACES_BY_RACE[select.val()] || [];
+					var subrace = data.stats.CharacterSubrace;
+					if (subrace && valid.length > 0
+						&& valid.indexOf(String(subrace.value)) < 0) {
+
+						subrace.value = valid[0];
+					}
+				}
+
+				Eternity.Modifications.transition({modifications: true});
+				populateIdentity(data);
+			});
+
+			grid.append($('<div>')
+				.addClass('identity-field')
+				.append($('<label>').text(entry.label))
+				.append(select));
+		});
+
+		identityWarnings(data).forEach(text =>
+			note.append($('<div>').addClass('identity-warning').text(text)));
+
+		note.append($('<div>')
+			.addClass('identity-hint')
+			.text('Changing class leaves the old class’s abilities in place — '
+				+ 'the game rebuilds them from what the save holds rather than '
+				+ 'from the class. Use the Abilities tab to sort those out.'));
+	};
+
 	var populateSkills = (data) => {
 		var grid = self.html.skillsGrid.empty();
 		var available = SKILLS.filter(skill => data.stats[skill.stat] !== undefined);
@@ -334,6 +534,7 @@ var SavedGame = function () {
 			.keyup(self.update.bind(self));
 
 		populateSkills(data);
+		populateIdentity(data);
 	};
 
 	var filterTable = (search, table) => {

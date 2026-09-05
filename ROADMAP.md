@@ -91,11 +91,32 @@ generalise: the same script now emits `abilities.json` (1,440 entries) and
 running editor against a level-16 party — 620 abilities and talents read back
 with full catalog coverage, and a staged talent applied and reloaded correctly.
 
-**1.3 Culture, race and class**
-Enums already reach the UI. Caveat to handle: changing race or class changes
-which equipment slots exist (godlike lose the head slot, non-wizards lose the
-grimoire), so the editor must deal with gear that becomes illegal.
-*Effort: medium. Risk: medium.*
+**1.3 Culture, race and class** — *done*
+
+An Identity panel under the attributes and skills: race, subrace, class,
+culture, background and gender, plus a deity for priests and an order for
+paladins. All six are `[Persistent]` enums on `CharacterStats`, so they ride
+the ordinary scalar path and are written on Save with everything else — no new
+handler.
+
+Three things the decompile settled:
+
+- **`RacialBodyType` is not editable and must not be written.** `Awake()` sets
+  it to `CharacterRace` for anyone who is not godlike, and for a godlike it
+  holds the body underneath — the test save's Moon Godlike player really does
+  carry an Aumaua body.
+- **Only base attributes are re-copied from a companion's prefab** by
+  `Restored()`, so identity sticks for companions exactly as skills do.
+- The equipment caveat is real and the game does not clean up after it.
+  `RepairSaveLoadEquipmentErrors()` handles the deprecated Cape and locked
+  slots only, so an item left in a slot that stops existing is simply
+  unreachable. The panel names the item and says to unequip it in the
+  Inventory tab rather than moving it silently.
+
+Subrace is scoped to race (the godlike set is exactly what
+`SubraceIsGodlike()` tests), and a race change carries the subrace with it.
+Verified in the game: a companion changed to a Mountain Dwarf Cipher of Rauatai
+reads back exactly that on the character sheet.
 
 ### Phase 2 — world and inventory
 
@@ -325,8 +346,8 @@ Features first, per the project owner's direction; compatibility afterwards.
    prisoners still read-only
 5b. Vendor cleanup (2.1) — deferred: needs `.lvl` read/write first, and has to
     be a reviewable list rather than a purge (see above)
-6. **Culture / race / class (1.3)** ← next
-7. Grimoire editor (2.3), companion portraits (2.4)
+6. ~~Culture / race / class (1.3)~~ done
+7. **Grimoire editor (2.3)** ← next, then companion portraits (2.4)
 8. Save validation pass (3.2) — cheap, pull earlier if bugs bite
 9. **Then** compatibility: multi-store detection (4.1), Mac, faster conversion
 10. Delete the auto-updater and bootstrapper whenever convenient

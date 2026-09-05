@@ -165,6 +165,114 @@ public class SavedGameOpenerTest extends TestHarness {
 	}
 
 	@Test
+	public void theOpenerSaysWhichEquipmentSlotsACharacterDoesNotHave ()
+		throws URISyntaxException, IOException {
+
+		// Equipment.HasEquipmentSlot gates the grimoire on being a wizard, the
+		// head slot on not being godlike, and the pet slot on being the
+		// player. The identity editor refuses a class or race change that
+		// would stand gear in a slot that stops existing, so this rule has to
+		// stay exactly as the game states it.
+		//
+		// The fixture is a human Fighter player plus a human Fighter
+		// companion: neither is a wizard, neither is godlike, one is the
+		// player.
+		final File resources = new File(getClass().getResource("/").toURI());
+		final CefQueryCallback mockCallback = mock(CefQueryCallback.class);
+		final Settings mockSettings = mockSettings();
+		final JSONObject mockJSON = mock(JSONObject.class);
+		mockSettings.json = mockJSON;
+		when(mockJSON.getString("gameLocation")).thenReturn(
+			new File(resources, "SavedGameOpenerTest").getAbsolutePath());
+
+		new SavedGameOpener(resources.getAbsolutePath(), mockCallback).run();
+
+		final ArgumentCaptor<String> response = ArgumentCaptor.forClass(String.class);
+		verify(mockCallback).success(response.capture());
+
+		final JSONArray characters = new JSONObject(response.getValue())
+			.getJSONObject("inventory").getJSONArray("characters");
+
+		int checked = 0;
+		for (int i = 0; i < characters.length(); i++) {
+			final JSONObject character = characters.getJSONObject(i);
+			final List<String> missing = new ArrayList<>();
+			final JSONArray slots = character.getJSONArray("unavailableSlots");
+			for (int j = 0; j < slots.length(); j++) {
+				missing.add(slots.getString(j));
+			}
+
+			assertEquals("Fighter", character.getString("characterClass"));
+			assertEquals("Human", character.getString("characterRace"));
+
+			// A fighter has no grimoire, a human keeps their head slot, and
+			// Cape is dead weight the game never populates.
+			assertTrue(missing.contains("Grimoire"));
+			assertFalse(missing.contains("Head"));
+			assertTrue(missing.contains("Cape"));
+
+			// Only the player has a pet slot.
+			assertEquals(!character.getBoolean("isPlayer"), missing.contains("Pet"));
+			checked++;
+		}
+
+		assertEquals(2, checked);
+	}
+
+	@Test
+	public void theOpenerShipsTheIdentityFieldsTheEditorNeeds ()
+		throws URISyntaxException, IOException {
+
+		// Race, subrace, culture, class and background are all [Persistent]
+		// enums on CharacterStats, so they ride the ordinary scalar path and
+		// simply have to reach the UI with their enum type intact.
+		//
+		// RacialBodyType rides along too, and must be READ ONLY: Awake()
+		// recomputes it from CharacterRace for anyone who is not godlike, and
+		// for a godlike it holds the body underneath the godlike features.
+		final File resources = new File(getClass().getResource("/").toURI());
+		final CefQueryCallback mockCallback = mock(CefQueryCallback.class);
+		final Settings mockSettings = mockSettings();
+		final JSONObject mockJSON = mock(JSONObject.class);
+		mockSettings.json = mockJSON;
+		when(mockJSON.getString("gameLocation")).thenReturn(
+			new File(resources, "SavedGameOpenerTest").getAbsolutePath());
+
+		new SavedGameOpener(resources.getAbsolutePath(), mockCallback).run();
+
+		final ArgumentCaptor<String> response = ArgumentCaptor.forClass(String.class);
+		verify(mockCallback).success(response.capture());
+
+		final JSONArray characters =
+			new JSONObject(response.getValue()).getJSONArray("characters");
+
+		JSONObject player = null;
+		for (int i = 0; i < characters.length(); i++) {
+			if (characters.getJSONObject(i).optBoolean("isMainCharacter")) {
+				player = characters.getJSONObject(i);
+			}
+		}
+
+		assertNotNull(player);
+		final JSONObject stats = player.getJSONObject("stats");
+
+		for (final String field : new String[] {
+			"CharacterRace", "CharacterSubrace", "CharacterCulture"
+			, "CharacterClass", "CharacterBackground", "RacialBodyType"}) {
+
+			assertTrue(field + " should reach the UI", stats.has(field));
+			assertTrue(field + " should carry its enum type"
+				, stats.getJSONObject(field).getString("type")
+					.contains("CharacterStats$"));
+		}
+
+		assertEquals("Human", stats.getJSONObject("CharacterRace").getString("value"));
+		assertEquals("Fighter", stats.getJSONObject("CharacterClass").getString("value"));
+		assertEquals(
+			"Meadow_Human", stats.getJSONObject("CharacterSubrace").getString("value"));
+	}
+
+	@Test
 	public void theOpenerSaysWhetherTheStrongholdIsEvenAvailable ()
 		throws URISyntaxException, IOException {
 

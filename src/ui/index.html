@@ -595,6 +595,19 @@
 						<div class="skills-grid" id="skillsGrid" data-bound="SavedGame"></div>
 						<div class="skills-note" id="skillsNote" data-bound="SavedGame"></div>
 					</div>
+
+					<!-- Who the character is. Every one of these is a
+					     [Persistent] enum on CharacterStats, so they ride the
+					     ordinary scalar path and are written on Save like the
+					     attributes above. -->
+					<div class="col-sm-12 identity-panel" id="identityPanel"
+					     data-bound="SavedGame">
+						<div class="identity-head">Identity</div>
+						<div class="identity-grid" id="identityGrid"
+						     data-bound="SavedGame"></div>
+						<div class="identity-note" id="identityNote"
+						     data-bound="SavedGame"></div>
+					</div>
 				</div>
 				<div class="row view raw" id="rawTable" data-bound="SavedGame">
 					<form>

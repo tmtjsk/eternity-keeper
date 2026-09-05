@@ -3831,3 +3831,98 @@ body.theme-light .sh-unavailable-mark {
 		margin-right: 1%;
 	}
 }
+
+/* ---- Identity panel --------------------------------------------------------
+   Who the character is, under the attributes and skills. No flexbox gap and no
+   grid: this Chromium is Chrome 45 and understands neither. */
+
+.identity-panel {
+	/* The row already sits at -32px and a col-sm-12 adds its own 15px of
+	   padding, so a negative margin here pushes the panel outside its parent.
+	   Matching the portrait's 15px keeps its left edge on the same line as
+	   everything above it. */
+	margin: 18px 15px 0;
+	/* col-sm-12 is width:100% with border-box, so side margins would push it
+	   past the row; take them back off the width. calc is fine here (the
+	   ability panels already rely on it). */
+	width: calc(100% - 30px);
+	padding: 12px 15px 14px;
+	background: rgba(0, 0, 0, .18);
+	border: 1px solid rgba(201, 180, 126, .22);
+	border-radius: 3px;
+}
+
+.identity-head {
+	font-size: 14px;
+	color: #e8d5a3;
+	padding-bottom: 8px;
+	margin-bottom: 12px;
+	border-bottom: 1px solid rgba(201, 180, 126, .2);
+}
+
+.identity-grid {
+	display: flex;
+	flex-wrap: wrap;
+}
+
+.identity-field {
+	width: 190px;
+	margin: 0 16px 10px 0;
+}
+
+.identity-field label {
+	display: block;
+	font-size: 11px;
+	letter-spacing: .06em;
+	text-transform: uppercase;
+	margin-bottom: 3px;
+}
+
+.identity-select {
+	height: 28px;
+	padding: 2px 6px;
+	font-size: 13px;
+}
+
+.identity-note {
+	margin-top: 4px;
+}
+
+/* Something the change has put out of reach. Not a refusal -- the state is
+   legal, the item is simply unreachable until it is unequipped. */
+.identity-warning {
+	font-size: 12px;
+	color: #e3b8b8;
+	background: rgba(120, 40, 20, .22);
+	border-left: 2px solid #9c4b3a;
+	border-radius: 2px;
+	padding: 6px 10px;
+	margin-bottom: 6px;
+	line-height: 1.5;
+}
+
+.identity-hint {
+	font-size: 11px;
+	color: #a2937a;
+	line-height: 1.5;
+}
+
+body.theme-light .identity-panel {
+	background: rgba(0, 0, 0, .04);
+	border-color: rgba(107, 56, 18, .25);
+}
+
+body.theme-light .identity-head {
+	color: #4a2f14;
+	border-bottom-color: rgba(107, 56, 18, .2);
+}
+
+body.theme-light .identity-hint {
+	color: #4a3717;
+}
+
+body.theme-light .identity-warning {
+	color: #7c2f1c;
+	background: rgba(156, 75, 58, .12);
+	border-left-color: #9c4b3a;
+}
