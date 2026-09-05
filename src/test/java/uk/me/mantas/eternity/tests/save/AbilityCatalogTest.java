@@ -46,7 +46,7 @@ public class AbilityCatalogTest extends TestHarness {
 
 	private static final String ABILITIES = "{"
 		+ "\"fireball\":{\"name\":\"Fireball\",\"kind\":\"spell\",\"component\":\"GenericSpell\""
-		+ ",\"effect\":3,\"spellLevel\":3,\"class\":\"Wizard\""
+		+ ",\"effect\":3,\"spellLevel\":3,\"class\":\"Wizard\",\"icon\":\"fireball.png\""
 		+ ",\"path\":\"Assets/Data/Prefabs/RPG/Spells/Wizard/L_03/Fireball.prefab\"}"
 		+ ",\"carnage\":{\"name\":\"Carnage\",\"kind\":\"ability\",\"component\":\"Carnage\""
 		+ ",\"effect\":5,\"class\":\"Barbarian\""
@@ -56,7 +56,13 @@ public class AbilityCatalogTest extends TestHarness {
 		+ ",\"path\":\"Assets/Data/Prefabs/RPG/Talents/Talent_Abilities/Cautious_Attack.prefab\"}"
 		+ ",\"tln_cautious_attack\":{\"name\":\"Cautious Attack\",\"kind\":\"talent\""
 		+ ",\"type\":\"GrantNewAbility\",\"grants\":[\"cautious_attack\"]"
+		+ ",\"icon\":\"class_rogue.png\""
 		+ ",\"path\":\"Assets/Data/Prefabs/RPG/Talents/TLN_Cautious_Attack.prefab\"}"
+		// An ability the game gives no icon at all, and no talent grants it —
+		// the shield-bash attacks and the debug spells are really like this.
+		+ ",\"bashattack1\":{\"name\":\"Bash\",\"kind\":\"ability\""
+		+ ",\"component\":\"GenericAbility\",\"effect\":5"
+		+ ",\"path\":\"Assets/Data/Prefabs/RPG/Abilities/BashAttack1.prefab\"}"
 		+ ",\"tln_accurate_carnage\":{\"name\":\"Accurate Carnage\",\"kind\":\"talent\""
 		+ ",\"type\":\"ModExistingAbility\",\"modifies\":[\"carnage\"]"
 		+ ",\"path\":\"Assets/Data/Prefabs/RPG/Talents/TLN_Accurate_Carnage.prefab\"}"
@@ -98,9 +104,37 @@ public class AbilityCatalogTest extends TestHarness {
 	}
 
 	@Test
+	public void anAbilityWithNoIconOfItsOwnBorrowsTheTalentThatGrantsIt ()
+		throws IOException {
+
+		// 164 of the game's 1,440 ability objects have a null Icon pointer,
+		// and 90 of those are what a talent instantiates when it is bought.
+		// The game's own sheet shows the talent, so the talent is where the
+		// artwork lives; without this the editor draws a black square.
+		final AbilityCatalog catalog = catalog();
+
+		assertEquals("class_rogue.png", catalog.lookup("tln_cautious_attack").get().icon);
+		assertEquals("class_rogue.png", catalog.lookup("cautious_attack").get().icon);
+	}
+
+	@Test
+	public void anAbilityWithItsOwnIconKeepsIt () throws IOException {
+		final AbilityCatalog catalog = catalog();
+		assertEquals("fireball.png", catalog.lookup("fireball").get().icon);
+	}
+
+	@Test
+	public void anAbilityNoTalentGrantsSimplyHasNoIcon () throws IOException {
+		// There is nothing to borrow for these, so the UI has to cope with an
+		// empty string rather than the catalog inventing something.
+		final AbilityCatalog catalog = catalog();
+		assertEquals("", catalog.lookup("bashattack1").get().icon);
+	}
+
+	@Test
 	public void readsEntriesAndTheirComponentClass () throws IOException {
 		final AbilityCatalog catalog = catalog();
-		assertEquals(7, catalog.size());
+		assertEquals(8, catalog.size());
 
 		final Optional<AbilityCatalog.Entry> fireball = catalog.lookup("Fireball(Clone)");
 		assertTrue(fireball.isPresent());

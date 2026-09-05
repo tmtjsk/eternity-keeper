@@ -130,6 +130,14 @@ public class AbilityCatalog {
 		public boolean isTalent () {
 			return "talent".equals(kind);
 		}
+
+		/** The same entry wearing a different icon. */
+		Entry withIcon (final String replacement) {
+			return new Entry(
+				name, description, replacement, kind, component, effect, level
+				, spellLevel, characterClass, passive, category, talentType
+				, grants, modifies, skills, path);
+		}
 	}
 
 	/** One row of an AbilityProgressionTable: when a character may take this. */
@@ -276,7 +284,36 @@ public class AbilityCatalog {
 				, ability.optString("path", "")));
 		}
 
+		inheritTalentIcons();
 		logger.info("Loaded %d catalogued abilities.%n", entries.size());
+	}
+
+	/**
+	 * Lets an ability borrow the icon of the talent that grants it.
+	 *
+	 * <p>164 of the game's 1,440 ability objects have a null {@code Icon}
+	 * pointer — the artwork is on the talent, because the game's own character
+	 * sheet shows the talent rather than the ability object it instantiated.
+	 * 90 of them are reachable this way; the rest (shield-bash attacks, debug
+	 * spells) really have no icon anywhere, and the UI draws a placeholder
+	 * instead of a blank tile.
+	 */
+	private void inheritTalentIcons () {
+		for (final Entry talent : new ArrayList<>(entries.values())) {
+			if (!talent.isTalent() || talent.icon.isEmpty()) {
+				continue;
+			}
+
+			// Only what the talent instantiates: a ModExistingAbility talent
+			// decorates an ability that already has its own artwork.
+			for (final String granted : talent.grants) {
+				final String key = granted.toLowerCase();
+				final Entry ability = entries.get(key);
+				if (ability != null && ability.icon.isEmpty()) {
+					entries.put(key, ability.withIcon(talent.icon));
+				}
+			}
+		}
 	}
 
 	private void loadProgression (final File progressionFile) {

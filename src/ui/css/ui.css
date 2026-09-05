@@ -2844,9 +2844,27 @@ body.theme-light .skills-remaining input {
 	height: 100%;
 }
 
+/* An empty tile used to be DARKER than a filled one, which on the dark theme
+   read as a black square rather than as a missing icon. */
 .abl-icon-empty {
-	background: rgba(0, 0, 0, .5);
+	background: rgba(201, 180, 126, .07);
 	border-style: dashed;
+	text-align: center;
+	line-height: 28px;
+}
+
+.abl-icon-fallback {
+	font-size: 11px;
+	color: #8d7f63;
+	text-transform: uppercase;
+}
+
+body.theme-light .abl-icon-empty {
+	background: rgba(107, 56, 18, .07);
+}
+
+body.theme-light .abl-icon-fallback {
+	color: #6b5030;
 }
 
 .abl-text {

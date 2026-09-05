@@ -215,9 +215,18 @@ var AbilityEditor = function () {
 		var source = iconSource(entry);
 		if (source) {
 			tile.append($('<img>').attr('src', source).attr('alt', ''));
-		} else {
-			tile.addClass('abl-icon-empty');
+			return tile;
 		}
+
+		// 74 of the game's ability objects carry a null Icon pointer and are
+		// granted by no talent to borrow one from -- the shield-bash attacks
+		// and the debug spells. Falling back to initials keeps the tile
+		// reading as an ability rather than as a broken image, the same way
+		// the inventory does it.
+		tile.addClass('abl-icon-empty');
+		tile.append($('<span>')
+			.addClass('abl-icon-fallback')
+			.text((entry.name || '?').substring(0, 2)));
 
 		return tile;
 	};
