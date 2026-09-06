@@ -3863,11 +3863,12 @@ body.theme-light .sh-unavailable-mark {
 .identity-grid {
 	display: flex;
 	flex-wrap: wrap;
+	align-items: flex-start;
 }
 
 .identity-field {
-	width: 190px;
-	margin: 0 16px 10px 0;
+	width: 300px;
+	margin: 0 18px 14px 0;
 }
 
 .identity-field label {
@@ -3925,4 +3926,149 @@ body.theme-light .identity-warning {
 	color: #7c2f1c;
 	background: rgba(156, 75, 58, .12);
 	border-left-color: #9c4b3a;
+}
+
+/* What a choice is worth, right under the dropdown that sets it. Fields are
+   top-aligned because these lines run to very different heights -- a racial
+   ability carries the game's own description, a culture carries one number. */
+.identity-effect {
+	font-size: 11px;
+	line-height: 1.5;
+	color: #b9a680;
+	margin-top: 4px;
+}
+
+.identity-ability-name {
+	display: block;
+	color: #e8d5a3;
+	font-size: 12px;
+}
+
+.identity-ability-icon {
+	float: left;
+	width: 28px;
+	height: 28px;
+	margin: 1px 7px 3px 0;
+	border: 1px solid rgba(201, 180, 126, .3);
+	border-radius: 2px;
+	background: rgba(0, 0, 0, .3);
+}
+
+.identity-ability-desc {
+	display: block;
+}
+
+.identity-ability-missing {
+	display: block;
+	clear: both;
+	margin-top: 3px;
+	color: #d3a86e;
+}
+
+.identity-favour,
+.identity-disfavour {
+	display: block;
+}
+
+.identity-favour {
+	color: #9fbe8c;
+}
+
+.identity-disfavour {
+	color: #c99a8c;
+}
+
+.identity-effect-note {
+	display: block;
+	margin-top: 3px;
+	color: #93866f;
+}
+
+/* The totals the game's own sheet will show, once race, culture, class and
+   background have been added to what the save stores. */
+.identity-sheet {
+	margin: 6px 0 12px;
+	padding-top: 10px;
+	border-top: 1px solid rgba(201, 180, 126, .16);
+}
+
+.identity-sheet-head {
+	font-size: 11px;
+	letter-spacing: .06em;
+	text-transform: uppercase;
+	color: #a2937a;
+	margin-bottom: 7px;
+}
+
+.identity-sheet-row {
+	margin-bottom: 6px;
+}
+
+.identity-chip {
+	display: inline-block;
+	vertical-align: top;
+	min-width: 104px;
+	margin: 0 8px 6px 0;
+	padding: 5px 9px 6px;
+	background: rgba(0, 0, 0, .22);
+	border: 1px solid rgba(201, 180, 126, .18);
+	border-radius: 3px;
+}
+
+.identity-chip-name {
+	display: block;
+	font-size: 10px;
+	letter-spacing: .06em;
+	text-transform: uppercase;
+	color: #a2937a;
+}
+
+.identity-chip-total {
+	display: block;
+	font-size: 17px;
+	line-height: 1.2;
+	color: #e8d5a3;
+}
+
+.identity-chip-parts {
+	display: block;
+	font-size: 10px;
+	color: #93866f;
+}
+
+body.theme-light .identity-effect {
+	color: #4a3717;
+}
+
+body.theme-light .identity-ability-name,
+body.theme-light .identity-chip-total {
+	color: #4a2f14;
+}
+
+body.theme-light .identity-ability-missing {
+	color: #7a4a12;
+}
+
+body.theme-light .identity-favour {
+	color: #2f5a24;
+}
+
+body.theme-light .identity-disfavour {
+	color: #7c3a28;
+}
+
+body.theme-light .identity-effect-note,
+body.theme-light .identity-chip-name,
+body.theme-light .identity-chip-parts,
+body.theme-light .identity-sheet-head {
+	color: #5a4a2c;
+}
+
+body.theme-light .identity-chip {
+	background: rgba(0, 0, 0, .04);
+	border-color: rgba(107, 56, 18, .2);
+}
+
+body.theme-light .identity-sheet {
+	border-top-color: rgba(107, 56, 18, .18);
 }

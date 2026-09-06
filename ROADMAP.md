@@ -118,6 +118,40 @@ Subrace is scoped to race (the godlike set is exactly what
 Verified in the game: a companion changed to a Mountain Dwarf Cipher of Rauatai
 reads back exactly that on the character sheet.
 
+**1.3b What each choice does** — *done*
+
+Every dropdown now carries a line saying what it is worth, and the panel ends
+with the totals the game's own sheet will show.
+
+The reason this works at all: none of it is baked in at character creation.
+`GetAttributeScore()` adds `RaceAbilityAdjustment` and
+`CultureAbilityAdjustment` to the stored `BaseX` on every read, and
+`CalculateSkillInternal()` adds `ClassSkillAdjustment` (behind an
+`IsPlayableClass()` guard) and `BackgroundSkillAdjustment` to the rank. All
+four are `static int[,]` fields on `CharacterStats`, copied verbatim into
+`save/IdentityCatalog` — the two column orders differ and neither is the order
+the sheet shows, so reading a row under the wrong one relabels every bonus
+without ever looking wrong.
+
+Two halves are not in the assembly. A subrace's racial ability is one row of
+the game's own `racial` progression table, which `AbilityCatalog` already
+carries, so the Moon Godlike line reads *Silver Tide* with the game's own
+description. Deity and paladin-order dispositions are inspector arrays on the
+`Religion` behaviour attached to InGameGlobal, so `tools/identity-extract`
+pulls them into `itemdata/identity.json` alongside the ±20/40/60% ladder
+`GetCurrentBonusMultiplier()` applies — for the player character alone.
+
+Verified against the game: a 15th-level Moon Godlike Paladin of the Goldpact
+Knights reads 21/10/13/14/12/19 and Stealth 2, Athletics 13, Lore 2,
+Mechanics 0, Survival 7 in both the editor's panel and the character sheet,
+and the sheet's own "Favored Dispositions: Stoic, Rational" matches what the
+Order line predicts.
+
+Turned up on the way: `Restored()` re-derives every `XBonus` and
+`<Skill>Bonus` from the applied status effects on load, so a value written
+straight into one of those fields does not survive a reload. Nothing in the
+panel depends on it, but the Console tab's `Skill` command does — see 3.2.
+
 ### Phase 2 — world and inventory
 
 **2.1 Vendor cleanup** — *re-scoped after measuring; blocked on new save-pipeline
@@ -254,6 +288,13 @@ Assert the invariants already learned before writing: every `InstanceID.Guid`
 equals its own `ObjectID`, no duplicate ObjectIDs, list lengths match counts,
 every `SerializedItemList` GUID resolves. This would have caught the
 item-minting aliasing bug immediately instead of only in-game.
+
+Add to it: **warn about edits the next load will undo.** `Restored()` re-derives
+every `XBonus` and `<Skill>Bonus` from the applied status effects, so the
+Console tab's `Skill` command — which writes `<Skill>Bonus`, faithfully copying
+the in-game console command — produces a change that does not survive a reload.
+Either point it at the skill's stored points instead, or say plainly that it is
+temporary.
 *Effort: low. Risk: none — read-only checks. Recommended early despite the phase.*
 
 **3.3 Save comparison** — diff two saves and show what changed.
@@ -346,7 +387,8 @@ Features first, per the project owner's direction; compatibility afterwards.
    prisoners still read-only
 5b. Vendor cleanup (2.1) — deferred: needs `.lvl` read/write first, and has to
     be a reviewable list rather than a purge (see above)
-6. ~~Culture / race / class (1.3)~~ done
+6. ~~Culture / race / class (1.3)~~ done, with what each choice is
+   worth shown under it (1.3b)
 7. **Grimoire editor (2.3)** ← next, then companion portraits (2.4)
 8. Save validation pass (3.2) — cheap, pull earlier if bugs bite
 9. **Then** compatibility: multi-store detection (4.1), Mac, faster conversion

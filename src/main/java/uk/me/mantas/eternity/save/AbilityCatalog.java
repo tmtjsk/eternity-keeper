@@ -464,6 +464,20 @@ public class AbilityCatalog {
 		return combined;
 	}
 
+	/**
+	 * One of the game's progression tables whole, or an empty map when the
+	 * catalog has no such table. The {@code racial} one is how
+	 * {@link IdentityCatalog} learns which ability a subrace is born with.
+	 */
+	public Map<String, Unlock> progressionTable (final String table) {
+		if (table == null) {
+			return Collections.emptyMap();
+		}
+
+		final Map<String, Unlock> unlocks = progression.get(table.toLowerCase());
+		return unlocks == null ? Collections.emptyMap() : unlocks;
+	}
+
 	public boolean hasProgressionTable (final String table) {
 		return table != null && progression.containsKey(table.toLowerCase());
 	}

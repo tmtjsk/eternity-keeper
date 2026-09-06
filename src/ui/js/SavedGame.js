@@ -324,19 +324,324 @@ var SavedGame = function () {
 		return warnings;
 	};
 
+	// ---- what each choice is worth ------------------------------------------
+	//
+	// None of this is baked into the save at character creation, which is why
+	// the panel can show it and why editing these dropdowns really does move
+	// the character sheet. CharacterStats.GetAttributeScore() adds
+	// RaceAbilityAdjustment and CultureAbilityAdjustment to the stored BaseX
+	// on every read, and CalculateSkillInternal() adds ClassSkillAdjustment
+	// and BackgroundSkillAdjustment to the skill rank the same way.
+	//
+	// The tables themselves are the same for every save, so they are fetched
+	// once from GetIdentityEffects and kept. The arithmetic stays here rather
+	// than server-side because the numbers have to move as the dropdowns move,
+	// without a round trip.
+
+	var identityEffects = null;
+	var identityEffectsRequested = false;
+	var identityCharacter = null;
+
+	var loadIdentityEffects = () => {
+		if (identityEffectsRequested || !window.getIdentityEffects) {
+			return;
+		}
+
+		identityEffectsRequested = true;
+		window.getIdentityEffects({
+			request: '{}'
+			, onSuccess: response => {
+				identityEffects = JSON.parse(response);
+				if (identityCharacter) {
+					populateIdentity(identityCharacter);
+				}
+			}
+			, onFailure: () => {
+				// Without the tables the panel is still a working editor; it
+				// just cannot say what the choices are worth.
+				identityEffects = null;
+			}
+		});
+	};
+
+	// The order the game's own sheet uses, which is neither enum's declared
+	// order. The bonus fields are the persisted XBonus the game adds on top.
+	var SHEET_ATTRIBUTES = [
+		{name: 'Might', stat: 'BaseMight', bonus: 'MightBonus'}
+		, {name: 'Constitution', stat: 'BaseConstitution', bonus: 'ConstitutionBonus'}
+		, {name: 'Dexterity', stat: 'BaseDexterity', bonus: 'DexterityBonus'}
+		, {name: 'Perception', stat: 'BasePerception', bonus: 'PerceptionBonus'}
+		, {name: 'Intellect', stat: 'BaseIntellect', bonus: 'IntellectBonus'}
+		, {name: 'Resolve', stat: 'BaseResolve', bonus: 'ResolveBonus'}
+	];
+
+	var MINUS = '−';
+
+	var signed = value => (value > 0 ? '+' : MINUS) + Math.abs(value);
+
+	var numberFrom = (data, stat) => {
+		var held = data.stats[stat];
+		var value = held === undefined ? 0 : parseInt(held.value, 10);
+		return isNaN(value) ? 0 : value;
+	};
+
+	// One row of an adjustment table, in the order the sheet lists it.
+	var adjustmentText = (table, order) => {
+		if (!table) {
+			return '';
+		}
+
+		return order
+			.filter(name => table[name])
+			.map(name => signed(table[name]) + ' ' + name)
+			.join(', ');
+	};
+
+	var attributeOrder = () => SHEET_ATTRIBUTES.map(attribute => attribute.name);
+	var skillOrder = () => SKILLS.map(skill => skill.label);
+
+	var adjustmentsOf = (group, value, field) => {
+		var block = (identityEffects || {})[group] || {};
+		return (block[value] || {})[field] || null;
+	};
+
+	// Whether this character actually owns an ability, by catalog key. Adding
+	// a subrace does not mint its racial ability: CharacterStats.Restored()
+	// rebuilds m_abilities from whatever ability objects exist, so the object
+	// has to be there.
+	var ownsAbility = (data, key) => {
+		var owners = ((self.state.saveData || {}).abilities || {}).characters || [];
+		var mine = owners.filter(owner => owner.guid === data.GUID);
+		if (mine.length < 1) {
+			return true;
+		}
+
+		return (mine[0].abilities || []).some(ability => ability.key === key);
+	};
+
+	var abilityEffect = (data, value) => {
+		var ability = ((identityEffects || {}).subrace || {})[value];
+		if (!ability) {
+			return null;
+		}
+
+		var line = $('<div>').addClass('identity-effect identity-ability');
+		if (ability.icon) {
+			line.append($('<img>')
+				.addClass('identity-ability-icon')
+				.attr('src', 'data:image/png;base64,' + ability.icon));
+		}
+
+		line.append($('<span>')
+			.addClass('identity-ability-name')
+			.text(ability.name));
+
+		if (ability.description) {
+			line.append($('<span>')
+				.addClass('identity-ability-desc')
+				.text(ability.description));
+		}
+
+		if (!ownsAbility(data, ability.key)) {
+			line.append($('<span>')
+				.addClass('identity-ability-missing')
+				.text('This character does not have it — the game only grants a '
+					+ 'racial ability at creation. Add it in the Abilities tab.'));
+		}
+
+		return line;
+	};
+
+	var devotionEffect = (group, value) => {
+		var devotion = ((identityEffects || {})[group] || {})[value];
+		if (!devotion) {
+			return null;
+		}
+
+		var line = $('<div>').addClass('identity-effect');
+		if (devotion.positive.length < 1 && devotion.negative.length < 1) {
+			return line.text('No dispositions of its own.');
+		}
+
+		var ladder = ((identityEffects || {}).dispositionBonus || {}).positive || [];
+		var most = ladder.length > 0
+			? Math.round(ladder[ladder.length - 1] * 100) : 0;
+
+		line.append($('<span>').addClass('identity-favour')
+			.text('Favours ' + devotion.positive.join(', ')));
+		line.append($('<span>').addClass('identity-disfavour')
+			.text('Disfavours ' + devotion.negative.join(', ')));
+
+		if (most > 0) {
+			line.append($('<span>').addClass('identity-effect-note')
+				.text('Each matching disposition rank shifts ability power by '
+					+ 'up to ' + most + '%, and only for the player character.'));
+		}
+
+		return line;
+	};
+
+	// What goes under one dropdown.
+	var effectFor = (entry, data) => {
+		if (!identityEffects) {
+			return null;
+		}
+
+		var value = statValue(data, entry.stat);
+
+		if (entry.stat === 'CharacterRace' || entry.stat === 'CharacterCulture') {
+			var attributes = adjustmentsOf(
+				entry.stat === 'CharacterRace' ? 'race' : 'culture'
+				, value, 'attributes');
+
+			if (!attributes) {
+				return null;
+			}
+
+			var text = adjustmentText(attributes, attributeOrder());
+			return $('<div>').addClass('identity-effect')
+				.text(text === '' ? 'No attribute adjustment.' : text);
+		}
+
+		if (entry.stat === 'CharacterClass'
+			|| entry.stat === 'CharacterBackground') {
+
+			var skills = adjustmentsOf(
+				entry.stat === 'CharacterClass' ? 'characterClass' : 'background'
+				, value, 'skills');
+
+			if (!skills) {
+				return null;
+			}
+
+			var skillText = adjustmentText(skills, skillOrder());
+			return $('<div>').addClass('identity-effect')
+				.text(skillText === '' ? 'No skill adjustment.' : skillText);
+		}
+
+		if (entry.stat === 'CharacterSubrace') {
+			return abilityEffect(data, value);
+		}
+
+		if (entry.stat === 'Deity') {
+			return devotionEffect('deity', value);
+		}
+
+		if (entry.stat === 'PaladinOrder') {
+			return devotionEffect('order', value);
+		}
+
+		if (entry.stat === 'Gender') {
+			// StringTableManager.GetCharacterName(DisplayName, Gender) is the
+			// only thing that reads it.
+			return $('<div>').addClass('identity-effect')
+				.text('Names and pronouns in text. Nothing on the sheet.');
+		}
+
+		return null;
+	};
+
+	// ---- the totals the game will show ---------------------------------------
+
+	var chip = (name, total, parts) => $('<div>')
+		.addClass('identity-chip')
+		.append($('<span>').addClass('identity-chip-name').text(name))
+		.append($('<span>').addClass('identity-chip-total').text(total))
+		.append($('<span>').addClass('identity-chip-parts').text(parts.join(' ')));
+
+	var populateSheet = data => {
+		var sheet = self.html.identitySheet.empty();
+		if (!identityEffects) {
+			return;
+		}
+
+		var fromRace = adjustmentsOf(
+			'race', statValue(data, 'CharacterRace'), 'attributes') || {};
+		var fromCulture = adjustmentsOf(
+			'culture', statValue(data, 'CharacterCulture'), 'attributes') || {};
+		var fromClass = adjustmentsOf(
+			'characterClass', statValue(data, 'CharacterClass'), 'skills') || {};
+		var fromBackground = adjustmentsOf(
+			'background', statValue(data, 'CharacterBackground'), 'skills') || {};
+
+		var attributeRow = $('<div>').addClass('identity-sheet-row');
+		var haveAttributes = false;
+
+		SHEET_ATTRIBUTES.forEach(attribute => {
+			if (data.stats[attribute.stat] === undefined) {
+				return;
+			}
+
+			haveAttributes = true;
+			var base = numberFrom(data, attribute.stat);
+			var bonus = numberFrom(data, attribute.bonus);
+			var race = fromRace[attribute.name] || 0;
+			var culture = fromCulture[attribute.name] || 0;
+
+			// GetAttributeScore() floors the result at 1.
+			var total = Math.max(1, base + bonus + race + culture);
+			var parts = [base + ' base'];
+			if (race) parts.push(signed(race) + ' race');
+			if (culture) parts.push(signed(culture) + ' culture');
+			if (bonus) parts.push(signed(bonus) + ' bonus');
+
+			attributeRow.append(chip(attribute.name, total, parts));
+		});
+
+		var skillRow = $('<div>').addClass('identity-sheet-row');
+		var haveSkills = false;
+
+		SKILLS.forEach(skill => {
+			if (data.stats[skill.stat] === undefined) {
+				return;
+			}
+
+			haveSkills = true;
+			var rank = rankForPoints(numberFrom(data, skill.stat));
+			var bonus = numberFrom(data, skill.label + 'Bonus');
+			var fromTheClass = fromClass[skill.label] || 0;
+			var fromTheBackground = fromBackground[skill.label] || 0;
+
+			var total = rank + bonus + fromTheClass + fromTheBackground;
+			var parts = ['rank ' + rank];
+			if (fromTheClass) parts.push(signed(fromTheClass) + ' class');
+			if (fromTheBackground) {
+				parts.push(signed(fromTheBackground) + ' background');
+			}
+
+			if (bonus) parts.push(signed(bonus) + ' bonus');
+
+			skillRow.append(chip(skill.label, total, parts));
+		});
+
+		if (!haveAttributes && !haveSkills) {
+			return;
+		}
+
+		sheet.append($('<div>')
+			.addClass('identity-sheet-head')
+			.text('On the character sheet'));
+
+		if (haveAttributes) sheet.append(attributeRow);
+		if (haveSkills) sheet.append(skillRow);
+	};
+
 	var populateIdentity = data => {
 		var grid = self.html.identityGrid.empty();
 		var note = self.html.identityNote.empty();
+		identityCharacter = data;
 
 		// A companion the game deleted carries no stats to edit.
 		if (data.resurrectable || !data.stats
 			|| data.stats.CharacterRace === undefined) {
 
+			self.html.identitySheet.empty();
 			self.html.identityPanel.hide();
 			return;
 		}
 
 		self.html.identityPanel.show();
+		loadIdentityEffects();
 		var characterClass = statValue(data, 'CharacterClass');
 
 		IDENTITY.forEach(entry => {
@@ -386,11 +691,21 @@ var SavedGame = function () {
 				populateIdentity(data);
 			});
 
-			grid.append($('<div>')
+			var field = $('<div>')
 				.addClass('identity-field')
 				.append($('<label>').text(entry.label))
-				.append(select));
+				.append(select);
+
+			// What this choice is worth, right under the dropdown that sets it.
+			var effect = effectFor(entry, data);
+			if (effect) {
+				field.append(effect);
+			}
+
+			grid.append(field);
 		});
+
+		populateSheet(data);
 
 		identityWarnings(data).forEach(text =>
 			note.append($('<div>').addClass('identity-warning').text(text)));

@@ -112,6 +112,11 @@ public class JSHandlers {
 				new UpdateAbilities());
 		cefClient.addMessageRouter(updateAbilitiesRouter);
 
+		final CefMessageRouter identityEffectsRouter = CefMessageRouter.create(
+				new CefMessageRouterConfig("getIdentityEffects", "getIdentityEffectsCancel"),
+				new GetIdentityEffects());
+		cefClient.addMessageRouter(identityEffectsRouter);
+
 		final CefMessageRouter updateStrongholdRouter = CefMessageRouter.create(
 				new CefMessageRouterConfig("updateStronghold", "updateStrongholdCancel"),
 				new UpdateStronghold());
