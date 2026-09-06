@@ -125,6 +125,10 @@ var ConsoleTab = function () {
 		['Might', 'Constitution', 'Dexterity', 'Perception', 'Intellect', 'Resolve'];
 	var skillNames = ['Stealth', 'Athletics', 'Lore', 'Mechanics', 'Survival', 'Crafting'];
 
+	// CharacterStats.GetPointsForSkillLevel caps a skill at rank 20, and
+	// rank N costs N(N+1)/2 points -- which is what the save stores.
+	var MAX_SKILL_RANK = 20;
+
 	// Experience needed to reach a level: 1000 * L * (L - 1) / 2.
 	var xpForLevel = level => 1000 * level * (level - 1) / 2;
 
@@ -218,19 +222,36 @@ var ConsoleTab = function () {
 			}
 		}
 
+		// The in-game command writes <Skill>Bonus, and that is no use in a
+		// save: CharacterStats.Restored() re-derives every <Skill>Bonus from
+		// the applied status effects on load, so the edit is undone before
+		// the player ever sees it. The stored points are what nothing
+		// recomputes, so this sets a rank the way the Skills panel does.
 		, skill: {
-			args: '<player|name> <skill> <score>'
-			, help: 'Set a skill bonus (what the in-game Skill command does).'
+			args: '<player|name> <skill> <rank>'
+			, help: 'Set a skill rank. Writes the stored points rather than the '
+				+ 'bonus the in-game command uses, which the game recomputes '
+				+ 'on load.'
 			, run: args => {
 				var target = findTarget(args[0]);
 				var skill = resolveName(args[1], skillNames);
-				var score = intArg(args[2]);
-				if (!target || !skill || score === undefined) {
-					return print('Usage: Skill <player|name> <skill> <score>', 'error');
+				var rank = intArg(args[2]);
+				if (!target || !skill || rank === undefined
+					|| rank < 0 || rank > MAX_SKILL_RANK) {
+
+					return print('Usage: Skill <player|name> <skill> <rank '
+						+ '0-' + MAX_SKILL_RANK + '>', 'error');
 				}
-				setNumericStat(target, skill + 'Bonus', score);
+
+				var points = rank * (rank + 1) / 2;
+				if (!setNumericStat(target, skill + 'Skill', points)) {
+					return print(target.name + ' has no ' + skill + ' skill.'
+						, 'error');
+				}
+
 				markDirty();
-				print(target.name + '\'s ' + skill + ' bonus is now ' + score + '.', 'ok');
+				print(target.name + '\'s ' + skill + ' is now rank ' + rank
+					+ ' (' + points + ' pts).', 'ok');
 			}
 		}
 

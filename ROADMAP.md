@@ -150,7 +150,9 @@ Order line predicts.
 Turned up on the way: `Restored()` re-derives every `XBonus` and
 `<Skill>Bonus` from the applied status effects on load, so a value written
 straight into one of those fields does not survive a reload. Nothing in the
-panel depends on it, but the Console tab's `Skill` command does — see 3.2.
+panel depends on it, but the Console tab's `Skill` command did — it wrote
+`<Skill>Bonus` exactly as the in-game command does, which is right for a live
+console and useless in a save. It now sets the stored points for a rank.
 
 ### Phase 2 — world and inventory
 
@@ -289,12 +291,12 @@ equals its own `ObjectID`, no duplicate ObjectIDs, list lengths match counts,
 every `SerializedItemList` GUID resolves. This would have caught the
 item-minting aliasing bug immediately instead of only in-game.
 
-Add to it: **warn about edits the next load will undo.** `Restored()` re-derives
-every `XBonus` and `<Skill>Bonus` from the applied status effects, so the
-Console tab's `Skill` command — which writes `<Skill>Bonus`, faithfully copying
-the in-game console command — produces a change that does not survive a reload.
-Either point it at the skill's stored points instead, or say plainly that it is
-temporary.
+Related, and already fixed: `Restored()` re-derives every `XBonus` and
+`<Skill>Bonus` from the applied status effects, so the Console tab's `Skill`
+command — which wrote `<Skill>Bonus`, faithfully copying the in-game console
+command — produced a change no load would keep. It now sets the skill's stored
+points for a rank, the way the Skills panel does. Worth a systematic look for
+other fields with the same shape.
 *Effort: low. Risk: none — read-only checks. Recommended early despite the phase.*
 
 **3.3 Save comparison** — diff two saves and show what changed.
