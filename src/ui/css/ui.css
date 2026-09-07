@@ -4072,3 +4072,385 @@ body.theme-light .identity-chip {
 body.theme-light .identity-sheet {
 	border-top-color: rgba(107, 56, 18, .18);
 }
+
+/* ---- Grimoire view ---------------------------------------------------------
+   Eight chapters of four slots, the way the game's own grimoire is laid out.
+   No CSS grid and no flexbox gap: this Chromium is Chrome 45 and understands
+   neither, and both fail silently. */
+
+.grimoire-view {
+	margin: 0;
+	padding: 14px 18px 30px;
+}
+
+.grm-unavailable {
+	max-width: 560px;
+	margin: 60px auto;
+	padding: 26px 30px 30px;
+	text-align: center;
+	background: rgba(0, 0, 0, .18);
+	border: 1px solid rgba(201, 180, 126, .22);
+	border-radius: 3px;
+}
+
+.grm-unavailable-mark {
+	font-size: 34px;
+	color: #8d7d5f;
+	margin-bottom: 10px;
+}
+
+.grm-unavailable h3 {
+	font-size: 19px;
+	color: #e8d5a3;
+	margin: 0 0 12px;
+}
+
+.grm-unavailable p {
+	font-size: 13px;
+	line-height: 1.6;
+	color: #b9a680;
+}
+
+.grm-main {
+	display: flex;
+	align-items: flex-start;
+}
+
+.grm-books {
+	width: 230px;
+	margin-right: 20px;
+	flex: 0 0 auto;
+}
+
+/* A real mid-game save holds every grimoire ever looted, so the rail scrolls
+   rather than running off the bottom of the view. */
+.grm-book-list {
+	max-height: 620px;
+	overflow-y: auto;
+	padding-right: 4px;
+}
+
+.grm-book-held {
+	color: #c9b47e;
+}
+
+body.theme-light .grm-book-held {
+	color: #6b3812;
+}
+
+.grm-books-head,
+.grm-browse-head {
+	font-size: 11px;
+	letter-spacing: .06em;
+	text-transform: uppercase;
+	color: #a2937a;
+	margin-bottom: 8px;
+}
+
+.grm-book {
+	padding: 8px 10px 9px;
+	margin-bottom: 6px;
+	background: rgba(0, 0, 0, .2);
+	border: 1px solid rgba(201, 180, 126, .16);
+	border-left-width: 3px;
+	border-radius: 2px;
+	cursor: pointer;
+}
+
+.grm-book:hover {
+	border-color: rgba(201, 180, 126, .34);
+}
+
+.grm-book-selected {
+	background: rgba(201, 180, 126, .1);
+	border-left-color: #c9b47e;
+}
+
+.grm-book-name {
+	font-size: 13px;
+	color: #e8d5a3;
+}
+
+.grm-book-where,
+.grm-book-count {
+	font-size: 11px;
+	color: #93866f;
+}
+
+.grm-book-body {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.grm-head {
+	padding-bottom: 9px;
+	margin-bottom: 10px;
+	border-bottom: 1px solid rgba(201, 180, 126, .2);
+}
+
+.grm-title {
+	font-size: 17px;
+	color: #e8d5a3;
+}
+
+.grm-apply,
+.grm-revert {
+	float: right;
+	margin-left: 8px;
+}
+
+.grm-note {
+	font-size: 11px;
+	line-height: 1.5;
+	color: #a2937a;
+	margin-bottom: 14px;
+}
+
+.grm-chapter {
+	margin-bottom: 10px;
+}
+
+.grm-chapter-head {
+	padding-bottom: 3px;
+	margin-bottom: 5px;
+	border-bottom: 1px solid rgba(201, 180, 126, .12);
+}
+
+.grm-chapter-level {
+	font-size: 11px;
+	letter-spacing: .06em;
+	text-transform: uppercase;
+	color: #c9b47e;
+}
+
+.grm-chapter-count {
+	float: right;
+	font-size: 11px;
+	color: #93866f;
+}
+
+.grm-slots {
+	display: flex;
+	flex-wrap: wrap;
+}
+
+.grm-spell {
+	width: 24%;
+	min-width: 170px;
+	margin: 0 1% 5px 0;
+	padding: 5px 7px;
+	background: rgba(0, 0, 0, .22);
+	border: 1px solid rgba(201, 180, 126, .18);
+	border-radius: 2px;
+	overflow: hidden;
+}
+
+.grm-spell-empty {
+	background: transparent;
+	border-style: dashed;
+	border-color: rgba(201, 180, 126, .12);
+	height: 38px;
+}
+
+.grm-spell-icon {
+	float: left;
+	width: 26px;
+	height: 26px;
+	margin-right: 7px;
+	border: 1px solid rgba(201, 180, 126, .28);
+	border-radius: 2px;
+	background: rgba(0, 0, 0, .35);
+}
+
+.grm-spell-icon-empty {
+	display: inline-block;
+	line-height: 26px;
+	text-align: center;
+	font-size: 12px;
+	color: #a2937a;
+}
+
+.grm-spell-name {
+	display: block;
+	overflow: hidden;
+	font-size: 12px;
+	line-height: 1.35;
+	color: #ddc99a;
+	padding-top: 2px;
+}
+
+.grm-spell-remove {
+	float: right;
+	width: 20px;
+	height: 20px;
+	padding: 0;
+	line-height: 18px;
+	font-size: 15px;
+	color: #c99a8c;
+	background: transparent;
+	border: 1px solid rgba(201, 180, 126, .2);
+	border-radius: 2px;
+}
+
+.grm-spell-remove:hover {
+	color: #e3b8b8;
+	border-color: #9c4b3a;
+}
+
+/* ---- the spell browser ---------------------------------------------------- */
+
+.grm-browse-panel {
+	margin-top: 18px;
+	padding-top: 12px;
+	border-top: 1px solid rgba(201, 180, 126, .2);
+}
+
+.grm-browse-subtitle {
+	display: block;
+	margin-top: 3px;
+	text-transform: none;
+	letter-spacing: 0;
+	font-size: 11px;
+	color: #93866f;
+}
+
+.grm-search {
+	max-width: 320px;
+}
+
+.grm-browse {
+	max-height: 320px;
+	overflow-y: auto;
+}
+
+.grm-browse-row {
+	padding: 5px 8px;
+	border-bottom: 1px solid rgba(201, 180, 126, .1);
+	overflow: hidden;
+}
+
+.grm-browse-name {
+	display: inline-block;
+	min-width: 240px;
+	font-size: 13px;
+	color: #ddc99a;
+	line-height: 28px;
+}
+
+.grm-browse-level {
+	display: inline-block;
+	min-width: 80px;
+	font-size: 11px;
+	color: #93866f;
+}
+
+.grm-browse-empty {
+	padding: 12px 4px;
+	font-size: 12px;
+	color: #93866f;
+}
+
+.grm-btn {
+	padding: 3px 12px;
+	font-size: 12px;
+	color: #e8d5a3;
+	background: rgba(0, 0, 0, .3);
+	border: 1px solid rgba(201, 180, 126, .3);
+	border-radius: 2px;
+}
+
+.grm-btn:hover:enabled {
+	border-color: #c9b47e;
+}
+
+.grm-btn:disabled {
+	color: #7c7160;
+	border-color: rgba(201, 180, 126, .14);
+}
+
+.grm-btn-add {
+	float: right;
+	margin-top: 2px;
+}
+
+.grm-more {
+	margin-top: 8px;
+}
+
+.grm-status {
+	margin-top: 12px;
+	font-size: 12px;
+	color: #c9b47e;
+}
+
+body.theme-light .grm-unavailable {
+	background: rgba(0, 0, 0, .04);
+	border-color: rgba(107, 56, 18, .25);
+}
+
+body.theme-light .grm-unavailable h3,
+body.theme-light .grm-title,
+body.theme-light .grm-book-name {
+	color: #4a2f14;
+}
+
+body.theme-light .grm-unavailable p,
+body.theme-light .grm-note,
+body.theme-light .grm-books-head,
+body.theme-light .grm-browse-head,
+body.theme-light .grm-book-where,
+body.theme-light .grm-book-count,
+body.theme-light .grm-browse-level,
+body.theme-light .grm-browse-empty,
+body.theme-light .grm-browse-subtitle,
+body.theme-light .grm-chapter-count,
+body.theme-light .grm-spell-icon-empty {
+	color: #5a4a2c;
+}
+
+body.theme-light .grm-book,
+body.theme-light .grm-spell,
+body.theme-light .grm-btn {
+	background: rgba(0, 0, 0, .04);
+	border-color: rgba(107, 56, 18, .2);
+}
+
+body.theme-light .grm-spell-empty {
+	background: transparent;
+	border-color: rgba(107, 56, 18, .16);
+}
+
+body.theme-light .grm-book-selected {
+	background: rgba(107, 56, 18, .09);
+	border-left-color: #6b3812;
+}
+
+body.theme-light .grm-chapter-level,
+body.theme-light .grm-status {
+	color: #6b3812;
+}
+
+body.theme-light .grm-spell-name,
+body.theme-light .grm-browse-name,
+body.theme-light .grm-btn {
+	color: #3c2a12;
+}
+
+body.theme-light .grm-btn:disabled {
+	color: #8a7a5c;
+}
+
+body.theme-light .grm-spell-remove {
+	color: #7c2f1c;
+	border-color: rgba(107, 56, 18, .2);
+}
+
+/* The fallback initial sits on the icon square, and that square keeps a dark
+   ground in dark mode. Under a light theme a dark letter on it measures 2.9:1,
+   so the square lightens with the theme rather than the letter. This rule has
+   to come after the grouped colour above -- equal specificity, later wins. */
+body.theme-light .grm-spell-icon-empty {
+	color: #3c2a12;
+	background: rgba(0, 0, 0, .06);
+	border-color: rgba(107, 56, 18, .22);
+}

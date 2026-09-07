@@ -68,6 +68,7 @@ public class BrowseAbilities extends CefMessageRouterHandlerAdapter {
 		final String search;
 		final String kind;
 		final String characterClass;
+		final String spellClass;
 		final String companion;
 		final String subrace;
 		final boolean isPlayer;
@@ -81,6 +82,7 @@ public class BrowseAbilities extends CefMessageRouterHandlerAdapter {
 			search = json.optString("search", "").toLowerCase().trim();
 			kind = json.optString("kind", "");
 			characterClass = json.optString("characterClass", "");
+			spellClass = json.optString("spellClass", "");
 			companion = json.optString("progressionTable", "");
 			subrace = json.optString("subrace", "");
 			isPlayer = json.optBoolean("isPlayer", false);
@@ -128,8 +130,18 @@ public class BrowseAbilities extends CefMessageRouterHandlerAdapter {
 			anyClass ? null
 				: catalog.unlocksFor(characterClass, companion, subrace, isPlayer);
 
-		final List<Map.Entry<String, AbilityCatalog.Entry>> matches =
+		List<Map.Entry<String, AbilityCatalog.Entry>> matches =
 			catalog.search(search, kind, allowed);
+
+		// Only wizards cast out of a grimoire, and the catalog records
+		// which class a spell belongs to, so the grimoire editor pages
+		// the wizard list rather than filtering a mixed one client-side
+		// and leaving the pages ragged.
+		if (!spellClass.isEmpty()) {
+			matches = matches.stream()
+				.filter(m -> spellClass.equalsIgnoreCase(m.getValue().characterClass))
+				.collect(java.util.stream.Collectors.toList());
+		}
 
 		final JSONArray abilities = new JSONArray();
 		for (int i = offset; i < matches.size() && abilities.length() < limit; i++) {

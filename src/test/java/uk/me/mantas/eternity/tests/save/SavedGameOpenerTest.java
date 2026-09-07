@@ -273,6 +273,68 @@ public class SavedGameOpenerTest extends TestHarness {
 	}
 
 	@Test
+	public void theOpenerListsEveryGrimoireAndWhatItHolds ()
+		throws URISyntaxException, IOException {
+
+		// A grimoire is an item, so its spells hang off the item's own packet
+		// rather than off any character -- one in the stash is as real as one
+		// being carried. What it holds is SerializedSpellNames, a flat list of
+		// spell prefab names; SerializedSpells is object references and comes
+		// back all-null, so it is not what the editor reads.
+		final File resources = new File(getClass().getResource("/").toURI());
+		final CefQueryCallback mockCallback = mock(CefQueryCallback.class);
+		final Settings mockSettings = mockSettings();
+		final JSONObject mockJSON = mock(JSONObject.class);
+		mockSettings.json = mockJSON;
+		when(mockJSON.getString("gameLocation")).thenReturn(
+			new File(resources, "SavedGameOpenerTest").getAbsolutePath());
+
+		new SavedGameOpener(
+			new File(resources, "GrimoireManagerTest").getAbsolutePath()
+			, mockCallback).run();
+
+		final ArgumentCaptor<String> response = ArgumentCaptor.forClass(String.class);
+		verify(mockCallback).success(response.capture());
+
+		final JSONArray grimoires =
+			new JSONObject(response.getValue()).getJSONArray("grimoires");
+
+		assertEquals(1, grimoires.length());
+
+		final JSONObject grimoire = grimoires.getJSONObject(0);
+		assertEquals("11111111-2222-3333-4444-555555555555", grimoire.getString("guid"));
+		assertEquals("Aloth_Grimoire", grimoire.getString("prefab"));
+		assertEquals("Player_Elwyn", grimoire.getString("holder"));
+
+		final JSONArray spells = grimoire.getJSONArray("spells");
+		assertEquals(30, spells.length());
+		assertEquals("Chill_Fog", spells.getJSONObject(0).getString("prefab"));
+
+		// The chapter a spell files under is its own SpellLevel, which is on
+		// the ability catalog rather than in the save.
+		assertTrue(spells.getJSONObject(0).has("spellLevel"));
+	}
+
+	@Test
+	public void aSaveWithNoGrimoireSaysSo () throws URISyntaxException, IOException {
+		final File resources = new File(getClass().getResource("/").toURI());
+		final CefQueryCallback mockCallback = mock(CefQueryCallback.class);
+		final Settings mockSettings = mockSettings();
+		final JSONObject mockJSON = mock(JSONObject.class);
+		mockSettings.json = mockJSON;
+		when(mockJSON.getString("gameLocation")).thenReturn(
+			new File(resources, "SavedGameOpenerTest").getAbsolutePath());
+
+		new SavedGameOpener(resources.getAbsolutePath(), mockCallback).run();
+
+		final ArgumentCaptor<String> response = ArgumentCaptor.forClass(String.class);
+		verify(mockCallback).success(response.capture());
+
+		assertEquals(0
+			, new JSONObject(response.getValue()).getJSONArray("grimoires").length());
+	}
+
+	@Test
 	public void theOpenerSaysWhetherTheStrongholdIsEvenAvailable ()
 		throws URISyntaxException, IOException {
 

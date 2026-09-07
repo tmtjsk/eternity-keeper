@@ -112,6 +112,11 @@ public class JSHandlers {
 				new UpdateAbilities());
 		cefClient.addMessageRouter(updateAbilitiesRouter);
 
+		final CefMessageRouter updateGrimoiresRouter = CefMessageRouter.create(
+				new CefMessageRouterConfig("updateGrimoires", "updateGrimoiresCancel"),
+				new UpdateGrimoires());
+		cefClient.addMessageRouter(updateGrimoiresRouter);
+
 		final CefMessageRouter identityEffectsRouter = CefMessageRouter.create(
 				new CefMessageRouterConfig("getIdentityEffects", "getIdentityEffectsCancel"),
 				new GetIdentityEffects());

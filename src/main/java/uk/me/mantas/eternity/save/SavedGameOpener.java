@@ -94,8 +94,10 @@ public class SavedGameOpener implements Runnable {
 		final List<JSONObject> deadCompanions = extractDeadCompanions(gameObjects, characters);
 		final JSONObject inventory = extractInventory(gameObjects, characters);
 		final JSONObject abilities = extractAbilities(gameObjects, characters);
+		final JSONArray grimoires = extractGrimoires(gameObjects);
 
-		sendJSON(currency, globals, characters, deadCompanions, inventory, abilities);
+		sendJSON(currency, globals, characters, deadCompanions, inventory, abilities
+			, grimoires);
 	}
 
 	// Companions who died in-game have no mobile object left in the save —
@@ -412,6 +414,94 @@ public class SavedGameOpener implements Runnable {
 		}
 
 		return abilities;
+	}
+
+	/**
+	 * Every grimoire in the save and what it holds.
+	 *
+	 * <p>A grimoire is an item and {@code Grimoire.Find()} reads the component
+	 * off whatever sits in the wearer's Grimoire slot, so the spells belong to
+	 * the item rather than to any character — one in the stash is as real as
+	 * one being carried, and it keeps its spells when it changes hands.
+	 *
+	 * <p>Only {@code SerializedSpellNames} is read. The class also declares
+	 * {@code SerializedSpells}, but that is a {@code SpellChapter[8]} of object
+	 * references and every chapter comes back all-null; the names setter is
+	 * what rebuilds the chapters on load.
+	 *
+	 * <p>Display name and icon are deliberately not repeated here: the item is
+	 * already in the inventory payload with both, keyed by this same GUID.
+	 */
+	private JSONArray extractGrimoires (final List<Property> gameObjects) {
+		final JSONArray grimoires = new JSONArray();
+		final AbilityCatalog catalog = AbilityCatalog.getInstance();
+
+		for (final Property property : gameObjects) {
+			final ObjectPersistencePacket packet = unwrapPacket(property);
+			if (packet == null || packet.ComponentPackets == null) {
+				continue;
+			}
+
+			final Optional<ComponentPersistencePacket> component =
+				findComponent(packet.ComponentPackets, "Grimoire");
+
+			if (!component.isPresent()) {
+				continue;
+			}
+
+			final JSONObject grimoire = new JSONObject();
+			grimoire.put("guid", packet.ObjectID);
+			grimoire.put("prefab", packet.ObjectName == null
+				? "" : packet.ObjectName.replace("(Clone)", "").trim());
+
+			// The ObjectName of whoever carries it, which is how the save
+			// records ownership for every item.
+			grimoire.put("holder", packet.Parent == null ? "" : packet.Parent);
+
+			final JSONArray spells = new JSONArray();
+			final Object names = component.get().Variables.get("SerializedSpellNames");
+			if (names instanceof CSharpCollection) {
+				final Iterator iterator = ((CSharpCollection) names).iterator();
+				while (iterator.hasNext()) {
+					final Object name = iterator.next();
+					if (name == null) {
+						continue;
+					}
+
+					spells.put(spellToJSON(catalog, String.valueOf(name)));
+				}
+			}
+
+			grimoire.put("spells", spells);
+			grimoires.put(grimoire);
+		}
+
+		return grimoires;
+	}
+
+	/**
+	 * One entry of a grimoire's spell list. The save holds nothing but the
+	 * prefab name; the level that decides its chapter, and the name a player
+	 * would recognise, come from the ability catalog.
+	 */
+	private JSONObject spellToJSON (final AbilityCatalog catalog, final String prefab) {
+		final JSONObject spell = new JSONObject();
+		spell.put("prefab", prefab);
+		spell.put("key", AbilityCatalog.keyOf(prefab));
+
+		final Optional<AbilityCatalog.Entry> entry = catalog.lookup(prefab);
+		if (!entry.isPresent()) {
+			spell.put("displayName", prettifyPrefabName(prefab));
+			spell.put("spellLevel", 0);
+			return spell;
+		}
+
+		spell.put("displayName", entry.get().name.isEmpty()
+			? prettifyPrefabName(prefab) : entry.get().name);
+		spell.put("description", entry.get().description);
+		spell.put("spellLevel", entry.get().spellLevel);
+		spell.put("level", entry.get().level);
+		return spell;
 	}
 
 	private JSONObject abilityToJSON (
@@ -927,7 +1017,8 @@ public class SavedGameOpener implements Runnable {
 	private void sendJSON(
 			final float currency, final Map<String, Property> globals,
 			final Map<String, Property> characters, final List<JSONObject> deadCompanions,
-			final JSONObject inventory, final JSONObject abilities) {
+			final JSONObject inventory, final JSONObject abilities,
+			final JSONArray grimoires) {
 
 		final JSONObject json = new JSONObject();
 		json.put("isWindowStoreSave", false);
@@ -937,6 +1028,7 @@ public class SavedGameOpener implements Runnable {
 		json.put("inventory", inventory);
 		json.put("abilities", abilities);
 		json.put("stronghold", extractStronghold(globals));
+		json.put("grimoires", grimoires);
 
 		final Map<String, JSONObject> jsonGlobals = globals.entrySet().stream()
 				.map(entry -> new SimpleEntry<>(entry.getKey(), globalsToJSON(entry.getValue())))

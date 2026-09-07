@@ -269,9 +269,33 @@ again. Dismissing and releasing are symmetric with demolishing (remove from the
 list, subtract the adjustments) and would be the cheap half.
 *Effort: medium for the remainder. Risk: low for removals, medium for minting.*
 
-**2.3 Grimoire editor**
-Which spells sit in which grimoire. Depends on 1.2's ability catalog.
-*Effort: medium. Risk: medium.*
+**2.3 Grimoire editor** — *done*
+
+A Grimoire tab: eight chapters of four slots, laid out like the game's own
+grimoire, with the 114 wizard spells underneath to add from.
+
+The shape turned out to be the easiest structural list in the save.
+`SerializedSpellNames` is a flat `List<string>` of spell prefab names with no
+cross-references, no UUIDs and no parallel structure — the same shape as
+`m_upgradesBuilt`. The class's other `[Persistent]` member, `SerializedSpells`,
+is a `SpellChapter[8]` of object references and comes back all-null in every
+real save, so it is dead weight.
+
+What needed care was the arithmetic the game does silently: the names setter
+resolves each prefab, files it under its own `SpellLevel`, and drops anything
+past the fourth at that level without a word. `GrimoireManager.plan()` mirrors
+that exactly, so the editor cannot show a spell the next load would discard.
+
+Two things measuring changed about the design. A grimoire is an **item**, so
+the view lists books rather than characters — and a real mid-game save holds
+**32** of them, almost all looted enemy books in the stash, which is why the
+rail sorts equipped first and scrolls. And the inventory payload's containers
+are `{component, maxItems, items}` rather than bare arrays, including the
+stash; treating one as an array left the save view half-drawn.
+
+Verified in the game: a level-8 spell removed from Aloth's grimoire in the
+editor shows as chapters I-VII full and VIII holding one on the game's own
+grimoire screen.
 
 **2.4 Companion portrait picker**
 Currently a manual file-shuffle. The editor already reads the portrait
@@ -391,7 +415,8 @@ Features first, per the project owner's direction; compatibility afterwards.
     be a reviewable list rather than a purge (see above)
 6. ~~Culture / race / class (1.3)~~ done, with what each choice is
    worth shown under it (1.3b)
-7. **Grimoire editor (2.3)** ← next, then companion portraits (2.4)
+7. ~~Grimoire editor (2.3)~~ done
+7b. **Companion portraits (2.4)** ← next
 8. Save validation pass (3.2) — cheap, pull earlier if bugs bite
 9. **Then** compatibility: multi-store detection (4.1), Mac, faster conversion
 10. Delete the auto-updater and bootstrapper whenever convenient

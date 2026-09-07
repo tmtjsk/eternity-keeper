@@ -35,7 +35,7 @@ var SavedGame = function () {
 
 	self.views = Object.freeze({
 		ATTR: 0, RAW: 1, GLOBALS: 2, CONSOLE: 3, INVENTORY: 4, ABILITIES: 5
-		, STRONGHOLD: 6});
+		, STRONGHOLD: 6, GRIMOIRE: 7});
 
 	var defaultState = {
 		saveData: {}
@@ -931,6 +931,9 @@ var SavedGame = function () {
 		Eternity.StrongholdEditor.html.menuStrongholdEditor.off();
 		Eternity.StrongholdEditor.html.menuStrongholdEditor.click(
 			self.switchView.bind(self, self.views.STRONGHOLD));
+		Eternity.GrimoireEditor.html.menuGrimoireEditor.off();
+		Eternity.GrimoireEditor.html.menuGrimoireEditor.click(
+			self.switchView.bind(self, self.views.GRIMOIRE));
 
 		Eternity.CurrencyEditor.render({enabled: true, amount: self.state.saveData.currency});
 		Eternity.Modifications.html.newSaveName.val(
@@ -989,6 +992,13 @@ var SavedGame = function () {
 			case self.views.STRONGHOLD:
 				Eternity.StrongholdEditor.html.strongholdView.show();
 				Eternity.StrongholdEditor.transition({enabled: true});
+				break;
+
+			// A grimoire belongs to the book, not to a character: the spells
+			// live on the item's own packet, so this view lists books.
+			case self.views.GRIMOIRE:
+				Eternity.GrimoireEditor.html.grimoireView.show();
+				Eternity.GrimoireEditor.transition({enabled: true});
 				break;
 
 			default:

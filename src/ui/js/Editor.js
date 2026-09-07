@@ -156,12 +156,14 @@ var Editor = function () {
 			self.InventoryEditor.transition({enabled: false});
 			self.AbilityEditor.transition({enabled: false});
 			self.StrongholdEditor.transition({enabled: false});
+			self.GrimoireEditor.transition({enabled: false});
 			self.ConsoleTab.transition({enabled: false});
 			self.SavedGame.html.menuEditGlobals.off().parent().addClass('disabled');
 			self.SavedGame.html.menuOpenConsole.off().parent().addClass('disabled');
 			self.InventoryEditor.html.menuInventoryEditor.off().parent().addClass('disabled');
 			self.AbilityEditor.html.menuCharacterAbilities.off().parent().addClass('disabled');
 			self.StrongholdEditor.html.menuStrongholdEditor.off().parent().addClass('disabled');
+			self.GrimoireEditor.html.menuGrimoireEditor.off().parent().addClass('disabled');
 			disableMenu('menuCharacter');
 			disableMenu('menuGlobals');
 			self.ImportCharacter.transition({enabled: false});
@@ -176,12 +178,14 @@ var Editor = function () {
 			self.InventoryEditor.html.menuInventoryEditor.parent().removeClass('disabled');
 			self.AbilityEditor.html.menuCharacterAbilities.parent().removeClass('disabled');
 			self.StrongholdEditor.html.menuStrongholdEditor.parent().removeClass('disabled');
+			self.GrimoireEditor.html.menuGrimoireEditor.parent().removeClass('disabled');
 			enableMenu('menuCharacter');
 			enableMenu('menuGlobals');
 			self.DifficultyEditor.transition({enabled: true});
 			self.InventoryEditor.transition({enabled: true});
 			self.AbilityEditor.transition({enabled: true});
 			self.StrongholdEditor.transition({enabled: true});
+			self.GrimoireEditor.transition({enabled: true});
 			self.ConsoleTab.transition({enabled: true});
 			self.ImportCharacter.transition({enabled: true});
 			self.ExportCharacter.transition({enabled: true});
@@ -203,6 +207,7 @@ var Editor = function () {
 	self.InventoryEditor = new InventoryEditor();
 	self.AbilityEditor = new AbilityEditor();
 	self.StrongholdEditor = new StrongholdEditor();
+	self.GrimoireEditor = new GrimoireEditor();
 	self.ConsoleTab = new ConsoleTab();
 	self.Modifications = new Modifications();
 	self.ImportCharacter = new ImportCharacter();
