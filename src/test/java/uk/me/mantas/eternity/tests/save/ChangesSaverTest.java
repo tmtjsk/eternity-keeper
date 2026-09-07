@@ -241,6 +241,97 @@ public class ChangesSaverTest extends TestHarness {
 			&& globalVariablesUpdated);
 	}
 
+	@Test
+	public void aPortraitChangeIsWrittenToThePortraitComponent ()
+		throws NoSuchFieldException
+		, IllegalAccessException
+		, URISyntaxException
+		, IOException {
+
+		// A portrait is two plain strings on the Portrait component --
+		// m_textureLargePath and m_textureSmallPath, relative to
+		// PillarsOfEternity_Data. Nothing derives them on load unless they are
+		// empty, so writing them is the whole edit; they ride the same scalar
+		// path as the character's stats rather than needing a manager.
+		final Environment mockEnvironment = mockEnvironment();
+		final File workingDirectory = EKUtils.createTempDir(PREFIX).get();
+		final File settingsFile = new File(workingDirectory, "settings.json");
+
+		FileUtils.writeStringToFile(settingsFile, "{}");
+		when(mockEnvironment.directory().settingsFile()).thenReturn(settingsFile);
+		when(mockEnvironment.factory().packetDeserializer())
+			.thenReturn(new PacketDeserializerFactory());
+		when(mockEnvironment.factory().sharpSerializer()).thenReturn(new SharpSerializerFactory());
+
+		final Settings mockSettings = mockSettings();
+		final JSONObject mockJSON = mock(JSONObject.class);
+		final CefQueryCallback mockCallback = mock(CefQueryCallback.class);
+
+		final String large = "data/art/gui/portraits/player/male/male_elf_01_lg.png";
+		final String small = "data/art/gui/portraits/player/male/male_elf_01_sm.png";
+
+		String request = "{"
+			+ "\"savedYet\":false"
+			+ ",\"saveName\":\"PORTRAIT\""
+			+ ",\"absolutePath\":\"%s\""
+			+ ",\"saveData\":{"
+				+ "\"characters\":[{"
+					+ "\"GUID\":\"b1a7e809-0000-0000-0000-000000000000\""
+					+ ", \"stats\":{}"
+					+ ", \"portraitPaths\":{"
+						+ "\"m_textureLargePath\":{"
+							+ "\"type\":\"java.lang.String\",\"value\":\"" + large + "\"}"
+						+ ",\"m_textureSmallPath\":{"
+							+ "\"type\":\"java.lang.String\",\"value\":\"" + small + "\"}}}]"
+				+ ", \"currency\":1.0"
+				+ ", \"globals\":{\"Global\":{},\"InGameGlobal\":{}}}}";
+
+		final String absolutePath =
+			new File(
+				getClass().getResource("/ChangesSaverTest/id 0 Encampment.savegame").toURI())
+			.getAbsolutePath();
+
+		mockSettings.json = mockJSON;
+		request = String.format(request, absolutePath.replace("\\", "\\\\"));
+		when(mockEnvironment.directory().working()).thenReturn(workingDirectory);
+		doThrow(new JSONException("")).when(mockJSON).getString(anyString());
+
+		final File savesLocation = EKUtils.createTempDir(PREFIX).get();
+		when(mockJSON.optString(eq("savesLocation"), anyString()))
+			.thenReturn(savesLocation.getAbsolutePath());
+
+		new ChangesSaver(request, mockCallback).run();
+		verify(mockCallback).success("{\"success\":true}");
+
+		final File saveDirectory = new File(workingDirectory, "id 0 Encampment.savegame");
+		final SharpSerializer deserializer = new SharpSerializer(
+			new File(saveDirectory, "MobileObjects.save").getAbsolutePath());
+
+		final Optional<Property> objectCountProp = deserializer.deserialize();
+		assertTrue(objectCountProp.isPresent());
+
+		boolean written = false;
+		final int objectCount = (int) objectCountProp.get().obj;
+		for (int i = 0; i < objectCount; i++) {
+			final Optional<Property> property = deserializer.deserialize();
+			assertTrue(property.isPresent());
+
+			final ObjectPersistencePacket packet = unwrapPacket(property.get());
+			if (!"b1a7e809-0000-0000-0000-000000000000".equals(packet.ObjectID)) {
+				continue;
+			}
+
+			final Map<String, Object> variables =
+				findComponent(packet.ComponentPackets, "Portrait").get().Variables;
+
+			assertEquals(large, variables.get("m_textureLargePath"));
+			assertEquals(small, variables.get("m_textureSmallPath"));
+			written = true;
+		}
+
+		assertTrue("the portrait component was never reached", written);
+	}
+
 	private enum Enum {ONE, TWO}
 
 	@Test

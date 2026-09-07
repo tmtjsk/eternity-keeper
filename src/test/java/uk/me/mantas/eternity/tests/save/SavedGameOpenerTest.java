@@ -273,6 +273,51 @@ public class SavedGameOpenerTest extends TestHarness {
 	}
 
 	@Test
+	public void theOpenerShipsThePortraitPathsAsWellAsThePicture ()
+		throws URISyntaxException, IOException {
+
+		// The picture alone is not enough to build a picker: it cannot say
+		// which portrait is the one in use. The save's own two strings can, and
+		// they are what an edit has to write back.
+		final File resources = new File(getClass().getResource("/").toURI());
+		final CefQueryCallback mockCallback = mock(CefQueryCallback.class);
+		final Settings mockSettings = mockSettings();
+		final JSONObject mockJSON = mock(JSONObject.class);
+		mockSettings.json = mockJSON;
+		when(mockJSON.getString("gameLocation")).thenReturn(
+			new File(resources, "SavedGameOpenerTest").getAbsolutePath());
+
+		new SavedGameOpener(resources.getAbsolutePath(), mockCallback).run();
+
+		final ArgumentCaptor<String> response = ArgumentCaptor.forClass(String.class);
+		verify(mockCallback).success(response.capture());
+
+		final JSONArray characters =
+			new JSONObject(response.getValue()).getJSONArray("characters");
+
+		boolean checked = false;
+		for (int i = 0; i < characters.length(); i++) {
+			final JSONObject character = characters.getJSONObject(i);
+			if (!character.has("portraitPaths")) {
+				continue;
+			}
+
+			final JSONObject paths = character.getJSONObject("portraitPaths");
+			assertTrue(paths.has("m_textureLargePath"));
+			assertTrue(paths.has("m_textureSmallPath"));
+
+			// Shipped in the same {type, value} shape as stats, because that
+			// is the shape ChangesSaver already knows how to write back.
+			assertEquals("java.lang.String"
+				, paths.getJSONObject("m_textureLargePath").getString("type"));
+
+			checked = true;
+		}
+
+		assertTrue("no character carried portraitPaths", checked);
+	}
+
+	@Test
 	public void theOpenerListsEveryGrimoireAndWhatItHolds ()
 		throws URISyntaxException, IOException {
 

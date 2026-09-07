@@ -112,6 +112,11 @@ public class JSHandlers {
 				new UpdateAbilities());
 		cefClient.addMessageRouter(updateAbilitiesRouter);
 
+		final CefMessageRouter browsePortraitsRouter = CefMessageRouter.create(
+				new CefMessageRouterConfig("browsePortraits", "browsePortraitsCancel"),
+				new BrowsePortraits());
+		cefClient.addMessageRouter(browsePortraitsRouter);
+
 		final CefMessageRouter updateGrimoiresRouter = CefMessageRouter.create(
 				new CefMessageRouterConfig("updateGrimoires", "updateGrimoiresCancel"),
 				new UpdateGrimoires());

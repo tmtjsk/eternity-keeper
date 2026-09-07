@@ -357,6 +357,46 @@
 		</div>
 	</div>
 
+	<!-- Picking a portrait. The save stores two paths on the Portrait
+	     component, both relative to PillarsOfEternity_Data, and the editor
+	     lists whatever is actually in that folder -- including portraits the
+	     player dropped in themselves, which the game loads just the same. -->
+	<div class="modal fade" id="portraitDialog" role="dialog" data-bound="PortraitPicker">
+		<div class="modal-dialog portrait-dialog">
+			<div class="modal-content">
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal">
+						<span>&times;</span>
+					</button>
+					<h4 class="modal-title">
+						Choose a portrait
+						<span class="ptr-subject" id="portraitSubject"
+						      data-bound="PortraitPicker"></span>
+					</h4>
+				</div>
+				<div class="modal-body">
+					<div class="ptr-filters" id="portraitFilters"
+					     data-bound="PortraitPicker"></div>
+					<form onsubmit="return false;">
+						<div class="form-group form-group-sm">
+							<div class="input-group">
+								<input type="text" class="form-control icon-left ptr-search"
+								       id="portraitSearch" data-bound="PortraitPicker"
+								       placeholder="Search portraits..." />
+								<span class="icon-left"><i class="fa fa-search"></i></span>
+							</div>
+						</div>
+					</form>
+					<div class="ptr-grid" id="portraitGrid" data-bound="PortraitPicker"></div>
+					<button type="button" class="pm-btn ptr-more" id="portraitMore"
+					        data-bound="PortraitPicker">
+						Show more
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
 	<div class="modal fade" id="difficultyDialog" role="dialog" data-bound="DifficultyEditor">
 		<div class="modal-dialog difficulty-dialog">
 			<div class="modal-content">
@@ -1135,6 +1175,7 @@
 	<script src="js/AbilityEditor.js"></script>
 	<script src="js/StrongholdEditor.js"></script>
 	<script src="js/GrimoireEditor.js"></script>
+	<script src="js/PortraitPicker.js"></script>
 	<script src="js/ConsoleTab.js"></script>
 	<script src="js/Modifications.js"></script>
 	<script src="js/ImportCharacter.js"></script>

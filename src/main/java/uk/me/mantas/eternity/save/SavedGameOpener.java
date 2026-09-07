@@ -1011,6 +1011,13 @@ public class SavedGameOpener implements Runnable {
 		jsonObject.put("portrait", extractPortrait(packet, isCompanion));
 		jsonObject.put("stats", stats.get());
 
+		// The picture alone cannot say which portrait is in use. The save's own
+		// two strings can, and they are what an edit writes back -- shipped in
+		// the same {type, value} shape as stats so ChangesSaver's existing
+		// scalar path handles them without a special case.
+		extractComponentScalars(packet, "Portrait")
+			.ifPresent(paths -> jsonObject.put("portraitPaths", paths));
+
 		return Optional.of(jsonObject);
 	}
 
@@ -1191,7 +1198,14 @@ public class SavedGameOpener implements Runnable {
 	private Optional<Map<String, JSONObject>> extractCharacterStats(
 			final ObjectPersistencePacket packet) {
 
-		return findComponent(packet.ComponentPackets, "CharacterStats")
+		return extractComponentScalars(packet, "CharacterStats");
+	}
+
+	/** Every scalar on one component, in the {type, value} shape the UI edits. */
+	private Optional<Map<String, JSONObject>> extractComponentScalars(
+			final ObjectPersistencePacket packet, final String component) {
+
+		return findComponent(packet.ComponentPackets, component)
 				.map(c -> c.Variables.entrySet().stream()
 						.filter(entry -> isSupportedType(entry.getValue()))
 						.map(entry -> new SimpleEntry<>(entry.getKey(), recordType(entry.getValue())))

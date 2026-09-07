@@ -799,6 +799,14 @@ var SavedGame = function () {
 					.addClass('pm-btn pm-btn-dialog resurrect-btn')
 					.html('<i>&#10094;</i> Resurrect <i>&#10095;</i>')
 					.click(self.resurrect.bind(self, data.GUID)));
+		} else if (data.portraitPaths) {
+			// A character the game deleted has no Portrait component to edit,
+			// so the button only appears where there is something to write.
+			portrait.append(
+				$('<button type="button">')
+					.addClass('pm-btn pm-btn-dialog portrait-btn')
+					.html('<i>&#10094;</i> Change portrait <i>&#10095;</i>')
+					.click(() => Eternity.PortraitPicker.open(data.GUID)));
 		}
 
 		// Synthetic dead-companion entries carry no stats; clear the inputs

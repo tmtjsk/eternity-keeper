@@ -262,6 +262,16 @@ public class ChangesSaver implements Runnable {
 			if (character.getString("GUID").equals(packet.ObjectID)) {
 				updateCharacter(
 						deserializer, (ComplexProperty) property, character.getJSONObject("stats"));
+
+				// A portrait is two plain strings on a different component, so
+				// it rides the same scalar path rather than needing its own
+				// write tier. Absent when the character has no Portrait at all.
+				final JSONObject portraitPaths = character.optJSONObject("portraitPaths");
+				if (portraitPaths != null) {
+					updateComponent(
+							deserializer, (ComplexProperty) property, "Portrait", portraitPaths);
+				}
+
 				break;
 			}
 		}
@@ -327,17 +337,27 @@ public class ChangesSaver implements Runnable {
 	private static void updateCharacter(
 			final PacketDeserializer deserializer, final ComplexProperty root, final JSONObject character) {
 
+		updateComponent(deserializer, root, "CharacterStats", character);
+	}
+
+	/** Writes a set of scalars onto one named component of a game object. */
+	private static void updateComponent(
+			final PacketDeserializer deserializer, final ComplexProperty root,
+			final String component, final JSONObject updates) {
+
 		final Optional<DictionaryProperty> variables = root
 				.<SingleDimensionalArrayProperty>findProperty("ComponentPackets")
-				.flatMap(components -> findSubComponent(components, "CharacterStats"))
-				.flatMap(characterStats -> characterStats.findProperty("Variables"));
+				.flatMap(components -> findSubComponent(components, component))
+				.flatMap(found -> found.findProperty("Variables"));
 
 		if (!variables.isPresent()) {
-			logger.error("Unable to navigate property structure when updating character!%n");
+			logger.error(
+					"Unable to navigate property structure when updating %s!%n", component);
+
 			return;
 		}
 
-		updateVariables(deserializer, variables.get(), character);
+		updateVariables(deserializer, variables.get(), updates);
 	}
 
 	private static void updateVariables(

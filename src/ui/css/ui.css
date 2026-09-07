@@ -708,6 +708,17 @@ span.danger {
 	text-shadow: 0 2px 3px rgba(0, 0, 0, .8);
 }
 
+/* Bootstrap's own "button.close { padding: 0 }" leaves an 11px hit target in
+   every dialog in this file, not just the party one. Matching its specificity
+   here gives them all something clickable; the .pm-close rule below adds the
+   party dialog's own positioning on top of it. */
+.modal button.close {
+	padding: 2px 10px;
+	line-height: 1;
+	min-width: 26px;
+	min-height: 24px;
+}
+
 .pm-close {
 	position: absolute;
 	right: 0;
@@ -4453,4 +4464,107 @@ body.theme-light .grm-spell-icon-empty {
 	color: #3c2a12;
 	background: rgba(0, 0, 0, .06);
 	border-color: rgba(107, 56, 18, .22);
+}
+
+/* ---- Portrait picker -------------------------------------------------------
+   A grid of the party-bar thumbnails (76x96), which is what the save pairs with
+   the large one. Modals keep the dark chrome in both themes, so nothing here
+   gets a light-mode override. */
+
+.portrait-dialog {
+	width: 760px;
+	max-width: 94%;
+}
+
+.ptr-subject {
+	margin-left: 10px;
+	font-size: 13px;
+	color: #a2937a;
+}
+
+.ptr-filters {
+	margin-bottom: 10px;
+}
+
+.ptr-filter {
+	padding: 3px 12px;
+	margin: 0 6px 6px 0;
+	font-size: 12px;
+}
+
+.ptr-filter-on {
+	color: #f0e0b8;
+	border-color: #c9b47e;
+	background: rgba(201, 180, 126, .14);
+}
+
+.ptr-search {
+	max-width: 320px;
+}
+
+/* A fixed box so the dialog does not jump about as a filter or a search
+   narrows the grid down to one tile. */
+.ptr-grid {
+	height: 430px;
+	overflow-y: auto;
+	padding-right: 4px;
+}
+
+.ptr-tile {
+	display: inline-block;
+	vertical-align: top;
+	width: 92px;
+	margin: 0 8px 8px 0;
+	padding: 5px 4px 4px;
+	text-align: center;
+	background: rgba(0, 0, 0, .28);
+	border: 1px solid rgba(201, 180, 126, .18);
+	border-radius: 2px;
+	cursor: pointer;
+}
+
+.ptr-tile:hover {
+	border-color: rgba(201, 180, 126, .5);
+}
+
+/* The one the save currently names. */
+.ptr-tile-on {
+	border-color: #c9b47e;
+	background: rgba(201, 180, 126, .16);
+}
+
+.ptr-image {
+	display: block;
+	width: 76px;
+	height: 96px;
+	margin: 0 auto 4px;
+	background: rgba(0, 0, 0, .4);
+	border: 1px solid rgba(201, 180, 126, .22);
+}
+
+.ptr-name {
+	display: block;
+	font-size: 10px;
+	line-height: 1.3;
+	color: #b9a680;
+	word-wrap: break-word;
+}
+
+.ptr-empty {
+	padding: 24px 6px;
+	font-size: 13px;
+	color: #a2937a;
+}
+
+.ptr-more {
+	margin-top: 6px;
+}
+
+/* The way into the picker. Laid out like the resurrect button that shares the
+   slot -- the portrait itself is a background image with no positioning
+   context, so this sits under it rather than on it. */
+.character .portrait .portrait-btn {
+	display: block;
+	width: 100%;
+	margin: 340px 0 0 -15px;
 }

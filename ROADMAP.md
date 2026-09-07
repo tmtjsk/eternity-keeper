@@ -297,10 +297,38 @@ Verified in the game: a level-8 spell removed from Aloth's grimoire in the
 editor shows as chapters I-VII full and VIII holding one on the game's own
 grimoire screen.
 
-**2.4 Companion portrait picker**
-Currently a manual file-shuffle. The editor already reads the portrait
-directory. Good small win.
-*Effort: low. Risk: low.*
+**2.4 Companion portrait picker** — *done*
+
+A modal off the character view's own portrait: the portraits on the player's
+own install, in a grid of the party-bar thumbnails, filtered by the folders
+the game keeps them in and searchable.
+
+It really is a small win, because a portrait is two plain strings and nothing
+else. `Portrait` has exactly two `[Persistent]` fields — `m_textureLargePath`
+and `m_textureSmallPath`, relative to `PillarsOfEternity_Data` — and
+`Portrait.Start()` loads whatever they name, only deriving a path from
+`CompanionInstanceID` when one is empty. `LoadTexture2DFromPathCallback` reads
+the file straight off disk, which is why custom portraits have always worked
+in this game and why the editor lists the directory rather than a fixed table.
+
+Being scalars, they need no manager and no Apply step: generalising
+`ChangesSaver.updateCharacter` over the component name was enough, and the
+picker's edit is written by Save like any attribute change.
+
+Two things the design turns on. Both halves are always written together — the
+large is the character sheet, the small is the party bar — and a portrait
+whose `_sm` counterpart is missing is not offered at all, because the game
+would load the large one happily and hand the bar a blank white texture. And
+the grid is paged at 40: the shipped game has 118 pairs and the small images
+alone are about 1.9 MB, well past what one JCEF reply carries.
+
+Verified in the game: giving the Watcher the Grieving Mother's portrait shows
+her face in both the party bar and the character sheet, sheet otherwise
+untouched.
+
+Turned up on the way: Bootstrap's own `button.close { padding: 0 }` left an
+11×21 hit target in **every** dialog, not just the party one that had already
+been patched. `.modal button.close` now fixes them all.
 
 ### Phase 3 — deeper save surgery
 
@@ -416,7 +444,7 @@ Features first, per the project owner's direction; compatibility afterwards.
 6. ~~Culture / race / class (1.3)~~ done, with what each choice is
    worth shown under it (1.3b)
 7. ~~Grimoire editor (2.3)~~ done
-7b. **Companion portraits (2.4)** ← next
-8. Save validation pass (3.2) — cheap, pull earlier if bugs bite
+7b. ~~Companion portraits (2.4)~~ done
+8. **Save validation pass (3.2)** ← next
 9. **Then** compatibility: multi-store detection (4.1), Mac, faster conversion
 10. Delete the auto-updater and bootstrapper whenever convenient
