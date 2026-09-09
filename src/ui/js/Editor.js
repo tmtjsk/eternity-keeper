@@ -136,13 +136,12 @@ var Editor = function () {
 		self.state = $.extend({}, defaultState, newState);
 		self.SaveSearch.html.searchContainer.hide();
 		self.SaveSearch.html.saveBlocks.hide();
-		self.SavedGame.html.character.hide();
-		self.SavedGame.html.rawTable.hide();
-		self.SavedGame.html.globalsTable.hide();
-		self.ConsoleTab.html.consoleView.hide();
-		self.InventoryEditor.html.inventoryView.hide();
-		self.AbilityEditor.html.abilitiesView.hide();
-		self.StrongholdEditor.html.strongholdView.hide();
+		// Every editor view carries class "view", so hide them by that rather
+		// than by a list of ids. The list was hand-maintained and went stale:
+		// the grimoire view was missing from it and stayed on screen behind the
+		// save-loading panel, on a cold boot and every time you went back to it.
+		// SavedGame.render already switches views this way.
+		$('.view').hide();
 		self.SavedGame.html.characterList.empty();
 
 		// The collapse handle only makes sense next to an actual character list.

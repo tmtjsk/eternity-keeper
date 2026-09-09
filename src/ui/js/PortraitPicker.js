@@ -250,6 +250,10 @@ var PortraitPicker = function () {
 		self.state = $.extend({}, defaultState, newState);
 
 		if (!self.state.enabled) {
+			// A modal is not a .view, so nothing else hides it. Leaving a save
+			// with the picker open would otherwise leave it sitting over the
+			// save list -- the same leak the view list used to have.
+			self.close();
 			character = '';
 			portraits = [];
 			category = '';
