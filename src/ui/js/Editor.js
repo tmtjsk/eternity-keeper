@@ -141,7 +141,9 @@ var Editor = function () {
 		// the grimoire view was missing from it and stayed on screen behind the
 		// save-loading panel, on a cold boot and every time you went back to it.
 		// SavedGame.render already switches views this way.
-		$('.view').hide();
+		// .save-only is the save screen's own chrome -- the validation strip --
+		// which belongs to no single tab but must not outlive the save either.
+		$('.view, .save-only').hide();
 		self.SavedGame.html.characterList.empty();
 
 		// The collapse handle only makes sense next to an actual character list.

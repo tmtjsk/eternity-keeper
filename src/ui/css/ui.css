@@ -4568,3 +4568,62 @@ body.theme-light .grm-spell-icon-empty {
 	width: 100%;
 	margin: 340px 0 0 -15px;
 }
+
+/* ---- Save validation strip -------------------------------------------------
+   Only ever seen when a check actually fires, which on an untouched save it
+   never does. Loud enough not to be missed, since what it reports is the kind
+   of damage the game itself reports as nothing at all. */
+
+.save-warning {
+	margin: 0 15px 14px;
+	width: calc(100% - 30px);
+	padding: 11px 14px 12px;
+	background: rgba(120, 40, 20, .22);
+	border: 1px solid #9c4b3a;
+	border-left-width: 3px;
+	border-radius: 3px;
+}
+
+.save-warning-head {
+	font-size: 14px;
+	color: #e8c0b4;
+	margin-bottom: 7px;
+}
+
+.save-warning-row {
+	font-size: 12px;
+	line-height: 1.55;
+	margin-bottom: 3px;
+}
+
+.save-warning-kind {
+	display: inline-block;
+	min-width: 300px;
+	color: #e3b8b8;
+}
+
+.save-warning-detail {
+	color: #b9a680;
+}
+
+.save-warning-note {
+	margin-top: 8px;
+	font-size: 11px;
+	line-height: 1.55;
+	color: #a2937a;
+}
+
+body.theme-light .save-warning {
+	background: rgba(156, 75, 58, .12);
+	border-color: #9c4b3a;
+}
+
+body.theme-light .save-warning-head,
+body.theme-light .save-warning-kind {
+	color: #7c2f1c;
+}
+
+body.theme-light .save-warning-detail,
+body.theme-light .save-warning-note {
+	color: #4a3717;
+}

@@ -578,6 +578,17 @@
 					</form>
 				</div>
 				<div class="row save-blocks" id="saveBlocks" data-bound="SaveSearch"></div>
+				<!-- Only ever seen when something is actually wrong: the save the editor
+				     is holding contradicts one of the invariants the format relies on.
+				     Not a .view -- it belongs to the whole save screen, not one tab --
+				     so it carries save-only, which Editor.render hides alongside them. -->
+				<div class="row save-only save-warning" id="saveWarning"
+				     data-bound="SavedGame">
+					<div class="save-warning-head" id="saveWarningHead"
+					     data-bound="SavedGame"></div>
+					<div class="save-warning-list" id="saveWarningList"
+					     data-bound="SavedGame"></div>
+				</div>
 				<div class="row view character" id="character" data-bound="SavedGame">
 					<div class="col-sm-4 portrait"></div>
 					<div class="col-sm-3 stats">

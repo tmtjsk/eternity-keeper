@@ -83,7 +83,8 @@ public class SavedGameOpener implements Runnable {
 			return;
 		}
 
-		final List<Property> gameObjects = deserialize(mobileObjectsFile).stream()
+		final List<Property> allPackets = deserialize(mobileObjectsFile);
+		final List<Property> gameObjects = allPackets.stream()
 				.filter(this::isObjectPersistencePacket)
 				.filter(this::hasObjectName)
 				.collect(Collectors.toList());
@@ -95,9 +96,10 @@ public class SavedGameOpener implements Runnable {
 		final JSONObject inventory = extractInventory(gameObjects, characters);
 		final JSONObject abilities = extractAbilities(gameObjects, characters);
 		final JSONArray grimoires = extractGrimoires(gameObjects);
+		final JSONObject validation = validate(allPackets);
 
 		sendJSON(currency, globals, characters, deadCompanions, inventory, abilities
-			, grimoires);
+			, grimoires, validation);
 	}
 
 	// Companions who died in-game have no mobile object left in the save —
@@ -1021,11 +1023,41 @@ public class SavedGameOpener implements Runnable {
 		return Optional.of(jsonObject);
 	}
 
+	/**
+	 * Whether the save is self-consistent, checked here because every manager
+	 * re-opens through the opener after applying — so a structural mistake the
+	 * editor made surfaces at once rather than as items silently missing the
+	 * next time the game loads.
+	 *
+	 * <p>The object count is deliberately not checked: the deserializer reads
+	 * exactly as many packets as the file's count claims, so comparing the two
+	 * afterwards can only ever agree. That check earns its keep against a tree
+	 * built in memory, not one just read off disk.
+	 */
+	private JSONObject validate(final List<Property> packets) {
+		final JSONObject validation = new JSONObject();
+		final JSONArray problems = new JSONArray();
+		validation.put("problems", problems);
+
+		for (final SaveValidator.Problem problem : SaveValidator.validate(packets, -1)) {
+			final JSONObject json = new JSONObject();
+			json.put("kind", problem.kind.name());
+			json.put("objectName", problem.objectName);
+			json.put("objectID", problem.objectID);
+			json.put("detail", problem.detail);
+			problems.put(json);
+
+			logger.error("Save validation: %s%n", problem);
+		}
+
+		return validation;
+	}
+
 	private void sendJSON(
 			final float currency, final Map<String, Property> globals,
 			final Map<String, Property> characters, final List<JSONObject> deadCompanions,
 			final JSONObject inventory, final JSONObject abilities,
-			final JSONArray grimoires) {
+			final JSONArray grimoires, final JSONObject validation) {
 
 		final JSONObject json = new JSONObject();
 		json.put("isWindowStoreSave", false);
@@ -1036,6 +1068,7 @@ public class SavedGameOpener implements Runnable {
 		json.put("abilities", abilities);
 		json.put("stronghold", extractStronghold(globals));
 		json.put("grimoires", grimoires);
+		json.put("validation", validation);
 
 		final Map<String, JSONObject> jsonGlobals = globals.entrySet().stream()
 				.map(entry -> new SimpleEntry<>(entry.getKey(), globalsToJSON(entry.getValue())))

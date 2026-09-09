@@ -337,11 +337,36 @@ been patched. `.modal button.close` now fixes them all.
 an NRBF *writer* for `SerializedActiveQuests`.
 *Effort: high. Risk: high.*
 
-**3.2 Save validation pass**
-Assert the invariants already learned before writing: every `InstanceID.Guid`
-equals its own `ObjectID`, no duplicate ObjectIDs, list lengths match counts,
-every `SerializedItemList` GUID resolves. This would have caught the
-item-minting aliasing bug immediately instead of only in-game.
+**3.2 Save validation pass** — *done*
+
+A strip above the views, invisible until something is actually wrong, saying
+what the save contradicts about itself.
+
+The checks are the invariants this project learned the hard way: two objects
+sharing an ObjectID, an object whose `InstanceID.Guid` is not its own
+ObjectID, `ItemList` and `SerializedItemList` of different lengths, a carried
+or worn item GUID with no packet of its own, and a leading object count that
+disagrees with the contents.
+
+**Where it runs is the whole point.** Every manager re-opens the save through
+`SavedGameOpener` after applying, so the opener is where a structural mistake
+the editor made surfaces at once. The item-minting aliasing bug showed up only
+in-game, as both items silently missing; it is now three separate checks
+firing together.
+
+**Every check was measured against four real saves before being written** and
+reports nothing on any of them. A sixth candidate did not survive that:
+"Parent names an object that exists" fires 29 times on a perfectly healthy
+save, because a dead companion's belongings outlive the companion the game
+deleted. A check that cries wolf on an untouched save is worse than no check.
+
+It reports rather than refuses: by the time the opener sees a problem the
+damage is already in the working copy, and blocking the write would not undo
+it. The strip says what is wrong, what the game will do about it, and that
+reopening the save is the way back.
+
+Verified end to end against a deliberately broken save — two item packets
+given the same ObjectID, the aliasing bug's exact signature.
 
 Related, and already fixed: `Restored()` re-derives every `XBonus` and
 `<Skill>Bonus` from the applied status effects, so the Console tab's `Skill`
@@ -349,7 +374,6 @@ command — which wrote `<Skill>Bonus`, faithfully copying the in-game console
 command — produced a change no load would keep. It now sets the skill's stored
 points for a rank, the way the Skills panel does. Worth a systematic look for
 other fields with the same shape.
-*Effort: low. Risk: none — read-only checks. Recommended early despite the phase.*
 
 **3.3 Save comparison** — diff two saves and show what changed.
 **3.4 Undo within a session** — an undo stack over the staged model.
@@ -445,6 +469,7 @@ Features first, per the project owner's direction; compatibility afterwards.
    worth shown under it (1.3b)
 7. ~~Grimoire editor (2.3)~~ done
 7b. ~~Companion portraits (2.4)~~ done
-8. **Save validation pass (3.2)** ← next
-9. **Then** compatibility: multi-store detection (4.1), Mac, faster conversion
+8. ~~Save validation pass (3.2)~~ done
+8b. **Compatibility next**: multi-store detection (4.1) ← next
+9. Then the rest of compatibility: Mac, faster conversion
 10. Delete the auto-updater and bootstrapper whenever convenient

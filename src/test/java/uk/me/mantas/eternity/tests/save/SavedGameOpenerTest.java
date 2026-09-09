@@ -273,6 +273,33 @@ public class SavedGameOpenerTest extends TestHarness {
 	}
 
 	@Test
+	public void theOpenerSaysWhetherTheSaveIsSelfConsistent ()
+		throws URISyntaxException, IOException {
+
+		// Every manager re-opens the save through here after applying, so this
+		// is where a structural mistake the editor made surfaces -- immediately,
+		// rather than as items silently missing the next time the game loads.
+		final File resources = new File(getClass().getResource("/").toURI());
+		final CefQueryCallback mockCallback = mock(CefQueryCallback.class);
+		final Settings mockSettings = mockSettings();
+		final JSONObject mockJSON = mock(JSONObject.class);
+		mockSettings.json = mockJSON;
+		when(mockJSON.getString("gameLocation")).thenReturn(
+			new File(resources, "SavedGameOpenerTest").getAbsolutePath());
+
+		new SavedGameOpener(resources.getAbsolutePath(), mockCallback).run();
+
+		final ArgumentCaptor<String> response = ArgumentCaptor.forClass(String.class);
+		verify(mockCallback).success(response.capture());
+
+		final JSONObject validation =
+			new JSONObject(response.getValue()).getJSONObject("validation");
+
+		// The fixture is a real, untouched save, so it has nothing to say.
+		assertEquals(0, validation.getJSONArray("problems").length());
+	}
+
+	@Test
 	public void theOpenerShipsThePortraitPathsAsWellAsThePicture ()
 		throws URISyntaxException, IOException {
 

@@ -717,6 +717,67 @@ var SavedGame = function () {
 				+ 'from the class. Use the Abilities tab to sort those out.'));
 	};
 
+	// What the save says about itself. The strip is invisible unless a check
+	// actually fires, which on an untouched save it never does -- all five
+	// were measured against four real saves before being written. Every
+	// manager re-opens through SavedGameOpener after applying, so a mistake
+	// the editor made shows up here at once instead of in-game.
+	var VALIDATION_LABELS = {
+		DUPLICATE_OBJECT_ID: 'Two objects share an ID'
+		, INSTANCE_ID_MISMATCH: 'An object disagrees with its own ID'
+		, ITEM_LIST_LENGTH: 'An inventory\'s two lists are different lengths'
+		, UNRESOLVED_ITEM: 'A carried item has no object of its own'
+		, UNRESOLVED_EQUIPMENT: 'A worn item has no object of its own'
+		, OBJECT_COUNT: 'The file\'s object count is wrong'
+	};
+
+	var populateValidation = validation => {
+		var problems = (validation || {}).problems || [];
+		var list = self.html.saveWarningList.empty();
+
+		if (problems.length < 1) {
+			self.html.saveWarning.hide();
+			return;
+		}
+
+		self.html.saveWarning.show();
+		self.html.saveWarningHead.text(problems.length === 1
+			? 'This save contradicts itself in one place'
+			: 'This save contradicts itself in ' + problems.length + ' places');
+
+		// A long list helps nobody; the kinds are what matter, and the first
+		// few examples of each. The rest are in eternity.log.
+		var byKind = {};
+		problems.forEach(problem => {
+			byKind[problem.kind] = byKind[problem.kind] || [];
+			byKind[problem.kind].push(problem);
+		});
+
+		Object.keys(byKind).forEach(kind => {
+			var group = byKind[kind];
+			var row = $('<div>').addClass('save-warning-row');
+
+			row.append($('<span>')
+				.addClass('save-warning-kind')
+				.text((VALIDATION_LABELS[kind] || kind)
+					+ (group.length > 1 ? ' (×' + group.length + ')' : '')));
+
+			row.append($('<span>')
+				.addClass('save-warning-detail')
+				.text(group[0].objectName
+					? group[0].objectName + ' — ' + group[0].detail
+					: group[0].detail));
+
+			list.append(row);
+		});
+
+		list.append($('<div>')
+			.addClass('save-warning-note')
+			.text('The game drops what it cannot resolve, usually without an error. '
+				+ 'If this appeared after an edit, undo it by reopening the save '
+				+ 'rather than writing this one out. Full detail is in eternity.log.'));
+	};
+
 	var populateSkills = (data) => {
 		var grid = self.html.skillsGrid.empty();
 		var available = SKILLS.filter(skill => data.stats[skill.stat] !== undefined);
@@ -948,6 +1009,7 @@ var SavedGame = function () {
 			Eternity.Modifications.suggestSaveName(self.state.info));
 		populateCharacterList(self.html.characterList, self.state.saveData.characters);
 		populateGlobals(self.state.saveData.globals);
+		populateValidation(self.state.saveData.validation);
 
 		if (self.state.activeCharacter) {
 			self.html.characterList.find('li')
