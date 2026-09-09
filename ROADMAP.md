@@ -382,30 +382,40 @@ other fields with the same shape.
 
 ## 4. Compatibility (after the features)
 
-### 4.1 Detect the game across every store
+### 4.1 Detect the game across every store — *done*
 
-Today `Configuration.installationLocations` is a hardcoded list checked **only on
-the system drive** (`GetDefaultSaveLocation:130`). A Steam library on `D:` — the
-most common setup — is never found, so users must set the path by hand.
+`environment/GameLocator` replaces the old search, which checked a hardcoded
+list **only on the system drive**, so a Steam library on `D:` — the most common
+setup — was never found.
 
-Saves are less of a problem: every desktop store writes to
-`%USERPROFILE%\Saved Games\Pillars of Eternity`. The install path is what
-matters, because that's where portraits and the item catalog come from.
+Order, first accepted answer wins: explicit setting, then **Steam**, **GOG**
+(registry), **Epic** (JSON manifests in ProgramData), **known layouts on every
+drive**, then **Microsoft Store** as an explanation rather than an answer.
 
-Detection order, first hit wins:
+Steam is resolved rather than guessed: a Steam root → `libraryfolders.vdf` for
+every library on every drive → `appmanifest_291650.acf`, which names
+`installdir` outright, so even a renamed folder is found.
 
-1. **Explicit setting** — always respected.
-2. **Steam** — read `steamapps/libraryfolders.vdf` (found via
-   `HKCU\Software\Valve\Steam\SteamPath`), then check every library. Solves
-   multi-drive setups generally rather than guessing paths.
-3. **GOG** — `HKLM\SOFTWARE\WOW6432Node\GOG.com\Games\*` carries `path`.
-4. **Epic** — parse `C:\ProgramData\Epic\EpicGamesLauncher\Data\Manifests\*.item`.
-5. **Any drive, known layouts** — repeat the existing list across every fixed
-   drive. This alone fixes most cases.
-6. **Microsoft Store / Game Pass** — detect and explain; the `gameflt` kernel
-   driver blocks reads. (Windows Store *saves* are already convertible.)
+Two things the measurements changed:
 
-*Effort: medium. Risk: low — detection only, manual override intact.*
+- **The registry is silent more often than you would think.** On this
+  development machine Steam is installed and running from `D:\Steam` and there
+  is no `HKCU\Software\Valve\Steam` key at all. The drive scan is not a
+  last-resort nicety, it is the path that actually fires — and it finds the
+  install in about 110ms.
+- **A candidate is only accepted if `PillarsOfEternity_Data` is in it.** That is
+  what the editor reads, so a stale registry entry or a library the game was
+  moved out of is rejected instead of leaving the editor pointed at a folder
+  with no portraits and no explanation.
+
+Verified end to end: with `gameLocation` blanked out of settings, a cold boot
+finds `D:\Steam\steamapps\common\Pillars of Eternity` on its own and never
+opens the settings dialog.
+
+Save paths picked up the macOS layout at the same time (`~/Library/Application
+Support/Pillars of Eternity`), which this section owed 4.2. Written from the
+note below rather than from a Mac — there is none here and the app cannot start
+there yet — so both spellings are tried.
 
 ### 4.2 Mac support — asked for on Reddit
 Build and bundle JCEF for macOS. Concretely, what is missing today:
@@ -470,6 +480,6 @@ Features first, per the project owner's direction; compatibility afterwards.
 7. ~~Grimoire editor (2.3)~~ done
 7b. ~~Companion portraits (2.4)~~ done
 8. ~~Save validation pass (3.2)~~ done
-8b. **Compatibility next**: multi-store detection (4.1) ← next
-9. Then the rest of compatibility: Mac, faster conversion
+8b. ~~Multi-store detection (4.1)~~ done
+9. **Then**: Mac support (4.2), faster conversion (4.3) ← next
 10. Delete the auto-updater and bootstrapper whenever convenient

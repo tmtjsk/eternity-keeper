@@ -78,7 +78,8 @@ var Editor = function () {
 			}
 
 			self.SaveSearch.render({searchPath: searchPath});
-			self.Settings.render({gameLocation: gameLocation});
+			self.Settings.render(
+				{gameLocation: gameLocation, notes: response.notes || []});
 			self.SaveSearch.search();
 		};
 

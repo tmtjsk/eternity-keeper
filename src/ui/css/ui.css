@@ -4627,3 +4627,16 @@ body.theme-light .save-warning-detail,
 body.theme-light .save-warning-note {
 	color: #4a3717;
 }
+
+/* A thing the install search worked out but could not act on. Modals keep the
+   dark chrome in both themes, so this gets no light-mode override. */
+.settings-note {
+	margin-top: 4px;
+	font-size: 12px;
+	line-height: 1.55;
+	color: #d3a86e;
+}
+
+.settings-note p {
+	margin: 0;
+}

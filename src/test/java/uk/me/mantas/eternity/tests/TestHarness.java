@@ -29,6 +29,7 @@ import uk.me.mantas.eternity.environment.*;
 import uk.me.mantas.eternity.factory.SharpSerializerFactory;
 import uk.me.mantas.eternity.save.AbilityCatalog;
 import uk.me.mantas.eternity.save.ItemCatalog;
+import uk.me.mantas.eternity.environment.GameLocator;
 import uk.me.mantas.eternity.save.IdentityCatalog;
 import uk.me.mantas.eternity.save.PortraitCatalog;
 import uk.me.mantas.eternity.save.StrongholdCatalog;
@@ -71,6 +72,7 @@ public abstract class TestHarness {
 		StrongholdCatalog.useNoCatalog();
 		IdentityCatalog.useNoCatalog();
 		PortraitCatalog.useNoCatalog();
+		GameLocator.useNoGame();
 	}
 
 	@After

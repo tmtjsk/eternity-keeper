@@ -21,6 +21,7 @@ var Settings = function () {
 
 	var defaultState = {
 		gameLocation: ''
+		, notes: []
 		, saving: false
 	};
 
@@ -34,6 +35,14 @@ var Settings = function () {
 	self.render = newState => {
 		self.state = $.extend({}, defaultState, newState);
 		self.html.gameLocation.val(self.state.gameLocation);
+
+		// The search can work something out that it cannot act on -- a
+		// Microsoft Store copy, say -- and saying so beats an empty box.
+		var note = self.html.settingsNote.empty();
+		(self.state.notes || []).forEach(text =>
+			note.append($('<p>').text(text)));
+
+		note.toggle((self.state.notes || []).length > 0);
 
 		if (self.state.saving) {
 			self.html.saveSettings.prop('disabled', true);
