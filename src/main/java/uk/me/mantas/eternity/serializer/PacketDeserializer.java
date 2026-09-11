@@ -18,7 +18,6 @@
 
 package uk.me.mantas.eternity.serializer;
 
-import org.apache.commons.io.FileUtils;
 import uk.me.mantas.eternity.environment.Environment;
 import uk.me.mantas.eternity.factory.SharpSerializerFactory;
 import uk.me.mantas.eternity.serializer.properties.Property;
@@ -27,7 +26,6 @@ import uk.me.mantas.eternity.serializer.properties.SimpleProperty;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -38,13 +36,10 @@ import java.util.Optional;
 
 public class PacketDeserializer {
 	private final SharpSerializer deserializer;
-	private File file;
 
 	public PacketDeserializer (final File file) throws FileNotFoundException {
 		deserializer =
 			Environment.getInstance().factory().sharpSerializer().forFile(file.getAbsolutePath());
-
-		this.file = file;
 	}
 
 	public PacketDeserializer (final String filename) throws FileNotFoundException {
@@ -73,13 +68,5 @@ public class PacketDeserializer {
 
 		final SimpleProperty countProperty = (SimpleProperty) objCountProp.get();
 		return Optional.of(new DeserializedPackets(deserialized, countProperty));
-	}
-
-	public boolean isWindowsStoreSave () throws IOException {
-		String contents = "";
-
-		contents = FileUtils.readFileToString(file);
-
-		return contents.contains(TypeMap.NEW_TYPE_MODULE);
 	}
 }

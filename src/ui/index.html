@@ -239,6 +239,36 @@
 		</div>
 	</div>
 
+	<div class="modal fade" id="convertSaveDialog" role="dialog" data-bound="SaveSearch">
+		<div class="modal-dialog">
+			<div class="modal-content">
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal">
+						<span>&times;</span>
+					</button>
+					<h4 class="modal-title">Save format</h4>
+				</div>
+				<div class="modal-body">
+					<p class="pm-dialog-subject"></p>
+					<div class="cnv-body" id="convertSaveBody" data-bound="SaveSearch">
+						<p class="cnv-reading">
+							<i class="fa fa-spinner fa-pulse"></i> Reading the save&hellip;
+						</p>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="pm-btn pm-btn-dialog" data-dismiss="modal">
+						<i>&#10094;</i> Close <i>&#10095;</i>
+					</button>
+					<button type="button" id="convertSaveConfirm" class="pm-btn pm-btn-dialog"
+					        data-bound="SaveSearch" disabled>
+						<i>&#10094;</i> Convert <i>&#10095;</i>
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
 	<div class="modal fade" id="partyManagementDialog" role="dialog" data-bound="PartyManagement">
 		<div class="modal-dialog pm-dialog">
 			<div class="modal-content pm-content">
@@ -1134,6 +1164,9 @@
 		</button>
 		<button type="button" id="saveActionRename" class="pm-btn" data-bound="SaveSearch">
 			<i>&#10094;</i> Rename <i>&#10095;</i>
+		</button>
+		<button type="button" id="saveActionConvert" class="pm-btn" data-bound="SaveSearch">
+			<i>&#10094;</i> Format <i>&#10095;</i>
 		</button>
 		<button type="button" id="saveActionDelete" class="pm-btn pm-btn-danger" data-bound="SaveSearch">
 			<i>&#10094;</i> Delete <i>&#10095;</i>

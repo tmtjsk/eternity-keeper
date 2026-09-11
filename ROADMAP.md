@@ -29,13 +29,11 @@ enough to mint objects the game accepts.
 | **Ability catalog** | 1,440 abilities, spells and talents plus all 26 progression tables |
 | Polish/UTF-8 save names | Reads `sceneTitle` from `saveinfo.xml` |
 | Light/dark themes | Both audited |
-| Windows Store → Steam/GOG conversion | Works, slow |
+| Save format conversion | Rewritten as a byte pass and finally reachable from the UI (see §4.3) |
 
 ### Known limitations, stated plainly
 
 - **Auto-updater is dead code.** ~591 lines across three handlers plus `Updates.js`.
-- **Game install detection only scans the system drive** — a library on `D:` is
-  never found automatically (see §4).
 - **The item catalog is generated offline** by a Python script; the editor
   degrades to prettified file names without it.
 - **The game's own UI sprites are not extractable** — item icons are fine, but the
@@ -60,8 +58,6 @@ enough to mint objects the game accepts.
 | `EternityBootstrapper/` (C# launcher) | ~950 KB | Delete **with** the updater, since it exists to support it |
 | `README.md` | — | Rewrite: it still lists shipped features under "Planned" |
 
-> **Note:** a large amount of work is currently uncommitted (24 new files, 17
-> modified). Committing before further refactoring is strongly advised.
 
 ---
 
@@ -434,7 +430,56 @@ This is the single most requested thing from outside, and it is packaging work
 rather than save-format work — worth pulling forward if the goal is other people
 using the editor rather than just this fork.
 
-### 4.3 Faster Windows Store conversion
+### 4.3 Save format conversion — *done, and the premise had to be corrected*
+
+Two things were true of this item when it was written and are not true now.
+
+**It was not reachable.** `EKUtils.convertWindowsStoreToSteamSaveFiles` existed
+and was exercised by a test, but nothing in the running editor called it:
+`SavedGameOpener` hardcoded `isWindowStoreSave` to `false`, and the two
+branches in `SaveSearch.js` that read it could never fire. "Works, slow" was
+true of a unit test, not of the editor.
+
+**The formats are no longer different.** The premise was that the Windows Store
+and Xbox builds ship a newer Unity whose saves Steam and GOG cannot read. That
+was true in 2020. Today **every save this machine's Steam copy writes contains
+`UnityEngine.CoreModule`** — 5,496 occurrences across the 194 serialized files
+of one late-game save. A Windows Store save and a current Steam save are the
+same format. So the conversion is a *downgrade*, useful only for a Steam or GOG
+build old enough to predate Unity 2017.2, and the dialog says so rather than
+implying anyone with a modern install needs it.
+
+`PacketDeserializer.isWindowsStoreSave()` went with the flag. It asked whether
+the file contained `UnityEngine.CoreModule`, which on a current install is true
+of every save the player owns — had the half-built flow been finished, the
+editor would have told the user each of their saves was a Windows Store save.
+
+What replaced it, `save/SaveConverter`, does the job as a byte rewrite. The
+entire difference between the formats is one string inside each packet's type
+header, and a header string is a guard byte, a 7-bit length and UTF-8 — so an
+occurrence is rewritten only where a guard and a length frame it exactly and
+the module name ends the string, and anything that cannot be framed is handed
+to the old deserializing converter rather than guessed at. On a real 119 MB
+save, 5,496 of 5,496 occurrences framed unambiguously, so that fallback never
+fires in practice.
+
+Against the path it replaces: 1.4s of 20-thread work becomes 0.57s on one
+thread, and the heap needed drops from more than 256 MB — it runs out there,
+holding 395 object graphs at once — to under 96 MB, because it holds one file.
+End to end an archive is ~2.4s, now dominated by the zip round trip.
+
+Checked against the converter it replaces rather than against itself:
+byte-identical on the golden fixture pair, byte-identical on all 194 serialized
+files of a real save, a round trip back to the original bytes exactly, and the
+same packet count out of the deserializer. The one thing *not* verified is the
+thing that cannot be: the build this targets is older than the Unity change,
+and the only copy here is current.
+
+In the editor it is a **Format** action beside Load, Rename and Delete. It says
+what the save is, what conversion is for, and where the copy will go before
+writing anything; the copy lands in `<saves folder>/converted/`, which the list
+never shows because `SaveGameExtractor` filters on `File::isFile`.
+
 
 ### 4.4 Bundle the item catalog extractor
 So users aren't asked to install Python.
@@ -481,5 +526,7 @@ Features first, per the project owner's direction; compatibility afterwards.
 7b. ~~Companion portraits (2.4)~~ done
 8. ~~Save validation pass (3.2)~~ done
 8b. ~~Multi-store detection (4.1)~~ done
-9. **Then**: Mac support (4.2), faster conversion (4.3) ← next
-10. Delete the auto-updater and bootstrapper whenever convenient
+9. ~~Faster conversion (4.3)~~ done, with the premise corrected
+10. **Then**: Mac support (4.2) ← next, and the only item left that is
+    packaging rather than save format
+11. Delete the auto-updater and bootstrapper whenever convenient

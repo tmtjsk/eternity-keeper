@@ -1060,7 +1060,6 @@ public class SavedGameOpener implements Runnable {
 			final JSONArray grimoires, final JSONObject validation) {
 
 		final JSONObject json = new JSONObject();
-		json.put("isWindowStoreSave", false);
 
 		json.put("currency", currency);
 		json.put("achievementsDisabled", detectAchievementsDisabled(globals));

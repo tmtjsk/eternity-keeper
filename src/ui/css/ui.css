@@ -2111,27 +2111,13 @@ body.theme-light .inv-filter-on {
 	border-color: #e8d5a3;
 }
 
-body.theme-light .save-target {
-	border-top-color: rgba(107, 56, 18, .2);
-}
-
-body.theme-light .save-target-label {
-	color: #8a6b42;
-}
-
-body.theme-light .save-target-value {
-	color: #3a2a18;
-}
-
-body.theme-light .save-target-path {
-	color: #5a4a33;
-}
-
-body.theme-light .save-target-browse {
-	color: #6b3812;
-	background: rgba(255, 255, 255, .6);
-	border-color: rgba(107, 56, 18, .3);
-}
+/* There were light-mode overrides here painting this block dark brown, which
+   would be right if the dialog went light with the page. It does not — modals
+   keep the dark chrome in both themes — so #3a2a18 on #2e261c left the file
+   name the save would be written as at a contrast of 1.1, which is to say
+   invisible, in the one place the dialog exists to tell you something. The
+   dark-theme colours are correct in both themes and there is nothing to
+   override. */
 
 body.theme-light .save-target-browse:hover {
 	color: #fff;
@@ -4639,4 +4625,45 @@ body.theme-light .save-warning-note {
 
 .settings-note p {
 	margin: 0;
+}
+
+/* The save-format dialog. Modals keep the dark chrome in both themes, so
+   nothing here gets a light-mode override. */
+.cnv-body p {
+	margin: 0 0 10px 0;
+	font-size: 13px;
+	line-height: 1.6;
+	color: #c8bda4;
+}
+
+.cnv-body p:last-child {
+	margin-bottom: 0;
+}
+
+.cnv-format {
+	color: #e8dcbc;
+	font-weight: 600;
+}
+
+.cnv-note {
+	color: #a2937a;
+	font-size: 12px;
+}
+
+.cnv-problem {
+	color: #d98b6e;
+}
+
+.cnv-path {
+	font-family: Consolas, "Courier New", monospace;
+	font-size: 12px;
+	color: #d3a86e;
+	background: rgba(0, 0, 0, .25);
+	border: 1px solid #4d4234;
+	padding: 6px 8px;
+	word-break: break-all;
+}
+
+.cnv-reading {
+	color: #a2937a;
 }

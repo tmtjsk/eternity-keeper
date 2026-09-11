@@ -42,77 +42,62 @@ import static org.junit.Assert.*;
 
 public class SerializerTest extends TestHarness {
 
+	// These four used to wrap their assertions in `try { … } catch (Exception e)
+	// { e.printStackTrace(); }`, which swallowed the AssertionError too — they
+	// could not fail. Anything thrown is now the test result.
+
 	@Test
-	public void serializesSaveFile () throws URISyntaxException, IOException {
+	public void serializesSaveFile () throws Exception {
 		final File saveFile = new File(getClass().getResource("/MobileObjects.save").toURI());
 		final File saveOutputFile = Files.createTempFile(PREFIX, null).toFile();
 
-		try {
-			EKUtils.reserializeFile(saveFile, saveOutputFile, SerializerFormat.PRESERVE);
-			assertFileContentsEquals(saveFile, saveOutputFile);
-		} catch (final Exception e) {
-			e.printStackTrace();
-		}
+		EKUtils.reserializeFile(saveFile, saveOutputFile, SerializerFormat.PRESERVE);
+		assertFileContentsEquals(saveFile, saveOutputFile);
 	}
 
 	@Test
-	public void serializesLevelFile () throws URISyntaxException, IOException {
+	public void serializesLevelFile () throws Exception {
 		final File saveFile = new File(getClass().getResource("/SerializerTest/windowStoreSave/AR_0701_Encampment.lvl").toURI());
 		final File saveOutputFile = Files.createTempFile(PREFIX, null).toFile();
 
-		try {
-			EKUtils.reserializeFile(saveFile, saveOutputFile, SerializerFormat.PRESERVE);
-			assertFileContentsEquals(saveFile, saveOutputFile);
-		} catch (final Exception e) {
-			e.printStackTrace();
-		}
+		EKUtils.reserializeFile(saveFile, saveOutputFile, SerializerFormat.PRESERVE);
+		assertFileContentsEquals(saveFile, saveOutputFile);
 	}
 
 	@Test
-	public void serializesWindowsStoreToSteamSaveFile () throws URISyntaxException, IOException {
+	public void serializesWindowsStoreToSteamSaveFile () throws Exception {
 		final File saveFile = new File(getClass().getResource("/SerializerTest/windowStoreSave/MobileObjects.save").toURI());
 		final File saveOutputFile = Files.createTempFile(PREFIX, null).toFile();
 
-		try {
-			EKUtils.reserializeFile(saveFile, saveOutputFile, SerializerFormat.UNITY_2017);
+		EKUtils.reserializeFile(saveFile, saveOutputFile, SerializerFormat.UNITY_2017);
 
-			final File expectedSaveFile = new File(getClass().getResource("/SerializerTest/windowStoreSaveConverted/MobileObjects.save").toURI());
-			assertFileContentsEquals(expectedSaveFile, saveOutputFile);
-		} catch (final Exception e) {
-			e.printStackTrace();
-		}
+		final File expectedSaveFile = new File(getClass().getResource("/SerializerTest/windowStoreSaveConverted/MobileObjects.save").toURI());
+		assertFileContentsEquals(expectedSaveFile, saveOutputFile);
 	}
 
 	@Test
-	public void convertsWindowsStoreSaveFilesToSteam () throws URISyntaxException, IOException {
+	public void convertsWindowsStoreSaveFilesToSteam () throws Exception {
 		final File inputDir = new File(getClass().getResource("/SerializerTest/windowStoreSave/").toURI());
 
 		final Optional<File> outputDir = EKUtils.createTempDir(PREFIX);
 		assertTrue(outputDir.isPresent());
 		final Path outputDirPath = outputDir.get().toPath();
 
-		try {
-			EKUtils.convertWindowsStoreToSteamSaveFiles(inputDir, outputDir.get());
+		EKUtils.convertWindowsStoreToSteamSaveFiles(inputDir, outputDir.get());
 
-			// check the result
-			// TODO: factor out to EKUtils.compareDirectoryContents() or similar. Or does guava have this already?
-			final List<File> outputFiles = Arrays.asList(outputDirPath.toFile().listFiles());
+		final List<File> outputFiles = Arrays.asList(outputDirPath.toFile().listFiles());
 
-			final File expectedDir = new File(getClass().getResource("/SerializerTest/windowStoreSaveConverted/").toURI());
-			final List<String> expectedFilenames = Arrays.asList(expectedDir.list());
+		final File expectedDir = new File(getClass().getResource("/SerializerTest/windowStoreSaveConverted/").toURI());
+		final List<String> expectedFilenames = Arrays.asList(expectedDir.list());
 
-			assertEquals("number of files", expectedFilenames.size(), outputFiles.size());
+		assertEquals("number of files", expectedFilenames.size(), outputFiles.size());
 
-			for (File outputFile : outputFiles) {
-				String outputFilename = outputFile.getName();
-				assertTrue(expectedFilenames.contains(outputFilename));
+		for (File outputFile : outputFiles) {
+			String outputFilename = outputFile.getName();
+			assertTrue(expectedFilenames.contains(outputFilename));
 
-				final File expectedFile = new File(expectedDir, outputFilename);
-				assertFileContentsEquals(expectedFile, outputFile);
-			}
-
-		} catch (final Exception e) {
-			e.printStackTrace();
+			final File expectedFile = new File(expectedDir, outputFilename);
+			assertFileContentsEquals(expectedFile, outputFile);
 		}
 	}
 
@@ -153,13 +138,9 @@ public class SerializerTest extends TestHarness {
 	}
 
 	public static void assertFileContentsEquals(File expectedFile, File actualFile) throws IOException {
-		try {
-			final byte[] actual = FileUtils.readFileToByteArray(actualFile);
-			final byte[] expected = FileUtils.readFileToByteArray(expectedFile);
+		final byte[] actual = FileUtils.readFileToByteArray(actualFile);
+		final byte[] expected = FileUtils.readFileToByteArray(expectedFile);
 
-			assertArrayEquals(actualFile.getName() + " contents", expected, actual);
-		} catch (final Exception e) {
-			throw e;
-		}
+		assertArrayEquals(actualFile.getName() + " contents", expected, actual);
 	}
 }
