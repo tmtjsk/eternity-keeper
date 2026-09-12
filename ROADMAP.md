@@ -326,6 +326,47 @@ Turned up on the way: Bootstrap's own `button.close { padding: 0 }` left an
 11×21 hit target in **every** dialog, not just the party one that had already
 been patched. `.modal button.close` now fixes them all.
 
+**2.5 Confirming changes, and keeping the panels honest** — *done*
+
+Every view now carries **Revert** and **Apply changes** in its top right, and
+the four that already had the pair had them in four different places at three
+different sizes. The character sheet, the raw and globals tables and the
+console had neither: they write into `saveData` as you type, so the only way
+back from a number you had changed was closing the save and losing everything
+else with it. `ui/js/PanelChanges.js` keeps a confirmed baseline of what those
+panels edit and offers the same two words over it.
+
+Apply there is a commit point rather than a write — nothing reaches the disk
+until Save — and the bar says so. What is deliberately *not* done is disabling
+the Save button when a panel is reverted: inventory, party and item edits live
+outside those scopes, so "clean" would not mean "nothing to save", and guessing
+wrong in that direction hides a real pending change.
+
+The other half was making the editor follow a character change instead of the
+snapshot the opener sent. Slot rules and the ability browser's class now come
+off the live `CharacterStats`, so turning someone into a wizard opens their
+grimoire slot and stops offering them the paladin's talents straight away. The
+hazard that created is stated rather than hidden: inventory changes are written
+by Apply and identity changes by Save, so a slot that exists only because of an
+unsaved class edit now says so in the Inventory tab.
+
+Also from the same pass, and each measured rather than guessed:
+
+- **The portrait picker could only reach 80 of the game's 118 portraits.** Both
+  browsers that append a page were adding the request offset to the number of
+  rows already on screen, which double-counts everything past the first page;
+  the button hid itself halfway and quoted "-2 left".
+- **Paged lists are sorted on the server.** `BrowseAbilities` takes a `sort`,
+  because reordering the window the client happens to hold would put a level 8
+  spell above a level 1 one the moment the next page arrived. A spell's level
+  is its chapter, an ability's is the character level its progression row
+  names, and the two live in different places.
+- The grimoire's chapters are two columns of four full-width rows instead of
+  eight rows of four tiles, which is what put long spell names behind an
+  `overflow: hidden`; its rail runs the full height of the panel; the equipment
+  slots are three to a row; and the ability browser groups by level and
+  explains the highlighted row on the right, the way the game does at level-up.
+
 ### Phase 3 — deeper save surgery
 
 **3.1 Quest editing beyond restore**

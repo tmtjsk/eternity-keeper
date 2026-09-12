@@ -63,6 +63,14 @@ var Modifications = function () {
 		self.html.saveNameBtn.html(self.state.saving
 			? '<i class="fa fa-spinner fa-pulse"></i> Saving&hellip;'
 			: 'Save changes');
+
+		// Every editor that changes saveData comes through here to arm the
+		// Save button -- seventeen call sites across ten files -- so this is
+		// the one place the panel bars can be recounted without each of them
+		// having to remember to say so.
+		if (Eternity.PanelChanges) {
+			Eternity.PanelChanges.refresh();
+		}
 	};
 };
 

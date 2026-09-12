@@ -160,6 +160,7 @@ var Editor = function () {
 			self.StrongholdEditor.transition({enabled: false});
 			self.GrimoireEditor.transition({enabled: false});
 			self.PortraitPicker.transition({enabled: false});
+			self.PanelChanges.transition({enabled: false});
 			self.ConsoleTab.transition({enabled: false});
 			self.SavedGame.html.menuEditGlobals.off().parent().addClass('disabled');
 			self.SavedGame.html.menuOpenConsole.off().parent().addClass('disabled');
@@ -213,6 +214,7 @@ var Editor = function () {
 	self.StrongholdEditor = new StrongholdEditor();
 	self.GrimoireEditor = new GrimoireEditor();
 	self.PortraitPicker = new PortraitPicker();
+	self.PanelChanges = new PanelChanges();
 	self.ConsoleTab = new ConsoleTab();
 	self.Modifications = new Modifications();
 	self.ImportCharacter = new ImportCharacter();

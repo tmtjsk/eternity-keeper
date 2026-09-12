@@ -55,6 +55,11 @@ var GrimoireEditor = function () {
 	var browseOffset = 0;
 	var browseAvailable = true;
 
+	// Sorting is a server-side option because the list is paged: reordering
+	// the window the client happens to hold would put level 8 spells above
+	// level 1 ones the moment the second page arrived.
+	var browseSort = 'level';
+
 	var iconCache = {};
 	var iconsRequested = {};
 
@@ -313,11 +318,10 @@ var GrimoireEditor = function () {
 				.text(String(entry.displayName || '?').charAt(0)));
 		}
 
-		tile.append($('<span>')
-			.addClass('grm-spell-name')
-			.text(entry.displayName || entry.prefab)
-			.attr('title', entry.description || ''));
-
+		// The remove button is floated right and has to come before the name
+		// in the DOM: the name is its own block formatting context, so a float
+		// that follows it drops onto the next line instead of sitting beside
+		// it, and the row doubles in height.
 		if (onRemove) {
 			tile.append($('<button>')
 				.addClass('grm-spell-remove')
@@ -326,6 +330,11 @@ var GrimoireEditor = function () {
 				.text('×')
 				.click(onRemove));
 		}
+
+		tile.append($('<span>')
+			.addClass('grm-spell-name')
+			.text(entry.displayName || entry.prefab)
+			.attr('title', entry.description || ''));
 
 		return tile;
 	};
@@ -361,8 +370,11 @@ var GrimoireEditor = function () {
 
 	var drawList = () => {
 		var list = self.html.grmList.empty();
+		var books = sortedGrimoires();
 
-		sortedGrimoires().forEach(grimoire => {
+		self.html.grmBookCount.text(books.length > 0 ? books.length : '');
+
+		books.forEach(grimoire => {
 			var where = locationOf(grimoire);
 			var who = nameOfCharacter(where);
 			var row = $('<div>')
@@ -478,10 +490,35 @@ var GrimoireEditor = function () {
 			list.append(row);
 		});
 
+		drawSort();
+
+		// browseSpells accumulates every page, so it already counts what the
+		// offset skipped -- adding the two double-counts the tail. Same
+		// arithmetic slip as the portrait picker had.
 		self.html.grmBrowseMore
-			.toggle(browseOffset + browseSpells.length < browseTotal)
-			.text('Show more (' + (browseTotal - browseOffset - browseSpells.length)
-				+ ' left)');
+			.toggle(browseSpells.length < browseTotal)
+			.text('Show more (' + (browseTotal - browseSpells.length) + ' left)');
+	};
+
+	// By chapter or by name. Both are orders a player asks for: "what can I
+	// still fit at level 3" wants the first, "where is Chill Fog" the second.
+	var drawSort = () => {
+		var bar = self.html.grmSort.empty();
+		[['level', 'By level'], ['name', 'A–Z']].forEach(pair => {
+			bar.append($('<button type="button">')
+				.addClass('pm-btn grm-sort-btn')
+				.toggleClass('grm-sort-on', browseSort === pair[0])
+				.text(pair[1])
+				.click(() => {
+					if (browseSort === pair[0]) {
+						return;
+					}
+
+					browseSort = pair[0];
+					browseOffset = 0;
+					fetchSpells();
+				}));
+		});
 	};
 
 	var redraw = message => {
@@ -528,6 +565,7 @@ var GrimoireEditor = function () {
 				// knows their spells outright.
 				, spellClass: 'Wizard'
 				, anyClass: true
+				, sort: browseSort
 				, offset: browseOffset
 				, limit: BROWSE_PAGE
 			})

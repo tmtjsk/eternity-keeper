@@ -136,9 +136,14 @@ var PortraitPicker = function () {
 			grid.append(tile);
 		});
 
+		// `portraits` accumulates every page, so it already counts the rows the
+		// offset skipped. Adding the two double-counted everything past the
+		// first page: with 118 portraits and a page of 40, the second page put
+		// it at 40 + 80 = 120, the button hid itself at 80 of 118, and it
+		// quoted "-2 left" on the way out.
 		self.html.portraitMore
-			.toggle(offset + portraits.length < total)
-			.text('Show more (' + (total - offset - portraits.length) + ' left)');
+			.toggle(portraits.length < total)
+			.text('Show more (' + (total - portraits.length) + ' left)');
 	};
 
 	var redraw = () => {

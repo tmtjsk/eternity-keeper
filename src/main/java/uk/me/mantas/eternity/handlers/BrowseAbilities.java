@@ -70,6 +70,7 @@ public class BrowseAbilities extends CefMessageRouterHandlerAdapter {
 		final String characterClass;
 		final String spellClass;
 		final String companion;
+		final String sort;
 		final String subrace;
 		final boolean isPlayer;
 		final boolean anyClass;
@@ -84,6 +85,7 @@ public class BrowseAbilities extends CefMessageRouterHandlerAdapter {
 			characterClass = json.optString("characterClass", "");
 			spellClass = json.optString("spellClass", "");
 			companion = json.optString("progressionTable", "");
+			sort = json.optString("sort", "").toLowerCase();
 			subrace = json.optString("subrace", "");
 			isPlayer = json.optBoolean("isPlayer", false);
 			anyClass = json.optBoolean("anyClass", false);
@@ -141,6 +143,26 @@ public class BrowseAbilities extends CefMessageRouterHandlerAdapter {
 			matches = matches.stream()
 				.filter(m -> spellClass.equalsIgnoreCase(m.getValue().characterClass))
 				.collect(java.util.stream.Collectors.toList());
+		}
+
+		// Sorted here rather than in the client, because the client pages: it
+		// only ever holds a window of the list, and reordering that window
+		// would put a level 8 spell above a level 1 one the moment the second
+		// page arrived. The catalog already hands these back by name, so the
+		// default needs no work.
+		if ("level".equals(sort)) {
+			matches.sort((a, b) -> {
+				final int byLevel =
+					Integer.compare(sortLevel(a, allowed), sortLevel(b, allowed));
+
+				if (byLevel != 0) {
+					return byLevel;
+				}
+
+				final int byName =
+					a.getValue().name.compareToIgnoreCase(b.getValue().name);
+				return byName != 0 ? byName : a.getKey().compareTo(b.getKey());
+			});
 		}
 
 		final JSONArray abilities = new JSONArray();
@@ -239,6 +261,33 @@ public class BrowseAbilities extends CefMessageRouterHandlerAdapter {
 	 * ObjectName has to read. Bundle keys are lowercased, so the path is the
 	 * only place the original casing survives.
 	 */
+	/**
+	 * The level a player would look for. A spell's is its {@code SpellLevel} —
+	 * which chapter of a grimoire it lands in — and everything else's is the
+	 * character level its progression row unlocks it at. That one lives on the
+	 * {@code Unlock} rather than on the ability, so it only exists once a
+	 * character has been named; an ability nothing unlocks sorts last rather
+	 * than first, since "no level" is not level zero.
+	 */
+	private static int sortLevel (
+		final Map.Entry<String, AbilityCatalog.Entry> match
+		, final Map<String, AbilityCatalog.Unlock> allowed) {
+
+		final AbilityCatalog.Entry entry = match.getValue();
+		if (entry.spellLevel > 0) {
+			return entry.spellLevel;
+		}
+
+		final AbilityCatalog.Unlock unlock =
+			allowed == null ? null : allowed.get(match.getKey());
+
+		if (unlock != null && unlock.level > 0) {
+			return unlock.level;
+		}
+
+		return entry.level > 0 ? entry.level : Integer.MAX_VALUE;
+	}
+
 	private static String prefabNameOf (final String path, final String fallback) {
 		if (path == null || path.isEmpty()) {
 			return fallback;

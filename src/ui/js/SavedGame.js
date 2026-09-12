@@ -116,7 +116,16 @@ var SavedGame = function () {
 		var valCol = $('<td></td>');
 		var editor;
 
-		keyCol.text(key);
+		// A real save does hold one global whose name is the empty string, and
+		// an unlabelled editable row reads as a rendering fault rather than as
+		// data. Say what it is instead of hiding a variable that exists.
+		if (String(key).length < 1) {
+			keyCol.text('(unnamed)').addClass('raw-unnamed').attr(
+				'title', 'This variable has no name in the save.');
+		} else {
+			keyCol.text(key);
+		}
+
 		valCol.data('key', key);
 		valCol.data('fullkey', fullkey);
 
@@ -657,6 +666,12 @@ var SavedGame = function () {
 			var options = optionsFor(entry, data);
 			var select = $('<select>')
 				.addClass('form-control identity-select')
+				// Which CharacterStats field this dropdown writes. The panel
+				// closes over it, so nothing needs the attribute to work --
+				// but a field nothing can name is a field nothing else can
+				// check, and these are the values the rest of the editor
+				// derives equipment slots and progression tables from.
+				.attr('data-stat', entry.stat)
 				.append(options.map(value => $('<option>')
 					.prop('selected', value === String(current.value))
 					.text(humanise(value))
@@ -1010,6 +1025,13 @@ var SavedGame = function () {
 		populateCharacterList(self.html.characterList, self.state.saveData.characters);
 		populateGlobals(self.state.saveData.globals);
 		populateValidation(self.state.saveData.validation);
+
+		// Revert needs something to go back to, so the values on screen when a
+		// save opens become the confirmed baseline. Later renders top it up
+		// with characters that did not exist before -- a resurrection or an
+		// import mints one, and an unknown character should read as clean
+		// rather than as a pile of unconfirmed edits.
+		Eternity.PanelChanges.transition({enabled: true});
 
 		if (self.state.activeCharacter) {
 			self.html.characterList.find('li')

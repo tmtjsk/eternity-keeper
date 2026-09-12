@@ -625,6 +625,27 @@
 					     data-bound="SavedGame"></div>
 				</div>
 				<div class="row view character" id="character" data-bound="SavedGame">
+					<!-- Revert and Apply for a panel that edits saveData as you type.
+					     Apply is a commit point rather than a write: it makes what is on
+					     screen the baseline Revert goes back to, and Save is still what
+					     puts it on disk. -->
+					<div class="panel-bar" id="charPanelBar" data-bound="PanelChanges">
+						<span class="panel-bar-title" id="charPanelTitle"
+						      data-bound="PanelChanges"></span>
+						<span class="panel-bar-hint">Saved to a new file by the Save button.</span>
+						<span class="panel-bar-actions">
+							<span class="panel-bar-note" id="charPanelNote"
+							      data-bound="PanelChanges"></span>
+							<button type="button" class="pm-btn panel-revert" id="charPanelRevert"
+							        data-bound="PanelChanges" disabled>
+								<i>&#10094;</i> Revert <i>&#10095;</i>
+							</button>
+							<button type="button" class="pm-btn panel-apply" id="charPanelApply"
+							        data-bound="PanelChanges" disabled>
+								<i>&#10094;</i> Apply changes <i>&#10095;</i>
+							</button>
+						</span>
+					</div>
 					<div class="col-sm-4 portrait"></div>
 					<div class="col-sm-3 stats">
 						<div class="row">
@@ -709,6 +730,27 @@
 					</div>
 				</div>
 				<div class="row view raw" id="rawTable" data-bound="SavedGame">
+					<!-- Revert and Apply for a panel that edits saveData as you type.
+					     Apply is a commit point rather than a write: it makes what is on
+					     screen the baseline Revert goes back to, and Save is still what
+					     puts it on disk. -->
+					<div class="panel-bar" id="rawPanelBar" data-bound="PanelChanges">
+						<span class="panel-bar-title" id="rawPanelTitle"
+						      data-bound="PanelChanges">Raw variables</span>
+						<span class="panel-bar-hint">Every CharacterStats variable in the save, for this character.</span>
+						<span class="panel-bar-actions">
+							<span class="panel-bar-note" id="rawPanelNote"
+							      data-bound="PanelChanges"></span>
+							<button type="button" class="pm-btn panel-revert" id="rawPanelRevert"
+							        data-bound="PanelChanges" disabled>
+								<i>&#10094;</i> Revert <i>&#10095;</i>
+							</button>
+							<button type="button" class="pm-btn panel-apply" id="rawPanelApply"
+							        data-bound="PanelChanges" disabled>
+								<i>&#10094;</i> Apply changes <i>&#10095;</i>
+							</button>
+						</span>
+					</div>
 					<form>
 						<div class="form-group">
 							<div class="input-group">
@@ -729,6 +771,27 @@
 					</table>
 				</div>
 				<div class="row view globals" id="globalsTable" data-bound="SavedGame">
+					<!-- Revert and Apply for a panel that edits saveData as you type.
+					     Apply is a commit point rather than a write: it makes what is on
+					     screen the baseline Revert goes back to, and Save is still what
+					     puts it on disk. -->
+					<div class="panel-bar" id="globalsPanelBar" data-bound="PanelChanges">
+						<span class="panel-bar-title" id="globalsPanelTitle"
+						      data-bound="PanelChanges">Global variables</span>
+						<span class="panel-bar-hint">World state shared by the whole save.</span>
+						<span class="panel-bar-actions">
+							<span class="panel-bar-note" id="globalsPanelNote"
+							      data-bound="PanelChanges"></span>
+							<button type="button" class="pm-btn panel-revert" id="globalsPanelRevert"
+							        data-bound="PanelChanges" disabled>
+								<i>&#10094;</i> Revert <i>&#10095;</i>
+							</button>
+							<button type="button" class="pm-btn panel-apply" id="globalsPanelApply"
+							        data-bound="PanelChanges" disabled>
+								<i>&#10094;</i> Apply changes <i>&#10095;</i>
+							</button>
+						</span>
+					</div>
 					<form>
 						<div class="form-group">
 							<div class="input-group">
@@ -749,15 +812,31 @@
 					</table>
 				</div>
 				<div class="row view inventory-view" id="inventoryView" data-bound="InventoryEditor">
+					<div class="panel-bar" id="invPanelBar" data-bound="InventoryEditor">
+						<span class="panel-bar-title">Inventory</span>
+						<span class="panel-bar-hint">Packs, equipment and the shared stash.</span>
+						<span class="panel-bar-actions">
+							<button type="button" class="pm-btn panel-revert" id="invRevert"
+							        data-bound="InventoryEditor">
+								<i>&#10094;</i> Revert <i>&#10095;</i>
+							</button>
+							<button type="button" class="pm-btn panel-apply" id="invApply"
+							        data-bound="InventoryEditor">
+								<i>&#10094;</i> Apply changes <i>&#10095;</i>
+							</button>
+						</span>
+					</div>
 					<div class="inv-doll-panel">
 						<div class="inv-doll-name" id="invCharacterName"
 						     data-bound="InventoryEditor"></div>
 						<div class="inv-doll">
-							<div class="inv-slot-column" id="invSlotsLeft"
-							     data-bound="InventoryEditor"></div>
 							<div class="inv-portrait" id="invPortrait"
 							     data-bound="InventoryEditor"></div>
-							<div class="inv-slot-column" id="invSlotsRight"
+							<!-- One grid rather than two columns flanking the portrait:
+							     three slots to a row reads across the way the rest of the
+							     view does, and gives each label room for its own words
+							     instead of wrapping "Right ring" inside 54px. -->
+							<div class="inv-slots" id="invSlots"
 							     data-bound="InventoryEditor"></div>
 						</div>
 						<div class="inv-doll-lower">
@@ -777,14 +856,6 @@
 					<div class="inv-pack-panel">
 						<div class="inv-panel-head">
 							<span id="invPackTitle" data-bound="InventoryEditor">Party</span>
-							<button type="button" class="pm-btn inv-apply" id="invApply"
-							        data-bound="InventoryEditor">
-								<i>&#10094;</i> Apply changes <i>&#10095;</i>
-							</button>
-							<button type="button" class="pm-btn inv-revert" id="invRevert"
-							        data-bound="InventoryEditor">
-								<i>&#10094;</i> Revert <i>&#10095;</i>
-							</button>
 						</div>
 						<div class="inv-packs" id="invPacks" data-bound="InventoryEditor"></div>
 					</div>
@@ -872,20 +943,23 @@
 					<div class="inv-status" id="invStatus" data-bound="InventoryEditor"></div>
 				</div>
 				<div class="row view abilities-view" id="abilitiesView" data-bound="AbilityEditor">
-					<div class="abl-head">
-						<span class="abl-character" id="ablCharacterName"
+					<div class="panel-bar" id="ablPanelBar" data-bound="AbilityEditor">
+						<span class="panel-bar-title abl-character" id="ablCharacterName"
 						      data-bound="AbilityEditor"></span>
-						<span class="abl-character-meta" id="ablCharacterMeta"
+						<span class="panel-bar-hint abl-character-meta" id="ablCharacterMeta"
 						      data-bound="AbilityEditor"></span>
-						<span class="abl-pending" id="ablPending" data-bound="AbilityEditor"></span>
-						<button type="button" class="pm-btn abl-apply" id="ablApply"
-						        data-bound="AbilityEditor">
-							<i>&#10094;</i> Apply changes <i>&#10095;</i>
-						</button>
-						<button type="button" class="pm-btn abl-revert" id="ablRevert"
-						        data-bound="AbilityEditor">
-							<i>&#10094;</i> Revert <i>&#10095;</i>
-						</button>
+						<span class="panel-bar-actions">
+							<span class="panel-bar-note abl-pending" id="ablPending"
+							      data-bound="AbilityEditor"></span>
+							<button type="button" class="pm-btn panel-revert" id="ablRevert"
+							        data-bound="AbilityEditor">
+								<i>&#10094;</i> Revert <i>&#10095;</i>
+							</button>
+							<button type="button" class="pm-btn panel-apply" id="ablApply"
+							        data-bound="AbilityEditor">
+								<i>&#10094;</i> Apply changes <i>&#10095;</i>
+							</button>
+						</span>
 					</div>
 
 					<div class="abl-columns">
@@ -918,6 +992,8 @@
 							<span>Add an ability, spell or talent</span>
 							<span class="abl-count" id="ablBrowseCount"
 							      data-bound="AbilityEditor"></span>
+							<span class="abl-sort" id="ablBrowseSort"
+							      data-bound="AbilityEditor"></span>
 						</div>
 						<div class="abl-search">
 							<input type="text" class="form-control" id="ablBrowseSearch"
@@ -929,19 +1005,29 @@
 								Show everything, not just what this class can take
 							</label>
 						</div>
-						<div class="abl-browse-grid" id="ablBrowseGrid"
-						     data-bound="AbilityEditor"></div>
-						<div class="abl-browse-pager">
-							<button type="button" class="pm-btn" id="ablBrowsePrev"
-							        data-bound="AbilityEditor">
-								<i>&#10094;</i> Previous
-							</button>
-							<span class="abl-browse-page" id="ablBrowsePage"
-							      data-bound="AbilityEditor"></span>
-							<button type="button" class="pm-btn" id="ablBrowseNext"
-							        data-bound="AbilityEditor">
-								Next <i>&#10095;</i>
-							</button>
+						<!-- The list on the left, and what the highlighted row actually
+						     does on the right, the way the game explains a talent while
+						     you are choosing one at level-up. -->
+						<div class="abl-browse-columns">
+							<div class="abl-browse-list">
+								<div class="abl-browse-grid" id="ablBrowseGrid"
+								     data-bound="AbilityEditor"></div>
+								<div class="abl-browse-pager">
+									<button type="button" class="pm-btn" id="ablBrowsePrev"
+									        data-bound="AbilityEditor">
+										<i>&#10094;</i> Previous
+									</button>
+									<span class="abl-browse-page" id="ablBrowsePage"
+									      data-bound="AbilityEditor"></span>
+									<button type="button" class="pm-btn" id="ablBrowseNext"
+									        data-bound="AbilityEditor">
+										Next <i>&#10095;</i>
+									</button>
+								</div>
+							</div>
+
+							<div class="abl-detail" id="ablDetail"
+							     data-bound="AbilityEditor"></div>
 						</div>
 					</div>
 
@@ -971,18 +1057,20 @@
 					</div>
 
 					<div class="sh-main" id="shMain" data-bound="StrongholdEditor">
-						<div class="sh-head">
-							<span class="sh-title">Caed Nua</span>
-							<span class="sh-turn" id="shTurn"
+						<div class="panel-bar" id="shPanelBar" data-bound="StrongholdEditor">
+							<span class="panel-bar-title">Caed Nua</span>
+							<span class="panel-bar-hint sh-turn" id="shTurn"
 							      data-bound="StrongholdEditor"></span>
-							<button type="button" class="pm-btn sh-apply" id="shApply"
-							        data-bound="StrongholdEditor">
-								<i>&#10094;</i> Apply changes <i>&#10095;</i>
-							</button>
-							<button type="button" class="pm-btn sh-revert" id="shRevert"
-							        data-bound="StrongholdEditor">
-								<i>&#10094;</i> Revert <i>&#10095;</i>
-							</button>
+							<span class="panel-bar-actions">
+								<button type="button" class="pm-btn panel-revert" id="shRevert"
+								        data-bound="StrongholdEditor">
+									<i>&#10094;</i> Revert <i>&#10095;</i>
+								</button>
+								<button type="button" class="pm-btn panel-apply" id="shApply"
+								        data-bound="StrongholdEditor">
+									<i>&#10094;</i> Apply changes <i>&#10095;</i>
+								</button>
+							</span>
 						</div>
 
 						<div class="sh-body">
@@ -1042,64 +1130,99 @@
 					</div>
 
 					<div class="grm-main" id="grmMain" data-bound="GrimoireEditor">
-						<div class="grm-books">
-							<div class="grm-books-head">Grimoires</div>
-							<div class="grm-book-list" id="grmList"
-							     data-bound="GrimoireEditor"></div>
-						</div>
-
-						<div class="grm-book-body">
-							<div class="grm-head">
-								<span class="grm-title" id="grmTitle"
-								      data-bound="GrimoireEditor"></span>
-								<button type="button" class="pm-btn grm-apply" id="grmApply"
-								        data-bound="GrimoireEditor">
-									<i>&#10094;</i> Apply changes <i>&#10095;</i>
-								</button>
-								<button type="button" class="pm-btn grm-revert" id="grmRevert"
+						<div class="panel-bar" id="grmPanelBar" data-bound="GrimoireEditor">
+							<span class="panel-bar-title">Grimoires</span>
+							<span class="panel-bar-hint">Spells belong to the book, not to whoever carries it.</span>
+							<span class="panel-bar-actions">
+								<button type="button" class="pm-btn panel-revert" id="grmRevert"
 								        data-bound="GrimoireEditor">
 									<i>&#10094;</i> Revert <i>&#10095;</i>
 								</button>
-							</div>
-
-							<div class="grm-note" id="grmNote"
-							     data-bound="GrimoireEditor"></div>
-
-							<div class="grm-chapters" id="grmChapters"
-							     data-bound="GrimoireEditor"></div>
-
-							<div class="grm-browse-panel">
-								<div class="grm-browse-head">
-									Wizard spells
-									<span class="grm-browse-subtitle">
-										Four to a level, exactly as the game allows &mdash;
-										a fifth is dropped when the save loads.
-									</span>
-								</div>
-								<form onsubmit="return false;">
-									<div class="form-group">
-										<div class="input-group">
-											<input type="text" class="form-control icon-left grm-search"
-											       id="grmSearch" data-bound="GrimoireEditor"
-											       placeholder="Search spells..." />
-											<span class="icon-left"><i class="fa fa-search"></i></span>
-										</div>
-									</div>
-								</form>
-								<div class="grm-browse" id="grmBrowse"
-								     data-bound="GrimoireEditor"></div>
-								<button type="button" class="pm-btn grm-more" id="grmBrowseMore"
+								<button type="button" class="pm-btn panel-apply" id="grmApply"
 								        data-bound="GrimoireEditor">
-									Show more
+									<i>&#10094;</i> Apply changes <i>&#10095;</i>
 								</button>
+							</span>
+						</div>
+						<div class="grm-columns">
+							<div class="grm-books">
+								<div class="grm-books-head">
+									<span>Grimoires</span>
+									<span class="grm-books-count" id="grmBookCount"
+									      data-bound="GrimoireEditor"></span>
+								</div>
+								<div class="grm-book-list" id="grmList"
+								     data-bound="GrimoireEditor"></div>
 							</div>
 
-							<div class="grm-status" id="grmStatus"
-							     data-bound="GrimoireEditor"></div>
+							<div class="grm-book-body">
+								<div class="grm-head">
+									<span class="grm-title" id="grmTitle"
+									      data-bound="GrimoireEditor"></span>
+								</div>
+
+								<div class="grm-note" id="grmNote"
+								     data-bound="GrimoireEditor"></div>
+
+								<div class="grm-chapters" id="grmChapters"
+								     data-bound="GrimoireEditor"></div>
+
+								<div class="grm-browse-panel">
+									<div class="grm-browse-head">
+										<span>Wizard spells</span>
+										<span class="grm-sort" id="grmSort"
+										      data-bound="GrimoireEditor"></span>
+										<span class="grm-browse-subtitle">
+											Four to a level, exactly as the game allows &mdash;
+											a fifth is dropped when the save loads.
+										</span>
+									</div>
+									<form onsubmit="return false;">
+										<div class="form-group">
+											<div class="input-group">
+												<input type="text" class="form-control icon-left grm-search"
+												       id="grmSearch" data-bound="GrimoireEditor"
+												       placeholder="Search spells..." />
+												<span class="icon-left"><i class="fa fa-search"></i></span>
+											</div>
+										</div>
+									</form>
+									<div class="grm-browse" id="grmBrowse"
+									     data-bound="GrimoireEditor"></div>
+									<button type="button" class="pm-btn grm-more" id="grmBrowseMore"
+									        data-bound="GrimoireEditor">
+										Show more
+									</button>
+								</div>
+
+								<div class="grm-status" id="grmStatus"
+								     data-bound="GrimoireEditor"></div>
+							</div>
 						</div>
 					</div>
 				</div>
 				<div class="row view console-view" id="consoleView" data-bound="ConsoleTab">
+					<!-- Revert and Apply for a panel that edits saveData as you type.
+					     Apply is a commit point rather than a write: it makes what is on
+					     screen the baseline Revert goes back to, and Save is still what
+					     puts it on disk. -->
+					<div class="panel-bar" id="consolePanelBar" data-bound="PanelChanges">
+						<span class="panel-bar-title" id="consolePanelTitle"
+						      data-bound="PanelChanges">Console</span>
+						<span class="panel-bar-hint">Commands apply as you run them; this reverts every one of them.</span>
+						<span class="panel-bar-actions">
+							<span class="panel-bar-note" id="consolePanelNote"
+							      data-bound="PanelChanges"></span>
+							<button type="button" class="pm-btn panel-revert" id="consolePanelRevert"
+							        data-bound="PanelChanges" disabled>
+								<i>&#10094;</i> Revert <i>&#10095;</i>
+							</button>
+							<button type="button" class="pm-btn panel-apply" id="consolePanelApply"
+							        data-bound="PanelChanges" disabled>
+								<i>&#10094;</i> Apply changes <i>&#10095;</i>
+							</button>
+						</span>
+					</div>
 					<div class="console-achievements">
 						<button type="button" id="achievementsToggle" class="pm-btn"
 						        data-bound="ConsoleTab"></button>
@@ -1225,6 +1348,7 @@
 	<script src="js/StrongholdEditor.js"></script>
 	<script src="js/GrimoireEditor.js"></script>
 	<script src="js/PortraitPicker.js"></script>
+	<script src="js/PanelChanges.js"></script>
 	<script src="js/ConsoleTab.js"></script>
 	<script src="js/Modifications.js"></script>
 	<script src="js/ImportCharacter.js"></script>

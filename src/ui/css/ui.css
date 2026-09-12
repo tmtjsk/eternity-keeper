@@ -1600,35 +1600,43 @@ body.theme-light #referenceTable td.reference-command {
 }
 
 .inv-doll {
-	display: flex;
-	justify-content: space-between;
-	align-items: flex-start;
+	display: block;
 }
 
-.inv-slot-column {
-	flex: 0 0 54px;
+/* Three equipment slots to a row. Chrome 45 has no CSS Grid and no flexbox
+   `gap`, so the columns are thirds with their own margins. */
+.inv-slots {
+	display: flex;
+	flex-wrap: wrap;
+	margin-top: 10px;
+	padding-top: 10px;
+	border-top: 1px solid rgba(201, 180, 126, .22);
 }
 
 .inv-equip-slot {
+	flex: 0 0 33.333%;
+	width: 33.333%;
 	text-align: center;
-	margin-bottom: 6px;
+	padding: 0 2px;
+	margin-bottom: 10px;
 }
 
 .inv-equip-slot .inv-tile {
 	margin: 0 auto;
 }
 
+/* Room enough for "Right ring" on one line, which the 54px columns did not
+   have. */
 .inv-slot-label {
 	display: block;
-	font-size: 9px;
-	line-height: 1.1;
+	font-size: 10px;
+	line-height: 1.2;
 	color: #8d7f63;
-	margin-top: 2px;
+	margin-top: 3px;
 }
 
 .inv-portrait {
-	flex: 1 1 auto;
-	margin: 0 6px;
+	margin: 0;
 	text-align: center;
 	min-height: 210px;
 	background: radial-gradient(ellipse at center, rgba(40, 62, 68, .85), rgba(10, 14, 16, .95));
@@ -2357,11 +2365,6 @@ body.theme-light .inv-panel-head {
 	margin-left: 10px;
 }
 
-/* Give Revert and Apply room to breathe instead of butting together. */
-.inv-panel-head .inv-apply {
-	margin-left: 14px;
-}
-
 .inv-stash-panel,
 .inv-browser-panel {
 	max-width: 100%;
@@ -2764,14 +2767,6 @@ body.theme-light .skills-remaining input {
 	padding: 14px 18px 24px;
 }
 
-.abl-head {
-	flex: 1 1 100%;
-	width: 100%;
-	padding-bottom: 10px;
-	margin-bottom: 12px;
-	border-bottom: 1px solid rgba(201, 180, 126, .22);
-}
-
 .abl-character {
 	font-size: 17px;
 	color: #e8d5a3;
@@ -2787,13 +2782,6 @@ body.theme-light .skills-remaining input {
 	margin-left: 14px;
 	font-size: 12px;
 	color: #c9a227;
-}
-
-.abl-head .pm-btn {
-	float: right;
-	margin-left: 8px;
-	padding: 3px 10px;
-	font-size: 12px;
 }
 
 .abl-columns {
@@ -2826,8 +2814,10 @@ body.theme-light .skills-remaining input {
 .abl-browser-panel {
 	flex: 1 1 100%;
 	width: 100%;
-	/* Lines up with the two panels above rather than running past them. */
-	max-width: 1138px;
+	/* The two panels above cap at 1138px between them; the description column
+	   and its gutter are added on top of that so the list itself keeps the
+	   width it had rather than being squeezed by the new half. */
+	max-width: 1484px;
 }
 
 .abl-panel-head {
@@ -3058,7 +3048,6 @@ body.theme-light .abl-browser-panel {
 	border-color: rgba(107, 56, 18, .25);
 }
 
-body.theme-light .abl-head,
 body.theme-light .abl-panel-head {
 	border-bottom-color: rgba(107, 56, 18, .22);
 }
@@ -3299,13 +3288,6 @@ body.theme-light .inv-sell-summary {
 	display: block;
 }
 
-.sh-head {
-	padding: 0 18px 10px 0;
-	border-bottom: 1px solid rgba(201, 180, 126, .22);
-	margin-bottom: 14px;
-	white-space: nowrap;
-}
-
 .sh-title {
 	font-size: 20px;
 	color: #e8d5a3;
@@ -3316,13 +3298,6 @@ body.theme-light .inv-sell-summary {
 	font-size: 13px;
 	color: #9c8c6a;
 	margin-left: 14px;
-}
-
-.sh-head .pm-btn {
-	float: right;
-	margin-left: 8px;
-	padding: 3px 10px;
-	font-size: 12px;
 }
 
 .sh-body {
@@ -3717,10 +3692,6 @@ body.theme-light .sh-unavailable h3 {
 	border-bottom-color: rgba(107, 56, 18, .2);
 }
 
-body.theme-light .sh-head {
-	border-bottom-color: rgba(107, 56, 18, .2);
-}
-
 body.theme-light .sh-upgrade {
 	border-bottom-color: rgba(107, 56, 18, .12);
 }
@@ -4109,22 +4080,39 @@ body.theme-light .identity-sheet {
 }
 
 .grm-main {
+	display: block;
+}
+
+/* align-items: stretch is what makes the rail as tall as the book beside it
+   -- with flex-start it stopped at its own content and left the panel looking
+   half empty. */
+.grm-columns {
 	display: flex;
-	align-items: flex-start;
+	align-items: stretch;
 }
 
 .grm-books {
 	width: 230px;
 	margin-right: 20px;
 	flex: 0 0 auto;
+	display: flex;
+	flex-direction: column;
 }
 
-/* A real mid-game save holds every grimoire ever looted, so the rail scrolls
-   rather than running off the bottom of the view. */
+/* A real mid-game save holds every grimoire ever looted -- 32 in the test
+   save -- so the rail scrolls inside its own height rather than running off
+   the bottom of the view. flex: 1 gives it whatever the column has left after
+   the heading, which with a stretched column is the full panel. */
 .grm-book-list {
-	max-height: 620px;
+	flex: 1 1 auto;
+	min-height: 260px;
 	overflow-y: auto;
 	padding-right: 4px;
+}
+
+.grm-books-count {
+	float: right;
+	color: #93866f;
 }
 
 .grm-book-held {
@@ -4190,12 +4178,6 @@ body.theme-light .grm-book-held {
 	color: #e8d5a3;
 }
 
-.grm-apply,
-.grm-revert {
-	float: right;
-	margin-left: 8px;
-}
-
 .grm-note {
 	font-size: 11px;
 	line-height: 1.5;
@@ -4203,13 +4185,26 @@ body.theme-light .grm-book-held {
 	margin-bottom: 14px;
 }
 
+/* The game lays a grimoire out as two facing pages of chapters, and a row of
+   four tiles across put every long spell name behind an overflow: hidden.
+   Two columns of chapters, four full-width rows in each, is both more compact
+   vertically and wide enough for "Concelhaut's Draining Missiles" plus its
+   own remove button. No CSS columns here -- Chrome 45 has them, but they
+   break a chapter across the gutter. */
+.grm-chapters {
+	display: flex;
+	flex-wrap: wrap;
+}
+
 .grm-chapter {
-	margin-bottom: 10px;
+	flex: 1 1 46%;
+	min-width: 300px;
+	margin: 0 2% 8px 0;
 }
 
 .grm-chapter-head {
-	padding-bottom: 3px;
-	margin-bottom: 5px;
+	padding-bottom: 2px;
+	margin-bottom: 3px;
 	border-bottom: 1px solid rgba(201, 180, 126, .12);
 }
 
@@ -4231,29 +4226,36 @@ body.theme-light .grm-book-held {
 	flex-wrap: wrap;
 }
 
+/* Four rows to a chapter, stacked. */
+.grm-slots {
+	display: block;
+}
+
 .grm-spell {
-	width: 24%;
-	min-width: 170px;
-	margin: 0 1% 5px 0;
-	padding: 5px 7px;
+	width: 100%;
+	margin: 0 0 3px 0;
+	padding: 3px 5px;
 	background: rgba(0, 0, 0, .22);
 	border: 1px solid rgba(201, 180, 126, .18);
 	border-radius: 2px;
 	overflow: hidden;
+	white-space: nowrap;
 }
 
+/* Exactly as tall as a filled row's content box, so a half-full chapter does
+   not step up and down. */
 .grm-spell-empty {
 	background: transparent;
 	border-style: dashed;
 	border-color: rgba(201, 180, 126, .12);
-	height: 38px;
+	height: 20px;
 }
 
 .grm-spell-icon {
 	float: left;
-	width: 26px;
-	height: 26px;
-	margin-right: 7px;
+	width: 20px;
+	height: 20px;
+	margin-right: 6px;
 	border: 1px solid rgba(201, 180, 126, .28);
 	border-radius: 2px;
 	background: rgba(0, 0, 0, .35);
@@ -4261,28 +4263,33 @@ body.theme-light .grm-book-held {
 
 .grm-spell-icon-empty {
 	display: inline-block;
-	line-height: 26px;
+	line-height: 20px;
 	text-align: center;
-	font-size: 12px;
+	font-size: 11px;
 	color: #a2937a;
 }
 
+/* The name takes whatever the row has left once the icon and the remove
+   button have theirs, and says so with an ellipsis rather than a hard cut --
+   `overflow: hidden` alone made a clipped name look like a rendering fault. */
 .grm-spell-name {
 	display: block;
 	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 	font-size: 12px;
-	line-height: 1.35;
+	line-height: 20px;
 	color: #ddc99a;
-	padding-top: 2px;
 }
 
 .grm-spell-remove {
 	float: right;
-	width: 20px;
-	height: 20px;
+	width: 18px;
+	height: 18px;
+	margin-left: 6px;
 	padding: 0;
-	line-height: 18px;
-	font-size: 15px;
+	line-height: 16px;
+	font-size: 14px;
 	color: #c99a8c;
 	background: transparent;
 	border: 1px solid rgba(201, 180, 126, .2);
@@ -4315,9 +4322,18 @@ body.theme-light .grm-book-held {
 	max-width: 320px;
 }
 
+/* Capped for the reason the ability panels are: a row is a name, a level and
+   a button, and on a 2560px screen the full width left about a thousand
+   pixels of nothing between the spell and the button that adds it. */
 .grm-browse {
 	max-height: 320px;
+	max-width: 680px;
 	overflow-y: auto;
+}
+
+.grm-browse-panel .grm-more {
+	max-width: 680px;
+	width: 100%;
 }
 
 .grm-browse-row {
@@ -4394,6 +4410,7 @@ body.theme-light .grm-book-name {
 body.theme-light .grm-unavailable p,
 body.theme-light .grm-note,
 body.theme-light .grm-books-head,
+body.theme-light .grm-books-count,
 body.theme-light .grm-browse-head,
 body.theme-light .grm-book-where,
 body.theme-light .grm-book-count,
@@ -4666,4 +4683,325 @@ body.theme-light .save-warning-note {
 
 .cnv-reading {
 	color: #a2937a;
+}
+
+/* -------------------- The panel action bar -------------------- */
+
+/* Every view gets the same header: what this panel is on the left, Revert and
+   Apply on the right. The four manager-backed tabs already had the pair in
+   four different places and four different sizes; this is the one shape. */
+.panel-bar {
+	/* The inventory and abilities views are flex-wrap containers, so a bare
+	   width:100% would still let the bar shrink beside its siblings. */
+	flex: 0 0 100%;
+	width: 100%;
+	margin: 0 0 12px 0;
+	padding: 0 0 8px 0;
+	border-bottom: 1px solid rgba(201, 180, 126, .22);
+	line-height: 26px;
+	white-space: nowrap;
+}
+
+.panel-bar-title {
+	font-size: 15px;
+	letter-spacing: .04em;
+	color: #e8d5a3;
+	margin-right: 10px;
+}
+
+.panel-bar-hint {
+	font-size: 12px;
+	color: #8d7f63;
+	white-space: normal;
+}
+
+.panel-bar-actions {
+	float: right;
+	white-space: nowrap;
+}
+
+.panel-bar-note {
+	display: inline-block;
+	font-size: 12px;
+	color: #8d7f63;
+	margin-right: 10px;
+	vertical-align: middle;
+}
+
+/* Something waiting to be confirmed is worth noticing; nothing waiting is not. */
+.panel-bar-note-on {
+	color: #d3a86e;
+}
+
+.panel-bar-actions .pm-btn {
+	margin-left: 8px;
+	padding: 3px 12px;
+	font-size: 12px;
+	vertical-align: middle;
+}
+
+/* Chrome 45 has no :disabled styling worth relying on for a custom button, so
+   the muted state is set explicitly rather than inherited. */
+.panel-bar-actions .pm-btn[disabled] {
+	opacity: .45;
+	cursor: default;
+}
+
+body.theme-light .panel-bar {
+	border-bottom-color: rgba(107, 56, 18, .2);
+}
+
+body.theme-light .panel-bar-title {
+	color: #3a2a18;
+}
+
+body.theme-light .panel-bar-hint,
+body.theme-light .panel-bar-note {
+	color: #6f5a3c;
+}
+
+body.theme-light .panel-bar-note-on {
+	color: #8a4b12;
+}
+
+/* One global in a real save genuinely has no name. */
+.raw-unnamed {
+	font-style: italic;
+	color: #8d7f63;
+}
+
+body.theme-light .raw-unnamed {
+	color: #6f5a3c;
+}
+
+/* By chapter or by name, in the spell browser's own heading. */
+.grm-sort {
+	float: right;
+	text-transform: none;
+	letter-spacing: 0;
+}
+
+.grm-sort-btn {
+	margin-left: 6px;
+	padding: 1px 9px;
+	font-size: 11px;
+}
+
+.grm-sort-on {
+	color: #e8d5a3;
+	border-color: #c9b47e;
+	background: rgba(201, 180, 126, .16);
+}
+
+body.theme-light .grm-sort-on {
+	color: #3a2a18;
+	border-color: #6b3812;
+	background: rgba(107, 56, 18, .12);
+}
+
+/* -------------------- The ability browser's two halves -------------------- */
+
+/* Chrome 45 has no flexbox `gap`, so the gutter is the left column's margin. */
+.abl-browse-columns {
+	display: flex;
+	align-items: flex-start;
+}
+
+.abl-browse-list {
+	flex: 1 1 auto;
+	min-width: 0;
+	margin-right: 16px;
+}
+
+/* A level marker every time the requirement changes, so the list reads the
+   way the game's own level-up list does rather than as one long alphabet. */
+.abl-level-break {
+	padding: 9px 0 3px;
+	border-bottom: 1px solid rgba(201, 180, 126, .18);
+	margin-bottom: 3px;
+}
+
+.abl-level-break:first-child {
+	padding-top: 2px;
+}
+
+.abl-level-mark {
+	font-size: 10px;
+	letter-spacing: .08em;
+	text-transform: uppercase;
+	color: #c9b47e;
+}
+
+.abl-row-add {
+	cursor: pointer;
+}
+
+/* Which row's description is open on the right. */
+.abl-row-open {
+	background: rgba(201, 180, 126, .12);
+	box-shadow: inset 2px 0 0 #c9b47e;
+}
+
+.abl-sort {
+	float: right;
+	text-transform: none;
+	letter-spacing: 0;
+}
+
+.abl-sort-btn {
+	margin-left: 6px;
+	padding: 1px 9px;
+	font-size: 11px;
+}
+
+.abl-sort-on {
+	color: #e8dcbc;
+	border-color: #c9b47e;
+	background: rgba(201, 180, 126, .16);
+}
+
+/* -------------------- What the highlighted row does -------------------- */
+
+.abl-detail {
+	flex: 0 0 330px;
+	width: 330px;
+	padding: 12px 14px 14px;
+	background: rgba(0, 0, 0, .24);
+	border: 1px solid rgba(201, 180, 126, .24);
+	border-radius: 3px;
+}
+
+.abl-detail-empty {
+	font-size: 12px;
+	line-height: 1.55;
+	color: #8d7f63;
+}
+
+.abl-detail-head {
+	padding-bottom: 8px;
+	margin-bottom: 8px;
+	border-bottom: 1px solid rgba(201, 180, 126, .2);
+}
+
+.abl-detail-icon {
+	float: left;
+	margin-right: 9px;
+}
+
+.abl-detail-name {
+	display: block;
+	overflow: hidden;
+	font-size: 15px;
+	line-height: 1.3;
+	color: #e8dcbc;
+}
+
+.abl-detail-meta {
+	font-size: 11px;
+	color: #a2937a;
+	margin-bottom: 4px;
+}
+
+.abl-detail-level {
+	font-size: 12px;
+	color: #c9b47e;
+	margin-bottom: 8px;
+}
+
+.abl-detail-note {
+	font-size: 11px;
+	line-height: 1.5;
+	color: #d3a86e;
+	margin-bottom: 8px;
+}
+
+.abl-detail-text {
+	font-size: 12px;
+	line-height: 1.6;
+	color: #ccbfa4;
+	white-space: pre-wrap;
+}
+
+.abl-detail-label {
+	margin-top: 10px;
+	font-size: 10px;
+	letter-spacing: .08em;
+	text-transform: uppercase;
+	color: #8d7f63;
+}
+
+.abl-detail-list {
+	list-style: none;
+	margin: 2px 0 0 0;
+	padding: 0;
+	font-size: 12px;
+	color: #ccbfa4;
+}
+
+.abl-detail-list li {
+	padding: 1px 0;
+}
+
+.abl-detail-prefab {
+	margin-top: 12px;
+	padding-top: 7px;
+	border-top: 1px solid rgba(201, 180, 126, .14);
+	font-family: Consolas, "Courier New", monospace;
+	font-size: 10px;
+	color: #7d7159;
+	word-break: break-all;
+}
+
+body.theme-light .abl-detail {
+	background: rgba(255, 255, 255, .45);
+	border-color: rgba(107, 56, 18, .25);
+}
+
+body.theme-light .abl-detail-name {
+	color: #3a2a18;
+}
+
+body.theme-light .abl-detail-text,
+body.theme-light .abl-detail-list {
+	color: #4a3717;
+}
+
+body.theme-light .abl-detail-meta,
+body.theme-light .abl-detail-empty,
+body.theme-light .abl-detail-label,
+body.theme-light .abl-detail-prefab {
+	color: #6f5a3c;
+}
+
+body.theme-light .abl-detail-level,
+body.theme-light .abl-level-mark {
+	color: #8a4b12;
+}
+
+body.theme-light .abl-detail-note {
+	color: #8a4b12;
+}
+
+body.theme-light .abl-level-break {
+	border-bottom-color: rgba(107, 56, 18, .2);
+}
+
+body.theme-light .abl-row-open {
+	background: rgba(107, 56, 18, .1);
+	box-shadow: inset 2px 0 0 #6b3812;
+}
+
+body.theme-light .abl-sort-on {
+	color: #3a2a18;
+	border-color: #6b3812;
+	background: rgba(107, 56, 18, .12);
+}
+
+/* The inventory's slots follow an identity edit that Save, not Apply, writes. */
+.inv-status-warn {
+	color: #d3a86e;
+}
+
+body.theme-light .inv-status-warn {
+	color: #8a4b12;
 }

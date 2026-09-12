@@ -53,6 +53,13 @@ var AbilityEditor = function () {
 	var browseAnyClass = false;
 	var browseTimer = null;
 	var browsedFor = null;   // character the current browse results were fetched for
+
+	// Sorted on the server, because the browser pages: reordering the window
+	// the client happens to hold would put a level 9 talent above a level 1
+	// one the moment the next page arrived.
+	var browseSort = 'level';
+	// The row whose description is open on the right.
+	var browseDetail = null;
 	var status = '';
 
 	var KINDS = [
@@ -73,6 +80,27 @@ var AbilityEditor = function () {
 
 	var characterInfo = guid =>
 		(abilities().characters || []).filter(c => c.guid === guid)[0] || null;
+
+	// The opener's snapshot says what class a character was when the save was
+	// opened. The Identity panel edits that live, and what a character can
+	// learn comes straight off their class and subrace, so the browser has to
+	// ask the stats rather than the snapshot -- otherwise changing someone to
+	// a cipher still offers them the paladin's talents until the save is
+	// written and reopened.
+	var liveIdentity = guid => {
+		var info = characterInfo(guid) || {};
+		var stats = (saveData().characters || []).filter(c => c.GUID === guid)[0];
+
+		return {
+			characterClass:
+				liveStat(stats, 'CharacterClass') || info.characterClass || ''
+			, characterSubrace:
+				liveStat(stats, 'CharacterSubrace') || info.characterSubrace || ''
+			, progressionTable: info.progressionTable || ''
+			, isPlayer: !!info.isPlayer
+			, level: info.level
+		};
+	};
 
 	var characterName = guid => {
 		var match = (saveData().characters || []).filter(c => c.GUID === guid)[0];
@@ -284,8 +312,9 @@ var AbilityEditor = function () {
 		var character = characterInfo(guid);
 
 		self.html.ablCharacterName.text(characterName(guid));
+		var identity = liveIdentity(guid);
 		self.html.ablCharacterMeta.text(character
-			? [character.characterClass, 'level ' + character.level]
+			? [identity.characterClass, 'level ' + identity.level]
 				.filter(part => part && part !== 'level 0').join(' · ')
 			: '');
 
@@ -474,17 +503,18 @@ var AbilityEditor = function () {
 	};
 
 	var requestBrowse = () => {
-		var character = characterInfo(self.state.character) || {};
+		var character = liveIdentity(self.state.character);
 
 		window.browseAbilities({
 			request: JSON.stringify({
 				search: self.html.ablBrowseSearch.val() || ''
 				, kind: browseKind
-				, characterClass: character.characterClass || ''
-				, progressionTable: character.progressionTable || ''
-				, subrace: character.characterSubrace || ''
-				, isPlayer: !!character.isPlayer
+				, characterClass: character.characterClass
+				, progressionTable: character.progressionTable
+				, subrace: character.characterSubrace
+				, isPlayer: character.isPlayer
 				, anyClass: browseAnyClass
+				, sort: browseSort
 				, offset: browseOffset
 				, limit: browseLimit
 			})
@@ -507,6 +537,7 @@ var AbilityEditor = function () {
 		// requestBrowse, so without this the highlight never leaves whichever
 		// filter was on when the view opened.
 		renderKindFilter();
+		renderSortFilter();
 
 		var grid = self.html.ablBrowseGrid.empty();
 
@@ -540,10 +571,29 @@ var AbilityEditor = function () {
 		currentAbilities(self.state.character).forEach(a => owned[a.prefab] = true);
 		currentTalents(self.state.character).forEach(t => owned[t.prefab] = true);
 
+		var lastLevel = null;
 		browseEntries.forEach(entry => {
+			// A level marker whenever the requirement changes, so the list
+			// reads the way the game's own level-up list does rather than as
+			// one long alphabet. Only meaningful while sorted by level.
+			if (browseSort === 'level') {
+				var level = levelOf(entry);
+				if (level !== lastLevel) {
+					lastLevel = level;
+					grid.append($('<div>')
+						.addClass('abl-level-break')
+						.append($('<span>').addClass('abl-level-mark')
+							.text(levelLabel(level))));
+				}
+			}
+
 			var line = $('<div>').addClass('abl-row abl-row-add');
 			var already = !!owned[entry.prefab];
 			if (already) line.addClass('abl-row-owned');
+			if (browseDetail && browseDetail.key === entry.key) {
+				line.addClass('abl-row-open');
+			}
+
 			line.append(iconTile({icon: '', iconData: entry.icon}));
 
 			var text = $('<span>').addClass('abl-text');
@@ -554,11 +604,9 @@ var AbilityEditor = function () {
 				, category: entry.category
 				, 'class': entry['class']
 				, passive: entry.passive
-			}) + (entry.unlockLevel > 1 ? ' · from level ' + entry.unlockLevel : '')
-				+ (already ? ' · already known' : '')));
+			}) + (already ? ' · already known' : '')));
 
 			line.append(text);
-			if (entry.description) line.attr('title', entry.description);
 
 			line.append($('<button>')
 				.addClass('btn btn-xs abl-add')
@@ -568,10 +616,142 @@ var AbilityEditor = function () {
 					: 'Give this to the selected character')
 				.prop('disabled', already)
 				.html('<i class="fa fa-' + (already ? 'check' : 'plus') + '"></i>')
-				.click(() => { if (!already) add(entry); }));
+				.click(event => {
+					event.stopPropagation();
+					if (!already) add(entry);
+				}));
+
+			// Clicking the row opens its description; the plus button is the
+			// only thing that changes the character.
+			line.click(() => {
+				browseDetail = entry;
+				renderBrowse();
+			});
 
 			grid.append(line);
 		});
+
+		renderDetail();
+	};
+
+	// The level a player would look for, which is not the same field for a
+	// spell as for a talent. A spell's chapter is its SpellLevel; everything
+	// else is gated by the character level its progression row names, and that
+	// only exists once a character has been named -- "Show everything" drops
+	// the progression filter, so those rows have no requirement to show.
+	var levelOf = entry => {
+		if (entry.spellLevel > 0) {
+			return entry.spellLevel;
+		}
+
+		if (entry.unlockLevel > 0) {
+			return entry.unlockLevel;
+		}
+
+		return entry.level > 0 ? entry.level : 0;
+	};
+
+	var levelLabel = level => {
+		if (level < 1) {
+			return 'No level requirement';
+		}
+
+		return browseKind === 'spell'
+			? 'Spell level ' + level : 'From character level ' + level;
+	};
+
+	// By level or by name. Level is the default because it is the order the
+	// game offers these in, and "what can this character take next" is the
+	// question the panel exists to answer.
+	var renderSortFilter = () => {
+		var bar = self.html.ablBrowseSort.empty();
+		[['level', 'By level'], ['name', 'A\u2013Z']].forEach(pair => {
+			bar.append($('<button type="button">')
+				.addClass('pm-btn abl-sort-btn')
+				.toggleClass('abl-sort-on', browseSort === pair[0])
+				.text(pair[1])
+				.click(() => {
+					if (browseSort === pair[0]) {
+						return;
+					}
+
+					browseSort = pair[0];
+					browseOffset = 0;
+					requestBrowse();
+				}));
+		});
+	};
+
+	// What the highlighted row actually does, laid out the way the game
+	// explains a choice at level-up: what it is, what it needs, what it says,
+	// and what adding it will drag along with it.
+	var renderDetail = () => {
+		var panel = self.html.ablDetail.empty();
+		var entry = browseDetail;
+
+		if (!entry) {
+			panel.append($('<div>').addClass('abl-detail-empty').text(
+				'Pick anything on the left to read what it does.'));
+
+			return;
+		}
+
+		var head = $('<div>').addClass('abl-detail-head');
+		head.append(iconTile({icon: '', iconData: entry.icon})
+			.addClass('abl-detail-icon'));
+		head.append($('<span>').addClass('abl-detail-name').text(entry.displayName));
+		panel.append(head);
+
+		panel.append($('<div>').addClass('abl-detail-meta').text(metaLine({
+			kind: entry.kind
+			, spellLevel: entry.spellLevel
+			, category: entry.category
+			, 'class': entry['class']
+			, passive: entry.passive
+		})));
+
+		var level = levelOf(entry);
+		panel.append($('<div>').addClass('abl-detail-level').text(
+			level > 0 ? levelLabel(level)
+				: 'Nothing in the progression tables gates this.'));
+
+		if (entry.automatic) {
+			panel.append($('<div>').addClass('abl-detail-note').text(
+				'The game grants this automatically rather than offering it as '
+				+ 'a choice.'));
+		}
+
+		panel.append($('<div>').addClass('abl-detail-text').text(
+			entry.description || 'The game gives this no description of its own.'));
+
+		var grants = entry.grants || [];
+		if (grants.length > 0) {
+			panel.append($('<div>').addClass('abl-detail-label').text('Also adds'));
+			var list = $('<ul>').addClass('abl-detail-list');
+			grants.forEach(grant => list.append($('<li>').text(
+				grant.displayName || grant.key || String(grant))));
+			panel.append(list);
+		}
+
+		var modifies = entry.modifies || [];
+		if (modifies.length > 0) {
+			panel.append($('<div>').addClass('abl-detail-label').text('Changes'));
+			var mods = $('<ul>').addClass('abl-detail-list');
+			modifies.forEach(key => mods.append($('<li>').text(key)));
+			panel.append(mods);
+		}
+
+		var skills = entry.skills || {};
+		var skillNames = Object.keys(skills);
+		if (skillNames.length > 0) {
+			panel.append($('<div>').addClass('abl-detail-label').text('Skills'));
+			var bonuses = $('<ul>').addClass('abl-detail-list');
+			skillNames.forEach(name => bonuses.append($('<li>').text(
+				name + ' ' + (skills[name] > 0 ? '+' : '') + skills[name])));
+			panel.append(bonuses);
+		}
+
+		panel.append($('<div>').addClass('abl-detail-prefab').text(entry.prefab || ''));
 	};
 
 	var redraw = () => {
@@ -639,10 +819,16 @@ var AbilityEditor = function () {
 
 		redraw();
 
-		// The browser's contents depend on whose class is selected, so it is
-		// refetched when the character changes and not on every render.
-		if (browsedFor !== self.state.character) {
-			browsedFor = self.state.character;
+		// What the browser can offer depends on the character AND on their
+		// class and subrace, any of which the Identity panel can change
+		// without the save being written -- so the cache key is all three
+		// rather than the guid alone.
+		var identity = liveIdentity(self.state.character);
+		var key = [self.state.character, identity.characterClass
+			, identity.characterSubrace].join('|');
+
+		if (browsedFor !== key) {
+			browsedFor = key;
 			browseOffset = 0;
 			requestBrowse();
 		}

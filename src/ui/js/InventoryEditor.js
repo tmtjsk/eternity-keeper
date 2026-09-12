@@ -79,8 +79,10 @@ var InventoryEditor = function () {
 	// Slot order as the game's own inventory screen lays them out: head down
 	// the left with the pet at the bottom, neck down the right. The deprecated
 	// cape slot is never populated, so it isn't shown at all.
-	var LEFT_SLOTS = ['Head', 'Chest', 'LeftRing', 'Feet', 'Pet'];
-	var RIGHT_SLOTS = ['Neck', 'Hands', 'RightRing', 'Waist', 'Grimoire'];
+	// EquipmentSetSerialized's own order, minus the deprecated Cape, which is
+	// always empty and has no slot in the game's own UI either. Three to a row.
+	var DOLL_SLOTS = ['Head', 'Neck', 'Chest', 'Hands', 'RightRing', 'LeftRing'
+		, 'Feet', 'Waist', 'Grimoire', 'Pet'];
 
 	var SLOT_LABELS = {
 		Head: 'Head', Neck: 'Neck', Chest: 'Armour', Hands: 'Hands'
@@ -544,13 +546,21 @@ var InventoryEditor = function () {
 	 * player alone. The server works this out from race and class and sends
 	 * the list, so the two can't drift apart.
 	 */
+	// Derived from the live CharacterStats rather than from the list the
+	// opener sent: the Identity panel can turn a wizard into a fighter without
+	// the save being written, and a grimoire slot that outlives the class
+	// would let the user equip a book the game then drops.
 	var slotAvailable = (characterGuid, slotName) => {
 		var character = characterInfo(characterGuid);
 		if (!character) {
 			return false;
 		}
 
-		return (character.unavailableSlots || []).indexOf(slotName) < 0;
+		var stats = (saveData().characters || []).filter(
+			c => c.GUID === characterGuid)[0];
+
+		return unavailableSlotsNow(stats, character.unavailableSlots)
+			.indexOf(slotName) < 0;
 	};
 
 	/** Why this item can't go in this slot, or null when it can. */
@@ -673,8 +683,7 @@ var InventoryEditor = function () {
 
 		self.html.invCharacterName.text(characterName(guid));
 		self.html.invPortrait.empty();
-		self.html.invSlotsLeft.empty();
-		self.html.invSlotsRight.empty();
+		self.html.invSlots.empty();
 		self.html.invQuickSlots.empty();
 		self.html.invWeaponSets.empty();
 
@@ -716,8 +725,7 @@ var InventoryEditor = function () {
 			});
 		};
 
-		renderSlots(self.html.invSlotsLeft, LEFT_SLOTS);
-		renderSlots(self.html.invSlotsRight, RIGHT_SLOTS);
+		renderSlots(self.html.invSlots, DOLL_SLOTS);
 
 		var quickKey = containerKey(guid, QUICKBAR);
 		var quick = containers[quickKey];
@@ -995,13 +1003,51 @@ var InventoryEditor = function () {
 				}));
 	};
 
+	/**
+	 * The slots follow the live CharacterStats, which the Identity panel can
+	 * change before the save has been written. That is the point -- turning
+	 * someone into a wizard should open their grimoire slot straight away --
+	 * but the two halves reach the disk by different routes: inventory changes
+	 * are written by Apply here, identity changes by Save. Applying first and
+	 * never saving would leave a book in a slot the wearer has no access to,
+	 * and nothing in the game puts it back: RepairSaveLoadEquipmentErrors
+	 * handles the deprecated Cape and locked slots only. So say so.
+	 */
+	var identityWarning = () => {
+		var guid = self.state.character;
+		var info = characterInfo(guid);
+		var stats = (saveData().characters || []).filter(c => c.GUID === guid)[0];
+		if (!info || !stats) {
+			return null;
+		}
+
+		var was = (info.unavailableSlots || []).slice().sort().join(',');
+		var now = unavailableSlotsNow(stats, info.unavailableSlots).sort().join(',');
+		if (was === now) {
+			return null;
+		}
+
+		return 'These slots follow an unsaved change to '
+			+ characterName(guid) + '\u2019s class or race. Save the character '
+			+ 'edit too \u2014 Apply here writes the items, but only Save writes '
+			+ 'who they belong to.';
+	};
+
 	var renderStatus = message => {
-		if (message) {
-			self.html.invStatus.text(message).addClass('inv-status-on').show();
+		var warning = identityWarning();
+		var text = message || warning;
+
+		if (text) {
+			self.html.invStatus.text(text)
+				.toggleClass('inv-status-on', !!message)
+				.toggleClass('inv-status-warn', !message && !!warning)
+				.show();
+
 			return;
 		}
 
-		self.html.invStatus.text('').removeClass('inv-status-on').hide();
+		self.html.invStatus.text('')
+			.removeClass('inv-status-on inv-status-warn').hide();
 	};
 
 	var redraw = message => {
