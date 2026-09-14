@@ -7,9 +7,11 @@ next. Kept next to the code so it stays honest.
 
 ## 1. Where the project actually is
 
-~17,200 lines of Java, 163 passing tests, a jQuery/Bootstrap UI running on an
-embedded Chromium (JCEF), and a save format that has been reverse-engineered far
-enough to mint objects the game accepts.
+~23,000 lines of Java, 367 passing JUnit tests plus a node-run suite for the
+UI's save merge, a jQuery/Bootstrap UI running on an embedded Chromium (JCEF),
+and a save format that has been reverse-engineered far enough to mint objects
+the game accepts. Nine scripted UI suites (291 checks) drive the running editor
+against a real 13-character save; see §2 for what the last full pass found.
 
 ### Shipped and verified in-game
 
@@ -33,7 +35,6 @@ enough to mint objects the game accepts.
 
 ### Known limitations, stated plainly
 
-- **Auto-updater is dead code.** ~591 lines across three handlers plus `Updates.js`.
 - **The item catalog is generated offline** by a Python script; the editor
   degrades to prettified file names without it.
 - **The game's own UI sprites are not extractable** — item icons are fine, but the
@@ -49,14 +50,57 @@ enough to mint objects the game accepts.
 - Removed `bin/` — 240 stale `.class` files committed to git; Maven builds to `target/`.
 - Removed `EternityBootstrapper/.vs/` — committed IDE state, including a binary `.suo`.
 - Added `bin/` and `.vs/` to `.gitignore`.
+- Deleted the auto-updater (three handlers, `Updates.js`, its dialog, the
+  HttpClient dependencies) and `EternityBootstrapper/`, which existed only for it.
+
+### Whole-repository audit (2026-09-14)
+
+Started from a crash report — choosing where to save froze the editor and it
+shut down — and widened to every write path and every duplicated routine.
+Each bug below was reproduced on the running editor or in a failing test
+before it was fixed.
+
+**Bugs**
+
+| What the user saw (or would have) | Cause | Fix |
+|---|---|---|
+| Choosing a save destination froze the editor, then it closed | A modal Swing `JFileChooser` inside the CEF window disabled the frame and could open behind it | CEF's own native Save dialog; the folder is the parent of whatever is picked |
+| An edit written to a locked or half-written file silently looked like nothing happened | `SharpSerializer` appends; nine in-place writers each had their own delete-and-recreate, or none | `DeserializedPackets.replace`: write a sibling temp file, then an atomic move |
+| An Apply in one tab threw away unsaved edits in another (an attribute after a party change, a global after a grimoire Apply, a portrait after an inventory Apply) | Seven editors merged the server's reply seven ways, three of them wrong | `ui/js/SaveMerge.js`: one three-way merge against a snapshot of the file |
+| An Apply the user discarded was back when the save was reopened from the list — a resurrected companion alive again — and a later Save would have written it | Every manager edited the list's unpacked copy in place | `environment/WorkingSave`: the first edit makes a private copy; opening a save from the list deletes it |
+| Save sent megabytes it never reads, and turned every stat in the live copy into a string | `prepareData` deep-copied the whole save and mutated the characters it claimed to copy | `SaveMerge.writable`: only stats, portraits, globals and money |
+| Temp folder grew 10–14 MB per resurrection | Every candidate donor save was unpacked and none was deleted | Rejected candidates and the donor are deleted |
+| A catalog browser that hit an error spun forever | An exception after parsing escaped the worker; the callback never fired | `CatalogQuery` answers with the error |
+| Two icon caches could corrupt under concurrent browsing | Unsynchronised `HashMap`s | `save/IconFolder`, one `ConcurrentHashMap` |
+| `TypePair.equals` threw on a null member | Unguarded field compare | `Objects.equals` and a matching `hashCode` |
+| Running the tests with the editor open broke the editor | Test cleanup deleted every `EK-` folder in temp | It deletes only what the test made |
+
+**Consolidation** — the same routine written several times, now written once:
+`handlers/SaveMutationHandler` (seven Apply handlers), `handlers/CatalogQuery`
+(three browsers), `handlers/ChrDialog` (import and export), `save/PacketMint`
+(item and ability minting), `EKUtils.findPacketById`/`copyComponent`,
+`AbilityCatalog.prefabNameOf`, and `JSHandlers` as a table of names rather
+than 25 hand-written registrations. The dead Windows Store converter in
+`EKUtils` went with the updater.
+
+**Left alone on purpose**: the one-line `saveData()`/`markDirty()` accessors
+at the top of each UI component (local closures read better than a shared
+global), `PartyManager`'s two AI component builders (they mirror two different
+game components that happen to share three fields), and the two catalogs'
+`search` loops (different filters over different entry types).
+
+**Verified end to end**: one real edit through every write path — stats,
+portrait, identity, difficulty, a global, console money, the achievements
+toggle, an inventory sale, a talent, a stronghold demolition, a grimoire
+change, a minted catalog item and a minted ability — saved, the written file
+reopened from the list, every edit present and the validator clean.
 
 ### Proposed, not done (needs a decision)
 
 | Item | Size | Recommendation |
 |---|---|---|
-| Auto-updater (`CheckForUpdates`, `DownloadUpdate`, `CheckDownloadProgress`, `Updates.js`, the updates dialog) | ~591 LOC | **Delete.** It has been broken for years and every doc says "don't build on it". Removing it also removes the only reason `EternityBootstrapper/` exists |
-| `EternityBootstrapper/` (C# launcher) | ~950 KB | Delete **with** the updater, since it exists to support it |
 | `README.md` | — | Rewrite: it still lists shipped features under "Planned" |
+| DEBUG items in the item catalog | a handful | The extractor keeps prefabs such as `Sword_DEBUG_The_Blade_of_Assuring_Quality`; filter them out, or label them, rather than offer test props as loot |
 
 
 ---
@@ -570,4 +614,4 @@ Features first, per the project owner's direction; compatibility afterwards.
 9. ~~Faster conversion (4.3)~~ done, with the premise corrected
 10. **Then**: Mac support (4.2) ← next, and the only item left that is
     packaging rather than save format
-11. Delete the auto-updater and bootstrapper whenever convenient
+11. ~~Delete the auto-updater and bootstrapper~~ done, in the audit (§2)
