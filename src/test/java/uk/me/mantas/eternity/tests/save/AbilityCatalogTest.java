@@ -29,6 +29,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Optional;
 
 import static org.junit.Assert.*;
@@ -292,5 +294,32 @@ public class AbilityCatalogTest extends TestHarness {
 		assertEquals("NoExtension", AbilityCatalog.prefabNameOf("a/b/NoExtension", "fallback"));
 		assertEquals("fallback", AbilityCatalog.prefabNameOf("", "fallback"));
 		assertEquals("fallback", AbilityCatalog.prefabNameOf(null, "fallback"));
+	}
+
+	/**
+	 * "Show everything" lifts the class filter, which is when the game's own
+	 * debug and test spells would otherwise turn up. They are never offered.
+	 */
+	@Test
+	public void debugAndTestAbilitiesAreNeverOffered () throws IOException {
+		final Optional<File> directory = EKUtils.createTempDir(PREFIX);
+		assertTrue(directory.isPresent());
+		FileUtils.write(new File(directory.get(), "abilities.json"), "{"
+			+ "\"debug_stun_spell\":{\"name\":\"DEBUG stun Spell\",\"kind\":\"ability\""
+			+ ",\"path\":\"Assets/Data/Prefabs/RPG/Spells/_DEBUG/DEBUG_Stun_Spell.prefab\"}"
+			+ ",\"explosivity\":{\"name\":\"Fireball\",\"kind\":\"ability\""
+			+ ",\"path\":\"Assets/Data/Prefabs/RPG/Abilities/Test/Explosivity.prefab\"}"
+			+ ",\"fireball\":{\"name\":\"Fireball\",\"kind\":\"spell\",\"spellLevel\":3"
+			+ ",\"path\":\"Assets/Data/Prefabs/RPG/Spells/Wizard/L_03/Fireball.prefab\"}"
+			+ "}", "UTF-8");
+		FileUtils.write(new File(directory.get(), "progression.json"), "{}", "UTF-8");
+		AbilityCatalog.useCatalogAt(directory.get());
+		final AbilityCatalog catalog = AbilityCatalog.getInstance();
+
+		final List<String> offered = new ArrayList<>();
+		catalog.search("", "", null).forEach(match -> offered.add(match.getKey()));
+
+		assertEquals(Collections.singletonList("fireball"), offered);
+		assertTrue(catalog.lookup("debug_stun_spell").isPresent());
 	}
 }

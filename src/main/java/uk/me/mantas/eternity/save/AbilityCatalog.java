@@ -499,6 +499,11 @@ public class AbilityCatalog {
 				continue;
 			}
 
+			// The game's debug and test spells; see ShippedContent.
+			if (ShippedContent.isDevelopmentPrefab(entry.path)) {
+				continue;
+			}
+
 			if (allowed != null && !allowed.isEmpty()
 				&& !allowed.containsKey(candidate.getKey())) {
 

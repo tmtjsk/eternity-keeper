@@ -300,6 +300,7 @@ public class ItemCatalog {
 	/**
 	 * Catalogued items matching a name fragment and/or an
 	 * {@code ItemFilterType}, sorted by display name so paging is stable.
+	 * Only items the game really ships are offered ({@link ShippedContent}).
 	 */
 	public List<Map.Entry<String, Entry>> search (final String needle, final int filter) {
 		final List<Map.Entry<String, Entry>> matches = new ArrayList<>();
@@ -308,6 +309,12 @@ public class ItemCatalog {
 			final Entry entry = candidate.getValue();
 
 			if (filter != 0 && entry.filter != filter) {
+				continue;
+			}
+
+			if (!ShippedContent.isItemPrefab(entry.path)
+				|| ShippedContent.isDevelopmentPrefab(entry.path)) {
+
 				continue;
 			}
 

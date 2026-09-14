@@ -27,6 +27,11 @@ import uk.me.mantas.eternity.tests.TestHarness;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.Assert.*;
@@ -132,5 +137,45 @@ public class ItemCatalogTest extends TestHarness {
 		// and it has no price to offer anyway.
 		assertTrue(catalog.lookup("q_letter").get().quest);
 		assertEquals(0, catalog.sellValue("q_letter", 1));
+	}
+
+	/**
+	 * The extracted catalog holds the game's development leftovers and, worse,
+	 * creature and NPC prefabs that picked up the name of an item they carry —
+	 * "Leather Armor" for a summoned beetle. The browser offers neither: the
+	 * first are test props, the second would mint a creature as an item. Both
+	 * stay resolvable by key, so a save that already holds one still shows it.
+	 */
+	@Test
+	public void theBrowserOffersOnlyShippedItems () throws IOException {
+		final Optional<File> directory = EKUtils.createTempDir(PREFIX);
+		assertTrue(directory.isPresent());
+		FileUtils.write(new File(directory.get(), "catalog.json"), "{"
+			+ "\"sword_debug_the_blade_of_assuring_quality\":{\"name\":\"*~ The Blade of Assuring Quality ~*\""
+			+ ",\"filter\":1,\"path\":\"Assets/Data/Prefabs/Items/Weapons_Shields/Sword/Sword_DEBUG_The_Blade_of_Assuring_Quality.prefab\"}"
+			+ ",\"cre_beetle_adra_summon\":{\"name\":\"Leather Armor\",\"filter\":2"
+			+ ",\"path\":\"Assets/Data/Prefabs/Characters/Character_TEMPLATES/Creature/Summons/CRE_Beetle_Adra_Summon.prefab\"}"
+			+ ",\"leather_armor\":{\"name\":\"Leather Armor\",\"filter\":2"
+			+ ",\"path\":\"Assets/Data/Prefabs/Items/Armor/Leather/Leather_Armor.prefab\"}"
+			+ ",\"item_pet_tiny_beetle\":{\"name\":\"Tiny Beetle\",\"filter\":128"
+			+ ",\"path\":\"Assets/Data/Prefabs/Characters/Character_TEMPLATES/Pet/SummonItems/ITEM_PET_Tiny_Beetle.prefab\"}"
+			+ "}", "UTF-8");
+		ItemCatalog.useCatalogAt(directory.get());
+		final ItemCatalog catalog = ItemCatalog.getInstance();
+
+		final List<String> offered = new ArrayList<>();
+		catalog.search("", 0).forEach(match -> offered.add(match.getKey()));
+
+		assertEquals(Arrays.asList("leather_armor", "item_pet_tiny_beetle"), offered);
+		assertEquals(Collections.singletonList("leather_armor")
+			, keys(catalog.search("leather", 0)));
+		assertTrue("still named when a save holds one"
+			, catalog.lookup("sword_debug_the_blade_of_assuring_quality").isPresent());
+	}
+
+	private static List<String> keys (final List<Map.Entry<String, ItemCatalog.Entry>> matches) {
+		final List<String> keys = new ArrayList<>();
+		matches.forEach(match -> keys.add(match.getKey()));
+		return keys;
 	}
 }
