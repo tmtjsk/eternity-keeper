@@ -611,19 +611,11 @@ var GrimoireEditor = function () {
 				, grimoires: payload
 			})
 			, onSuccess: response => {
-				var updated = JSON.parse(response);
 				self.state.working = false;
 				contents = {};
 
-				// Unsaved edits elsewhere in the editor live only in the UI's
-				// own copy, so carry them across rather than replacing it
-				// wholesale.
-				var previous = saveData();
-				updated.characters = previous.characters;
-				updated.currency = previous.currency;
-				updated.globals = updated.globals || previous.globals;
-
-				Eternity.SavedGame.transition({saveData: updated});
+				Eternity.SavedGame.transition(
+					{saveData: Eternity.SavedGame.adopt(JSON.parse(response))});
 				markDirty();
 				redraw('Grimoire updated. Save to write it to a file.');
 			}

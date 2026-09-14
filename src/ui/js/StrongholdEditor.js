@@ -546,20 +546,14 @@ var StrongholdEditor = function () {
 				, changes: changes
 			})
 			, onSuccess: response => {
-				var updated = JSON.parse(response);
 				self.state.working = false;
 				pending = {};
 				numbers = {};
 
-				// Carry over what only lives in the UI's copy, the same way
-				// the inventory editor does: unsaved edits elsewhere in the
-				// editor are not in the file yet.
-				var previous = saveData();
-				updated.characters = previous.characters;
-				updated.currency = previous.currency;
-				updated.globals = updated.globals || previous.globals;
-
-				Eternity.SavedGame.transition({saveData: updated});
+				// The new Prestige and Security arrive; unsaved edits made
+				// elsewhere in the editor are kept.
+				Eternity.SavedGame.transition(
+					{saveData: Eternity.SavedGame.adopt(JSON.parse(response))});
 				markDirty();
 				redraw('Stronghold updated. Save to write it to a file.');
 			}

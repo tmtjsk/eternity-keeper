@@ -70,10 +70,10 @@ var ImportCharacter = function () {
 			return;
 		}
 
-		// The importer modified the extracted save so we re-render the whole
-		// save view with the fresh data and flag it as having modifications.
+		// The importer modified the extracted save, so the save view is drawn
+		// again from the reply -- with unsaved edits to everyone else kept.
 		Eternity.SavedGame.render({
-			saveData: response
+			saveData: Eternity.SavedGame.adopt(response)
 			, info: Eternity.SavedGame.state.info
 		});
 

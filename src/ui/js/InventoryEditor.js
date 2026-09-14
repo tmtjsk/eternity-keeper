@@ -1834,21 +1834,7 @@ InventoryEditor.prototype.apply = function () {
 			, changes: changes
 		})
 		, onSuccess: response => {
-			var previous = Eternity.SavedGame.state.saveData;
-			var updated = JSON.parse(response);
-
-			// Never replace saveData wholesale — unsaved edits made in the
-			// other editors live only in that object. Nothing here touches
-			// stats, currency or globals, so carry those across untouched.
-			updated.characters.forEach(character => {
-				var before = previous.characters.filter(c => c.GUID === character.GUID)[0];
-				if (before && before.stats) {
-					character.stats = before.stats;
-				}
-			});
-
-			updated.currency = previous.currency;
-			updated.globals = previous.globals;
+			var updated = Eternity.SavedGame.adopt(JSON.parse(response));
 
 			self.reset();
 			self.state.working = false;

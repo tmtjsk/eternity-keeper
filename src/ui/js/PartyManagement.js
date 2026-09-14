@@ -196,7 +196,7 @@ var PartyManagement = function () {
 			}
 
 			Eternity.SavedGame.render({
-				saveData: response
+				saveData: Eternity.SavedGame.adopt(response)
 				, info: Eternity.SavedGame.state.info
 			});
 

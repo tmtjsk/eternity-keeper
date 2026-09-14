@@ -1099,6 +1099,33 @@ var SavedGame = function () {
 	};
 };
 
+// What the file on disk holds, reduced to the values SaveMerge compares
+// against. Taken when a save opens and again whenever Save writes the UI's copy
+// out, since at both moments the two agree.
+SavedGame.prototype.open = function (saveData, info) {
+	var self = this;
+	self.serverCopy = SaveMerge.snapshot(saveData);
+	self.render({saveData: saveData, info: info});
+};
+
+SavedGame.prototype.written = function () {
+	var self = this;
+	self.serverCopy = SaveMerge.snapshot(self.state.saveData);
+};
+
+/**
+ * A save a manager just rewrote and reopened, with the user's unsaved edits
+ * put back in (invariant 12). Every Apply goes through here rather than
+ * merging the reply its own way; `theirs` is the parsed reply and is modified.
+ */
+SavedGame.prototype.adopt = function (theirs) {
+	var self = this;
+	var onDisk = SaveMerge.snapshot(theirs);
+	var merged = SaveMerge.merge(self.serverCopy, self.state.saveData, theirs);
+	self.serverCopy = onDisk;
+	return merged;
+};
+
 SavedGame.prototype.switchCharacter = function (guid) {
 	var self = this;
 	self.transition({activeCharacter: guid});
@@ -1119,31 +1146,12 @@ SavedGame.prototype.resurrect = function (guid) {
 			return;
 		}
 
-		// The fresh saveData must replace ours (a new character exists now),
-		// but replacing it wholesale would discard unsaved edits. Existing
-		// characters and the party currency are untouched by resurrection,
-		// so the UI's current copies — edits included — stay authoritative.
-		// Globals are taken fresh: resurrection just cleared death flags in
-		// them, and carrying old values over would revert that.
-		var previous = self.state.saveData;
-		if (previous && previous.characters) {
-			var byGuid = {};
-			previous.characters.forEach(c => { byGuid[c.GUID] = c; });
-			response.characters.forEach(c => {
-				if (byGuid[c.GUID] && byGuid[c.GUID].stats && c.stats) {
-					c.stats = byGuid[c.GUID].stats;
-				}
-			});
-
-			if (previous.currency !== undefined) {
-				response.currency = previous.currency;
-			}
-		}
-
+		// A new character exists now and resurrection cleared death flags in
+		// the globals; both arrive, and unsaved edits elsewhere are kept.
 		// The synthetic "dead:" entry is gone from the re-opened save;
 		// falling back to the default selection re-picks the main character.
 		self.render({
-			saveData: response
+			saveData: self.adopt(response)
 			, info: self.state.info
 			, view: self.state.view
 		});
