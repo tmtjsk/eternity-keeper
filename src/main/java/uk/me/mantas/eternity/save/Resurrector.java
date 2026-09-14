@@ -349,21 +349,7 @@ public class Resurrector {
 		dead.setPackets(merged);
 		Property.update(dead.getCount(), merged.size());
 
-		if (deadMobileObjects.delete()) {
-			if (!deadMobileObjects.createNewFile()) {
-				logger.error(
-					"Could not create empty '%s' for serialization!%n"
-					, deadMobileObjects.getAbsolutePath());
-
-				return false;
-			}
-		} else {
-			logger.warn(
-				"Could not delete '%s', attempting to overwrite directly.%n"
-				, deadMobileObjects.getAbsolutePath());
-		}
-
-		dead.reserialize(deadMobileObjects);
+		dead.replace(deadMobileObjects);
 		return true;
 	}
 

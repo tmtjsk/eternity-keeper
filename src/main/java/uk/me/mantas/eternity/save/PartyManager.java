@@ -178,13 +178,8 @@ public class PartyManager {
 		final SimpleProperty count = deserialized.get().getCount();
 		Property.update(count, packets.size());
 
-		if (!mobileObjectsFile.delete() || !mobileObjectsFile.createNewFile()) {
-			logger.error("Unable to replace '%s'.%n", mobileObjectsFile.getAbsolutePath());
-			return false;
-		}
-
 		deserialized.get().setPackets(packets);
-		deserialized.get().reserialize(mobileObjectsFile);
+		deserialized.get().replace(mobileObjectsFile);
 		return true;
 	}
 

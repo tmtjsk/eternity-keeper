@@ -218,21 +218,7 @@ public class ChangesSaver implements Runnable {
 
 		deserialized.get().setPackets(updatedMobileObjects);
 
-		// Silme işlemi başarısız olsa bile (kilitlenme vb.) reserialize metodu dosyayı
-		// overwrite edebilir.
-		if (mobileObjectsFile.delete()) {
-			logger.info("Deleted '%s' successfully.%n", mobileObjectsFile.getAbsolutePath());
-			if (mobileObjectsFile.createNewFile()) {
-				logger.info("Created empty '%s' for serialization.%n", mobileObjectsFile.getAbsolutePath());
-			} else {
-				logger.error("Could not create empty '%s' for serialization!%n", mobileObjectsFile.getAbsolutePath());
-			}
-		} else {
-			logger.warn(
-					"Could not delete '%s', attempting to overwrite directly.%n", mobileObjectsFile.getAbsolutePath());
-		}
-
-		deserialized.get().reserialize(mobileObjectsFile);
+		deserialized.get().replace(mobileObjectsFile);
 	}
 
 	private static Property updateMobileObject(

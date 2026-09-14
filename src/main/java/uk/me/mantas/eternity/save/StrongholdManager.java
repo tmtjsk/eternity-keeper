@@ -199,19 +199,7 @@ public class StrongholdManager {
 			return false;
 		}
 
-		// serializeAll appends and seeks to the end, because the save pipeline
-		// normally writes a file that does not exist yet. Editing in place
-		// means clearing the old contents first, or the new stream lands after
-		// the old one and the game reads the stale copy.
-		final File mobileObjectsFile = new File(saveDirectory, "MobileObjects.save");
-		if (!mobileObjectsFile.delete() || !mobileObjectsFile.createNewFile()) {
-			logger.error(
-				"Unable to replace '%s'.%n", mobileObjectsFile.getAbsolutePath());
-
-			return false;
-		}
-
-		deserialized.get().reserialize(mobileObjectsFile);
+		deserialized.get().replace(new File(saveDirectory, "MobileObjects.save"));
 		return true;
 	}
 

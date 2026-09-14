@@ -83,21 +83,7 @@ public class AchievementsEnabler {
 			return false;
 		}
 
-		if (mobileObjects.delete()) {
-			if (!mobileObjects.createNewFile()) {
-				logger.error(
-					"Could not create empty '%s' for serialization!%n"
-					, mobileObjects.getAbsolutePath());
-
-				return false;
-			}
-		} else {
-			logger.warn(
-				"Could not delete '%s', attempting to overwrite directly.%n"
-				, mobileObjects.getAbsolutePath());
-		}
-
-		deserialized.reserialize(mobileObjects);
+		deserialized.replace(mobileObjects);
 		return true;
 	}
 

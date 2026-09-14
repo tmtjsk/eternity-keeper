@@ -72,7 +72,7 @@ public class CharacterExporter {
 		sharpSerializer = environment.factory().sharpSerializer();
 	}
 
-	public boolean export () throws FileNotFoundException {
+	public boolean export () throws IOException {
 		final File mobileObjectsFile = new File(saveDirectory, "MobileObjects.save");
 		if (!mobileObjectsFile.exists()) {
 			throw new FileNotFoundException(mobileObjectsFile.getAbsolutePath());

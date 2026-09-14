@@ -144,26 +144,31 @@ public class SharpSerializer {
 	// its own Serializer so the output is byte-identical to repeated
 	// serialize() calls, but the file is opened only once, which makes
 	// writing large saves orders of magnitude faster.
-	public void serializeAll (final Property count, final List<Property> properties) {
-		try {
-			FileOutputStream baseStream = new FileOutputStream(targetFile, true);
+	//
+	// It appends (invariant 13): callers writing over an existing save use
+	// DeserializedPackets.replace, which gives this an empty sibling to write.
+	// A failure is thrown rather than logged -- it used to be swallowed here,
+	// and every manager then reported success over a truncated file.
+	public void serializeAll (final Property count, final List<Property> properties)
+		throws IOException {
 
-			try (LittleEndianDataOutputStream stream =
-				new LittleEndianDataOutputStream(new BufferedOutputStream(baseStream))) {
+		final FileOutputStream baseStream = new FileOutputStream(targetFile, true);
 
-				baseStream.getChannel()
-					.position(baseStream.getChannel().size());
+		try (LittleEndianDataOutputStream stream =
+			new LittleEndianDataOutputStream(new BufferedOutputStream(baseStream))) {
 
-				new Serializer(stream).toFormat(format).serialize(count);
-				for (final Property property : properties) {
-					new Serializer(stream).toFormat(format).serialize(property);
-				}
+			baseStream.getChannel()
+				.position(baseStream.getChannel().size());
+
+			new Serializer(stream).toFormat(format).serialize(count);
+			for (final Property property : properties) {
+				new Serializer(stream).toFormat(format).serialize(property);
 			}
-		} catch (IOException e) {
+		} catch (final IOException e) {
 			logger.error(
-				"Error opening target file '%s' for serializing: %s%n"
-				, targetFile
-				, e.getMessage());
+				"Error serializing to '%s': %s%n", targetFile, e.getMessage());
+
+			throw e;
 		}
 	}
 

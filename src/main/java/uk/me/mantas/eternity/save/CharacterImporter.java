@@ -223,18 +223,8 @@ public class CharacterImporter {
 		totalObjects.addAll(chrObjects);
 		totalObjects.addAll(retainedObjects);
 
-		if (!mobileObjectsFile.delete()) {
-			logger.error("Unable to delete '%s'.%n", mobileObjectsFile.getAbsolutePath());
-			return false;
-		}
-
-		if (!mobileObjectsFile.createNewFile()) {
-			logger.error("Unable to create '%s'.%n", mobileObjectsFile.getAbsolutePath());
-			return false;
-		}
-
 		deserialized.get().setPackets(totalObjects);
-		deserialized.get().reserialize(mobileObjectsFile);
+		deserialized.get().replace(mobileObjectsFile);
 
 		return true;
 	}

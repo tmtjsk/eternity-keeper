@@ -29,7 +29,7 @@ import uk.me.mantas.eternity.serializer.properties.SimpleProperty;
 import uk.me.mantas.eternity.tests.TestHarness;
 
 import java.io.File;
-import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -37,7 +37,7 @@ import static org.mockito.Mockito.*;
 
 public class DeserializedPacketsTest extends TestHarness {
 	@Test
-	public void testReserialize () throws FileNotFoundException {
+	public void testReserialize () throws IOException {
 		final Environment mockEnvironment = mockEnvironment();
 		final SharpSerializer mockSerializer = mockSerializer(mockEnvironment);
 		final File mockFile = mock(File.class);
