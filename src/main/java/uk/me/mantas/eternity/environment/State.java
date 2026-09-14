@@ -18,7 +18,6 @@
 
 package uk.me.mantas.eternity.environment;
 
-import uk.me.mantas.eternity.handlers.DownloadUpdate.UpdateDownloader;
 import uk.me.mantas.eternity.handlers.ListSavedGames.SaveInfoLister;
 
 import java.io.File;
@@ -36,9 +35,4 @@ public class State {
 	public SaveInfoLister currentSaveLister () { return currentSaveLister; }
 	public void currentSaveLister (final SaveInfoLister lister) { currentSaveLister = lister; }
 
-	private UpdateDownloader currentUpdateDownloader = null;
-	public UpdateDownloader currentUpdateDownloader () { return currentUpdateDownloader; }
-	public void currentUpdateDownloader (final UpdateDownloader downloader) {
-		currentUpdateDownloader = downloader;
-	}
 }

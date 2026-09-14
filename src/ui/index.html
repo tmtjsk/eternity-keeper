@@ -135,29 +135,6 @@
 		</div>
 	</div>
 
-	<div class="modal fade" id="updatesDialog" role="dialog" data-bound="Updates">
-		<div class="modal-dialog modal-sm">
-			<div class="modal-content">
-				<div class="modal-body">
-					<button type="button" class="close" data-dismiss="modal">
-						<span>&times;</span>
-					</button>
-					<div id="updatesDialogContents" data-bound="Updates"></div>
-				</div>
-				<div class="modal-footer" id="updatesDialogButtons" data-bound="Updates">
-					<button type="button" class="btn btn-primary btn-sm" id="updatesTryAgain"
-					        data-bound="Updates">
-						Check again
-					</button>
-					<button type="button" class="btn btn-success btn-sm" id="updatesDownload"
-					        data-bound="Updates">
-						Download
-					</button>
-				</div>
-			</div>
-		</div>
-	</div>
-
 	<div class="modal fade" id="exportCharacterDialog" role="dialog" data-bound="ExportCharacter">
 		<div class="modal-dialog modal-sm">
 			<div class="modal-content">
@@ -480,11 +457,6 @@
 								<li>
 									<a data-toggle="modal" href="#settingsDialog" id="menu-settings">
 										<i class="fa fa-fw fa-cog"></i> Settings&hellip;</a>
-								</li>
-								<li>
-									<a href="javascript:void(0);" id="menuCheckUpdates" data-bound="Updates">
-										<i class="fa fa-fw fa-refresh"></i> Check for updates
-									</a>
 								</li>
 							</ul>
 						</li>
@@ -1338,7 +1310,6 @@
 	<script src="js/GenericError.js"></script>
 	<script src="js/Progress.js"></script>
 	<script src="js/Settings.js"></script>
-	<script src="js/Updates.js"></script>
 	<script src="js/SaveSearch.js"></script>
 	<script src="js/SavedGame.js"></script>
 	<script src="js/CurrencyEditor.js"></script>

@@ -36,7 +36,6 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.util.AbstractMap;
 import java.util.Arrays;
@@ -334,52 +333,18 @@ public class EKUtils {
 		return Optional.empty();
 	}
 
-	// TODO: move into a save.SaveConverter class
-	public static void convertWindowsStoreToSteamSaveFiles (File inputDir, File outputDir) throws URISyntaxException, IOException {
-		final List<File> inputFiles = Arrays.asList(inputDir.listFiles());
+	/**
+	 * Reads a serialized file and writes it into {@code output}, which must
+	 * already exist and is appended to. SaveConverter falls back on this for a
+	 * file it cannot rewrite byte-for-byte.
+	 */
+	public static void reserializeFile (
+		final File input, final File output, final SerializerFormat outputFormat)
+		throws IOException {
 
-		try {
-			// TODO: optimize performance further
-			// TODO: catch null output files, indicating conversion error
-			inputFiles.parallelStream().forEach(
-					(inputFile) -> convertWindowsStoreSubFileToSteam(inputFile, outputDir)
-			);
-		} catch (final Exception e) {
-			// TODO: consider returning on success/log on error, rather than rethrowing exception
-			throw e;
-		}
-	}
+		final DeserializedPackets deserialized = new PacketDeserializer(input).deserialize()
+			.orElseThrow(() -> new IOException("Could not read " + input.getAbsolutePath()));
 
-	public static File convertWindowsStoreSubFileToSteam(File inputFile, File outputDir) {
-		final String inputFilename = inputFile.getName();
-		File outputFile = new File(outputDir, inputFilename);
-
-		try {
-			if (inputFilename.endsWith(".save") || inputFilename.endsWith(".lvl")) {
-				outputFile.createNewFile();
-				// TODO: performance - would be much quicker to just regex the module names
-				EKUtils.reserializeFile(inputFile, outputFile, SerializerFormat.UNITY_2017);
-			} else {
-				Files.copy(inputFile.toPath(), outputFile.toPath());
-			}
-		} catch (final Exception e) {
-			logger.error("Failed to copy or convert subfile %s to %s", inputFile.getPath(), outputFile.getPath());
-			outputFile = null;
-		}
-
-		return outputFile;
-	}
-
-	public static void reserializeFile(File input, File output, SerializerFormat outputFormat) throws IOException {
-		try {
-			final PacketDeserializer deserializer = new PacketDeserializer(input.getAbsolutePath());
-			final DeserializedPackets deserialized = deserializer.deserialize().get();
-
-			deserialized.reserialize(output, outputFormat);
-
-		} catch (final Exception e) {
-			throw e;
-			// TODO: consider returning on success/log on error, rather than rethrowing exception
-		}
+		deserialized.reserialize(output, outputFormat);
 	}
 }

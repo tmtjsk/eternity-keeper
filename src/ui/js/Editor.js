@@ -204,7 +204,6 @@ var Editor = function () {
 	self.GenericError = new GenericError();
 	self.Progress = new Progress();
 	self.Settings = new Settings();
-	self.Updates = new Updates();
 	self.SaveSearch = new SaveSearch();
 	self.SavedGame = new SavedGame();
 	self.CurrencyEditor = new CurrencyEditor();

@@ -567,17 +567,6 @@ table.dark-theme>tbody>tr>td {
 	font-weight: 600;
 }
 
-#checkUpdatesDialog .modal-footer
-, #checkUpdatesTryAgain
-, #checkUpdatesError
-, #checkUpdatesNoUpdates
-, #checkUpdatesAvailable
-, #checkUpdatesDownload
-, #checkUpdatesDownloadFailed
-, #checkUpdatesDownloadSuccess {
-	display: none;
-}
-
 ul.multi-selector {
 	list-style: none;
 	margin: 0;

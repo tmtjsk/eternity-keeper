@@ -19,7 +19,9 @@
 
 package uk.me.mantas.eternity.tests.save;
 
+import org.apache.commons.io.FileUtils;
 import org.junit.Test;
+import uk.me.mantas.eternity.Logger;
 import uk.me.mantas.eternity.save.SaveGameExtractor;
 import uk.me.mantas.eternity.save.SaveGameInfo;
 import uk.me.mantas.eternity.tests.TestHarness;
@@ -31,7 +33,11 @@ import java.nio.file.Files;
 import java.util.Optional;
 
 import static org.junit.Assert.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 public class SaveGameExtractorTest extends TestHarness {
 	@Test
@@ -62,7 +68,61 @@ public class SaveGameExtractorTest extends TestHarness {
 		assertTrue(saveGameInfo.isPresent());
 		assertEquals(2, saveGameInfo.get().length);
 		assertEquals(6, saveGameInfo.get()[0].portraits.size());
-		assertEquals(4, saveGameExtractor.totalFiles.get());
-		assertEquals(3, saveGameExtractor.currentCount.get());
+
+		// The folder also holds two files that are not saves; neither is
+		// counted towards progress or unzipped.
+		assertEquals(2, saveGameExtractor.totalFiles.get());
+		assertEquals(2, saveGameExtractor.currentCount.get());
+	}
+
+	/**
+	 * The saves folder is where the game writes, and other things end up in it
+	 * too -- eternity.log did, on this machine. Every one of them was handed to
+	 * the unzipper on every search and logged as an error, and counted towards
+	 * a progress bar that could then never read what it was doing.
+	 */
+	@Test
+	public void onlySaveGamesAreUnzipped () throws Exception {
+		final File fixtures = new File(getClass().getResource("/SaveGameExtractorTest").toURI());
+		final File saves = Files.createTempDirectory(PREFIX).toFile();
+
+		FileUtils.copyFile(new File(fixtures, "guid systemname.savegame")
+			, new File(saves, "guid systemname.savegame"));
+		FileUtils.writeStringToFile(new File(saves, "eternity.log"), "not a save", "UTF-8");
+		FileUtils.writeStringToFile(new File(saves, "notes.txt"), "not a save", "UTF-8");
+		assertTrue(new File(saves, "converted").mkdir());
+
+		final Logger logger = interceptLogging(SaveGameExtractor.class);
+		final SaveGameExtractor extractor =
+			new SaveGameExtractor(saves.getAbsolutePath(), Files.createTempDirectory(PREFIX).toFile());
+
+		final Optional<SaveGameInfo[]> found = extractor.unpackAllSaves();
+
+		assertTrue(found.isPresent());
+		assertEquals(1, found.get().length);
+		assertEquals(1, extractor.totalFiles.get());
+		verify(logger, never()).error(anyString(), (Object[]) any());
+	}
+
+	/** A file named like a save that is not one still fails politely. */
+	@Test
+	public void aSaveGameThatIsNotAZipIsSkipped () throws Exception {
+		final File fixtures = new File(getClass().getResource("/SaveGameExtractorTest").toURI());
+		final File saves = Files.createTempDirectory(PREFIX).toFile();
+
+		FileUtils.copyFile(new File(fixtures, "guid systemname.savegame")
+			, new File(saves, "guid systemname.savegame"));
+		FileUtils.copyFile(new File(fixtures, "bad"), new File(saves, "broken.savegame"));
+		FileUtils.copyFile(new File(fixtures, "no.required.files")
+			, new File(saves, "empty.savegame"));
+
+		final SaveGameExtractor extractor =
+			new SaveGameExtractor(saves.getAbsolutePath(), Files.createTempDirectory(PREFIX).toFile());
+
+		final Optional<SaveGameInfo[]> found = extractor.unpackAllSaves();
+
+		assertTrue(found.isPresent());
+		assertEquals(1, found.get().length);
+		assertEquals(3, extractor.totalFiles.get());
 	}
 }

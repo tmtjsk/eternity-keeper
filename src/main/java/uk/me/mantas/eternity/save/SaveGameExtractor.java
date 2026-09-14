@@ -98,7 +98,14 @@ public class SaveGameExtractor {
 			return Optional.empty();
 		}
 
-		final File[] saveFiles = Arrays.stream(saves).filter(File::isFile).toArray(File[]::new);
+		// Only what the game writes. The saves folder collects other things -- a
+		// log file, the converter's own "converted" folder -- and every one of
+		// them used to be handed to the unzipper on each search, logged as an
+		// error, and counted towards the progress bar.
+		final File[] saveFiles = Arrays.stream(saves)
+			.filter(File::isFile)
+			.filter(f -> f.getName().toLowerCase().endsWith(".savegame"))
+			.toArray(File[]::new);
 		totalFiles.set(saveFiles.length);
 		currentCount.set(0);
 

@@ -21,140 +21,70 @@ package uk.me.mantas.eternity;
 import org.cef.CefClient;
 import org.cef.browser.CefMessageRouter;
 import org.cef.browser.CefMessageRouter.CefMessageRouterConfig;
+import org.cef.handler.CefMessageRouterHandler;
 import uk.me.mantas.eternity.handlers.*;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+/**
+ * What the page can call. Each entry becomes {@code window.<name>(...)} in the
+ * page, with {@code <name>Cancel} to abandon it.
+ */
 public class JSHandlers {
-	private JSHandlers() {
+	private JSHandlers () {
 	}
 
-	public static void register(final CefClient cefClient, final EternityKeeper self) {
-		final CefMessageRouter getDefaultSaveLocationRouter = CefMessageRouter.create(
-				new CefMessageRouterConfig("getDefaultSaveLocation", "getDefaultSaveLocationCancel"),
-				new GetDefaultSaveLocation());
+	/**
+	 * Every handler, by the name the page calls it. A table rather than a
+	 * create-then-add pair per handler: the old file declared them two ways,
+	 * and a router declared but never added would have been a page call that
+	 * silently never answers. {@code JSHandlersTest} checks this against the
+	 * handler classes that exist.
+	 */
+	public static Map<String, CefMessageRouterHandler> handlers (final EternityKeeper frame) {
+		final Map<String, CefMessageRouterHandler> handlers = new LinkedHashMap<>();
 
-		final CefMessageRouter listSavedGamesRouter = CefMessageRouter.create(
-				new CefMessageRouterConfig("listSavedGames", "listSavedGamesCancel"), new ListSavedGames());
+		// The save list.
+		handlers.put("getDefaultSaveLocation", new GetDefaultSaveLocation());
+		handlers.put("listSavedGames", new ListSavedGames());
+		handlers.put("checkExtractionProgress", new CheckExtractionProgress());
+		handlers.put("openSavedGame", new OpenSavedGame());
+		handlers.put("renameSavedGame", new RenameSavedGame());
+		handlers.put("deleteSavedGame", new DeleteSavedGame());
+		handlers.put("convertSave", new ConvertSave());
 
-		final CefMessageRouter openSavedGameRouter = CefMessageRouter.create(
-				new CefMessageRouterConfig("openSavedGame", "openSavedGameCancel"), new OpenSavedGame());
+		// Writing.
+		handlers.put("saveChanges", new SaveChanges());
+		handlers.put("saveTarget", new SaveTarget());
+		handlers.put("saveSettings", new SaveSettings());
 
-		final CefMessageRouter saveSettingsRouter = CefMessageRouter.create(
-				new CefMessageRouterConfig("saveSettings", "saveSettingsCancel"), new SaveSettings());
+		// Editing the working save; each hands the reopened save back.
+		handlers.put("updateParty", new UpdateParty());
+		handlers.put("updateInventory", new UpdateInventory());
+		handlers.put("updateAbilities", new UpdateAbilities());
+		handlers.put("updateStronghold", new UpdateStronghold());
+		handlers.put("updateGrimoires", new UpdateGrimoires());
+		handlers.put("resurrectCharacter", new ResurrectCharacter());
+		handlers.put("enableAchievements", new EnableAchievements());
 
-		final CefMessageRouter saveChangesRouter = CefMessageRouter.create(
-				new CefMessageRouterConfig("saveChanges", "saveChangesCancel"), new SaveChanges());
+		// Characters in and out of .chr files.
+		handlers.put("exportCharacter", new ExportCharacter());
+		handlers.put("importCharacter", new ImportCharacter());
 
-		final CefMessageRouter closeWindowRouter = CefMessageRouter.create(
-				new CefMessageRouterConfig("closeWindow", "closeWindowCancel"), new CloseWindow(self));
+		// Read-only lookups into the game's own data.
+		handlers.put("getGameStructures", new GetGameStructures());
+		handlers.put("getIdentityEffects", new GetIdentityEffects());
+		handlers.put("browseItems", new BrowseItems());
+		handlers.put("browseAbilities", new BrowseAbilities());
+		handlers.put("browsePortraits", new BrowsePortraits());
 
-		final CefMessageRouter checkExtractionProgressRouter = CefMessageRouter.create(
-				new CefMessageRouterConfig("checkExtractionProgress", "checkExtractionProgressCancel"),
-				new CheckExtractionProgress());
+		handlers.put("closeWindow", new CloseWindow(frame));
+		return handlers;
+	}
 
-		final CefMessageRouter checkForUpdatesRouter = CefMessageRouter.create(
-				new CefMessageRouterConfig("checkForUpdates", "checkForUpdatesCancel"), new CheckForUpdates());
-
-		final CefMessageRouter downloadUpdateRouter = CefMessageRouter.create(
-				new CefMessageRouterConfig("downloadUpdate", "downloadUpdateCancel"), new DownloadUpdate());
-
-		final CefMessageRouter checkDownloadProgressRouter = CefMessageRouter.create(
-				new CefMessageRouterConfig("checkDownloadProgress", "checkDownloadProgressCancel"),
-				new CheckDownloadProgress());
-
-		final CefMessageRouter exportCharacterRouter = CefMessageRouter.create(
-				new CefMessageRouterConfig("exportCharacter", "exportCharacterCancel"), new ExportCharacter());
-
-		final CefMessageRouter importCharacterRouter = CefMessageRouter.create(
-				new CefMessageRouterConfig("importCharacter", "importCharacterCancel"), new ImportCharacter());
-
-		final CefMessageRouter getGameStructuresRouter = CefMessageRouter.create(
-				new CefMessageRouterConfig("getGameStructures", "getGameStructuresCancel"), new GetGameStructures());
-
-		final CefMessageRouter deleteSavedGameRouter = CefMessageRouter.create(
-				new CefMessageRouterConfig("deleteSavedGame", "deleteSavedGameCancel"), new DeleteSavedGame());
-
-		final CefMessageRouter updatePartyRouter = CefMessageRouter.create(
-				new CefMessageRouterConfig("updateParty", "updatePartyCancel"), new UpdateParty());
-
-		final CefMessageRouter renameSavedGameRouter = CefMessageRouter.create(
-				new CefMessageRouterConfig("renameSavedGame", "renameSavedGameCancel"),
-				new RenameSavedGame());
-
-		final CefMessageRouter resurrectCharacterRouter = CefMessageRouter.create(
-				new CefMessageRouterConfig("resurrectCharacter", "resurrectCharacterCancel"),
-				new ResurrectCharacter());
-
-		final CefMessageRouter enableAchievementsRouter = CefMessageRouter.create(
-				new CefMessageRouterConfig("enableAchievements", "enableAchievementsCancel"),
-				new EnableAchievements());
-
-		final CefMessageRouter browseItemsRouter = CefMessageRouter.create(
-				new CefMessageRouterConfig("browseItems", "browseItemsCancel"),
-				new BrowseItems());
-		cefClient.addMessageRouter(browseItemsRouter);
-
-		final CefMessageRouter saveTargetRouter = CefMessageRouter.create(
-				new CefMessageRouterConfig("saveTarget", "saveTargetCancel"),
-				new SaveTarget());
-		cefClient.addMessageRouter(saveTargetRouter);
-
-		final CefMessageRouter updateInventoryRouter = CefMessageRouter.create(
-				new CefMessageRouterConfig("updateInventory", "updateInventoryCancel"),
-				new UpdateInventory());
-
-		final CefMessageRouter browseAbilitiesRouter = CefMessageRouter.create(
-				new CefMessageRouterConfig("browseAbilities", "browseAbilitiesCancel"),
-				new BrowseAbilities());
-		cefClient.addMessageRouter(browseAbilitiesRouter);
-
-		final CefMessageRouter updateAbilitiesRouter = CefMessageRouter.create(
-				new CefMessageRouterConfig("updateAbilities", "updateAbilitiesCancel"),
-				new UpdateAbilities());
-		cefClient.addMessageRouter(updateAbilitiesRouter);
-
-		final CefMessageRouter browsePortraitsRouter = CefMessageRouter.create(
-				new CefMessageRouterConfig("browsePortraits", "browsePortraitsCancel"),
-				new BrowsePortraits());
-		cefClient.addMessageRouter(browsePortraitsRouter);
-
-		final CefMessageRouter updateGrimoiresRouter = CefMessageRouter.create(
-				new CefMessageRouterConfig("updateGrimoires", "updateGrimoiresCancel"),
-				new UpdateGrimoires());
-		cefClient.addMessageRouter(updateGrimoiresRouter);
-
-		final CefMessageRouter identityEffectsRouter = CefMessageRouter.create(
-				new CefMessageRouterConfig("getIdentityEffects", "getIdentityEffectsCancel"),
-				new GetIdentityEffects());
-		cefClient.addMessageRouter(identityEffectsRouter);
-
-		final CefMessageRouter updateStrongholdRouter = CefMessageRouter.create(
-				new CefMessageRouterConfig("updateStronghold", "updateStrongholdCancel"),
-				new UpdateStronghold());
-		cefClient.addMessageRouter(updateStrongholdRouter);
-
-		final CefMessageRouter convertSaveRouter = CefMessageRouter.create(
-				new CefMessageRouterConfig("convertSave", "convertSaveCancel"),
-				new ConvertSave());
-		cefClient.addMessageRouter(convertSaveRouter);
-
-		cefClient.addMessageRouter(getDefaultSaveLocationRouter);
-		cefClient.addMessageRouter(listSavedGamesRouter);
-		cefClient.addMessageRouter(openSavedGameRouter);
-		cefClient.addMessageRouter(saveSettingsRouter);
-		cefClient.addMessageRouter(saveChangesRouter);
-		cefClient.addMessageRouter(closeWindowRouter);
-		cefClient.addMessageRouter(checkExtractionProgressRouter);
-		cefClient.addMessageRouter(checkForUpdatesRouter);
-		cefClient.addMessageRouter(downloadUpdateRouter);
-		cefClient.addMessageRouter(checkDownloadProgressRouter);
-		cefClient.addMessageRouter(exportCharacterRouter);
-		cefClient.addMessageRouter(importCharacterRouter);
-		cefClient.addMessageRouter(getGameStructuresRouter);
-		cefClient.addMessageRouter(deleteSavedGameRouter);
-		cefClient.addMessageRouter(updatePartyRouter);
-		cefClient.addMessageRouter(renameSavedGameRouter);
-		cefClient.addMessageRouter(resurrectCharacterRouter);
-		cefClient.addMessageRouter(enableAchievementsRouter);
-		cefClient.addMessageRouter(updateInventoryRouter);
+	public static void register (final CefClient cefClient, final EternityKeeper frame) {
+		handlers(frame).forEach((name, handler) -> cefClient.addMessageRouter(
+			CefMessageRouter.create(new CefMessageRouterConfig(name, name + "Cancel"), handler)));
 	}
 }

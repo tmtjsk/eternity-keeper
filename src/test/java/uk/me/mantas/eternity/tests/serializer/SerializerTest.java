@@ -18,7 +18,6 @@
 
 package uk.me.mantas.eternity.tests.serializer;
 
-import com.google.common.io.RecursiveDeleteOption;
 import org.apache.commons.io.FileUtils;
 import org.junit.Test;
 import uk.me.mantas.eternity.EKUtils;
@@ -30,19 +29,14 @@ import uk.me.mantas.eternity.tests.TestHarness;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.URISyntaxException;
 import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 import java.util.Optional;
 
 import static org.junit.Assert.*;
 
 public class SerializerTest extends TestHarness {
 
-	// These four used to wrap their assertions in `try { … } catch (Exception e)
+	// These used to wrap their assertions in `try { … } catch (Exception e)
 	// { e.printStackTrace(); }`, which swallowed the AssertionError too — they
 	// could not fail. Anything thrown is now the test result.
 
@@ -73,32 +67,6 @@ public class SerializerTest extends TestHarness {
 
 		final File expectedSaveFile = new File(getClass().getResource("/SerializerTest/windowStoreSaveConverted/MobileObjects.save").toURI());
 		assertFileContentsEquals(expectedSaveFile, saveOutputFile);
-	}
-
-	@Test
-	public void convertsWindowsStoreSaveFilesToSteam () throws Exception {
-		final File inputDir = new File(getClass().getResource("/SerializerTest/windowStoreSave/").toURI());
-
-		final Optional<File> outputDir = EKUtils.createTempDir(PREFIX);
-		assertTrue(outputDir.isPresent());
-		final Path outputDirPath = outputDir.get().toPath();
-
-		EKUtils.convertWindowsStoreToSteamSaveFiles(inputDir, outputDir.get());
-
-		final List<File> outputFiles = Arrays.asList(outputDirPath.toFile().listFiles());
-
-		final File expectedDir = new File(getClass().getResource("/SerializerTest/windowStoreSaveConverted/").toURI());
-		final List<String> expectedFilenames = Arrays.asList(expectedDir.list());
-
-		assertEquals("number of files", expectedFilenames.size(), outputFiles.size());
-
-		for (File outputFile : outputFiles) {
-			String outputFilename = outputFile.getName();
-			assertTrue(expectedFilenames.contains(outputFilename));
-
-			final File expectedFile = new File(expectedDir, outputFilename);
-			assertFileContentsEquals(expectedFile, outputFile);
-		}
 	}
 
 	// Newer versions of the game store enum values that this port's enum
