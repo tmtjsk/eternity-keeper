@@ -19,7 +19,6 @@
 
 package uk.me.mantas.eternity.save;
 
-import org.apache.commons.io.FileUtils;
 import org.json.JSONObject;
 import org.json.JSONTokener;
 import uk.me.mantas.eternity.Logger;
@@ -28,7 +27,6 @@ import uk.me.mantas.eternity.game.StrongholdUpgrade;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.util.ArrayList;
@@ -71,8 +69,7 @@ public class StrongholdCatalog {
 	private final Map<String, Upgrade> upgrades = new HashMap<>();
 	private final Map<Integer, Upgrade> byOrdinal = new HashMap<>();
 	private final List<Upgrade> ordered = new ArrayList<>();
-	private final Map<String, String> iconCache = new HashMap<>();
-	private final File iconDirectory;
+	private final IconFolder icons;
 	private int maxHirelings = DEFAULT_MAX_HIRELINGS;
 
 	/** One buildable upgrade, exactly as the game has it configured. */
@@ -178,8 +175,8 @@ public class StrongholdCatalog {
 	}
 
 	private StrongholdCatalog (final Optional<File> directory, final boolean quiet) {
-		iconDirectory =
-			directory.map(d -> new File(d, "stronghold-icons")).orElse(null);
+		icons = new IconFolder(
+			directory.map(d -> new File(d, "stronghold-icons")).orElse(null));
 
 		if (!directory.isPresent()) {
 			if (!quiet) {
@@ -275,29 +272,6 @@ public class StrongholdCatalog {
 	 * that particular icon is missing.
 	 */
 	public String iconData (final String iconFile) {
-		if (iconFile == null || iconFile.isEmpty() || iconDirectory == null) {
-			return "";
-		}
-
-		final String cached = iconCache.get(iconFile);
-		if (cached != null) {
-			return cached;
-		}
-
-		String encoded = "";
-		final File file = new File(iconDirectory, iconFile);
-		if (file.isFile()) {
-			try {
-				encoded = Base64.getEncoder()
-					.encodeToString(FileUtils.readFileToByteArray(file));
-			} catch (final IOException e) {
-				logger.error(
-					"Unable to read icon '%s': %s%n"
-					, file.getAbsolutePath(), e.getMessage());
-			}
-		}
-
-		iconCache.put(iconFile, encoded);
-		return encoded;
+		return icons.data(iconFile);
 	}
 }

@@ -19,7 +19,6 @@
 
 package uk.me.mantas.eternity.save;
 
-import org.apache.commons.io.FileUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.json.JSONTokener;
@@ -29,7 +28,6 @@ import uk.me.mantas.eternity.Settings;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.util.ArrayList;
@@ -62,8 +60,7 @@ public class ItemCatalog {
 	private static ItemCatalog instance = null;
 
 	private final Map<String, Entry> entries = new HashMap<>();
-	private final Map<String, String> iconCache = new HashMap<>();
-	private final File iconDirectory;
+	private final IconFolder icons;
 
 	/** One catalogued item. All fields except {@link #name} may be absent. */
 	public static final class Entry {
@@ -153,7 +150,7 @@ public class ItemCatalog {
 	}
 
 	private ItemCatalog (final Optional<File> directory, final boolean quiet) {
-		iconDirectory = directory.map(d -> new File(d, "icons")).orElse(null);
+		icons = new IconFolder(directory.map(d -> new File(d, "icons")).orElse(null));
 
 		if (!directory.isPresent()) {
 			if (!quiet) {
@@ -338,27 +335,6 @@ public class ItemCatalog {
 	 * inventories, so results are cached for the life of the process.
 	 */
 	public String iconData (final String iconFile) {
-		if (iconFile == null || iconFile.isEmpty() || iconDirectory == null) {
-			return "";
-		}
-
-		final String cached = iconCache.get(iconFile);
-		if (cached != null) {
-			return cached;
-		}
-
-		String encoded = "";
-		final File file = new File(iconDirectory, iconFile);
-		if (file.isFile()) {
-			try {
-				encoded = Base64.getEncoder().encodeToString(FileUtils.readFileToByteArray(file));
-			} catch (final IOException e) {
-				logger.error(
-					"Unable to read icon '%s': %s%n", file.getAbsolutePath(), e.getMessage());
-			}
-		}
-
-		iconCache.put(iconFile, encoded);
-		return encoded;
+		return icons.data(iconFile);
 	}
 }
