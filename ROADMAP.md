@@ -128,6 +128,31 @@ in every mid-game save.
 |---|---|---|
 | `README.md` | — | Rewrite: it still lists shipped features under "Planned" |
 | The item extractor's naming | `tools/itemdata-extract` | Skip non-item bundles at extraction too, so a regenerated catalog is clean at the source (the editor already filters them) |
+| Load-list party portraits | small | The game's load list draws `0.png`…`4.png` from inside the save, frozen at its last save; after a party or portrait edit it shows the old faces. Regenerate them from the party's small portraits on Save |
+
+### Verified in the game (2026-09-14)
+
+Two saves built through the editor's own controls and loaded in Pillars of
+Eternity v3.9.5; every edit read off the game's own screens:
+
+| Feature | Seen in the game |
+|---|---|
+| Portrait | New face on the party bar and the character sheet |
+| Identity | Background "Ixamitl Plains - Aristocrat" on the sheet |
+| Attributes, skills | Might 23 (base 20), Athletics 14 (rank 12) |
+| Abilities | "Weapon Focus: Adventurer" in the sheet's Talents |
+| Inventory (minting) | Minor Ring of Deflection in the pack, tooltip "Of Deflection +5" |
+| Money, junk sale, console | 224,845 cp = editor's 223,108 + 1,737 turn income shown in the stronghold log |
+| Stronghold | Prestige 47, Curio Shop back to "Purchase", three turns played |
+| Party, resurrection | Sagani in the roster, Edér alive in the party |
+| Grimoire | Eldritch Aim in Aloth's book, Chill Fog out |
+| Difficulty | Options → Difficulty shows Easy |
+| Export / import `.chr` | Level-15 Aloth, with his records, in the prologue party |
+| Rename | "EK import test, renamed" in the load list |
+
+Not observable in the game UI: the achievements flag. Found by it and fixed:
+the stronghold's "Turns available" hint (turns are played on load), and
+`TrialOfIron` written as `true` rather than `True` in `saveinfo.xml`.
 
 
 ---
