@@ -42,7 +42,10 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Locale;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -59,8 +62,22 @@ public abstract class TestHarness {
 		Locale.setDefault(Locale.UK);
 	}
 
+	// What was in temp before the test, so cleanup removes only what the test
+	// made. Deleting every EK- folder also deleted a running editor's unpacked
+	// saves and its working copy, so running the tests with the editor open
+	// broke the editor: its next Apply could not find the save.
+	private Set<String> preexisting = Collections.emptySet();
+
+	private static File[] ours () {
+		final File[] files = new File(System.getProperty("java.io.tmpdir"))
+			.listFiles((dir, name) -> name.startsWith(PREFIX));
+
+		return files == null ? new File[0] : files;
+	}
+
 	@Before
 	public void setup () {
+		preexisting = Arrays.stream(ours()).map(File::getName).collect(Collectors.toSet());
 		Environment.initialise();
 		Settings.clear();
 
@@ -81,28 +98,22 @@ public abstract class TestHarness {
 		// edit made would otherwise still be the live save in the next.
 		Environment.getInstance().state().workingSave().opening();
 
-		File temp = new File(System.getProperty("java.io.tmpdir"));
-		File[] files = temp.listFiles();
-
-		if (files != null) {
-			Arrays.stream(files)
-				.filter((file) -> file.getName().startsWith(PREFIX))
-				.forEach((file) -> {
-					if (file.isDirectory()) {
-						try {
-							FileUtils.deleteDirectory(file);
-						} catch (IOException e) {
-							System.err.printf(
-								"Unable to delete temporary directory '%s': "
-									+ "%s%n"
-								, file.getAbsoluteFile()
-								, e.getMessage());
-						}
-					} else {
-						assertTrue(file.delete());
+		Arrays.stream(ours())
+			.filter(file -> !preexisting.contains(file.getName()))
+			.forEach(file -> {
+				if (file.isDirectory()) {
+					try {
+						FileUtils.deleteDirectory(file);
+					} catch (IOException e) {
+						System.err.printf(
+							"Unable to delete temporary directory '%s': %s%n"
+							, file.getAbsoluteFile()
+							, e.getMessage());
 					}
-				});
-		}
+				} else {
+					assertTrue(file.delete());
+				}
+			});
 	}
 
 	protected static Environment mockEnvironment () {
