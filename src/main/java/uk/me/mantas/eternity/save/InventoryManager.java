@@ -591,135 +591,25 @@ public class InventoryManager {
 		return Optional.empty();
 	}
 
-	private Optional<Property> buildItemPacket (
+	/**
+	 * A new item's own packet. It carries only InstanceID and Persistence: the
+	 * prefab brings its Equippable, Weapon or Consumable components back with
+	 * default state, which is what a newly created item should have.
+	 */
+	private static Optional<Property> buildItemPacket (
 		final Property template
 		, final String guid
 		, final String prefabName
 		, final String prefabPath
 		, final String ownerName) {
 
-		if (!(template instanceof ComplexProperty)) {
-			return Optional.empty();
-		}
-
-		final ComplexProperty source = (ComplexProperty) template;
-		final ComplexProperty packet = new ComplexProperty(source.name, source.type);
-		final UUID uuid = UUID.fromString(guid);
-
-		for (final Property field : source.properties) {
-			if (field.name == null) {
-				continue;
-			}
-
-			// The component array is rebuilt below; everything else is either
-			// copied (so types stay identical) or overridden.
-			if ("ComponentPackets".equals(field.name)) {
-				final Optional<Property> components = buildItemComponents(field, uuid);
-				if (!components.isPresent()) {
-					return Optional.empty();
-				}
-
-				packet.properties.add(components.get());
-				continue;
-			}
-
-			if (!(field instanceof SimpleProperty)) {
-				// Location/Rotation come across as-is; a packed inventory item
-				// is never placed in the world so the value is irrelevant.
-				packet.properties.add(field);
-				continue;
-			}
-
-			Object value = ((SimpleProperty) field).value;
-			switch (field.name) {
-				case "ObjectName":      value = prefabName + "(Clone)"; break;
-				case "ObjectID":        value = guid; break;
-				case "GUID":            value = uuid; break;
-				case "PrefabResource":  value = prefabPath; break;
-				case "Parent":          value = ownerName; break;
-				default:                break;
-			}
-
-			final SimpleProperty copy = new SimpleProperty(field.name, field.type);
-			copy.value = value;
-			copy.obj = value;
-			packet.properties.add(copy);
-		}
-
-		final ObjectPersistencePacket materialised = new ObjectPersistencePacket();
-		materialised.ObjectName = prefabName + "(Clone)";
-		materialised.ObjectID = guid;
-		materialised.GUID = uuid;
-		materialised.PrefabResource = prefabPath;
-		materialised.Parent = ownerName;
-		packet.obj = materialised;
-
-		return Optional.of(packet);
+		return PacketMint.mint(template
+			, new PacketMint.Identity(
+				prefabName + "(Clone)", guid, UUID.fromString(guid), prefabPath, ownerName, null)
+			, (type, component) -> "InstanceID".equals(type) || "Persistence".equals(type)
+			, (type, copy) -> {});
 	}
 
-	/**
-	 * Keeps only InstanceID and Persistence. The prefab brings its own
-	 * Equippable/Weapon/Consumable components with default state, which is what
-	 * a newly created item should have.
-	 */
-	private Optional<Property> buildItemComponents (final Property template, final UUID guid) {
-		if (!(template instanceof SingleDimensionalArrayProperty)) {
-			logger.error("ComponentPackets was not an array.%n");
-			return Optional.empty();
-		}
-
-		final SingleDimensionalArrayProperty source = (SingleDimensionalArrayProperty) template;
-		final SingleDimensionalArrayProperty components =
-			new SingleDimensionalArrayProperty(source.name, source.type);
-
-		components.elementType = source.elementType;
-
-		for (final Object item : source.items) {
-			if (!(item instanceof ComplexProperty)) {
-				continue;
-			}
-
-			final ComplexProperty component = (ComplexProperty) item;
-			final Optional<Property> typeString = component.findProperty("TypeString");
-			if (!typeString.isPresent() || !(typeString.get() instanceof SimpleProperty)) {
-				continue;
-			}
-
-			final Object type = ((SimpleProperty) typeString.get()).value;
-			if (!"InstanceID".equals(type) && !"Persistence".equals(type)) {
-				continue;
-			}
-
-			// Copy, never share: adding the template's own properties here
-			// would make two packets reference one object, and rewriting the
-			// GUID below would then silently change the template item too.
-			final ComplexProperty copy = EKUtils.copyComponent(component);
-			components.items.add(copy);
-
-			if ("InstanceID".equals(type)) {
-				copy.<DictionaryProperty>findProperty("Variables")
-					.flatMap(v -> v.findEntry("Guid"))
-					.ifPresent(entry -> {
-						((SimpleProperty) entry).value = guid;
-						entry.obj = guid;
-					});
-			}
-		}
-
-		if (components.items.isEmpty()) {
-			logger.error("Template item packet had no InstanceID/Persistence to copy.%n");
-			return Optional.empty();
-		}
-
-		return Optional.of(components);
-	}
-
-	/**
-	 * Independent copy of a component packet — the TypeString plus a fresh
-	 * Variables dictionary whose values are new SimpleProperty instances.
-	 * InstanceID and Persistence only ever hold simple values, so this doesn't
-	 * need to recurse any further.
-	 */
 	private static Optional<CollectionProperty> findEquipmentSlots (final Property character) {
 		return findEquipmentList(character, "EquipmentSetSerialized");
 	}

@@ -494,180 +494,84 @@ public class AbilityManager {
 
 	/**
 	 * Builds an ability object from the shape of one already in the save, so
-	 * every type string and field type matches whatever the game wrote.
+	 * every type string and field type matches whatever the game wrote. It
+	 * carries three components — the ability class itself, an InstanceID and a
+	 * Persistence — and only the handful of fields the game writes for a
+	 * freshly instantiated ability are set; everything else comes back from
+	 * the prefab, which is exactly right for a new one.
 	 */
-	private Optional<Property> buildAbilityPacket (
+	private static Optional<Property> buildAbilityPacket (
 		final Property template
 		, final UUID guid
 		, final NewAbility ability
 		, final ObjectPersistencePacket owner) {
 
-		if (!(template instanceof ComplexProperty)) {
-			return Optional.empty();
-		}
-
-		final ComplexProperty source = (ComplexProperty) template;
-		final ComplexProperty packet = new ComplexProperty(source.name, source.type);
-		final String objectName = ability.prefab + "(Clone)";
-
-		for (final Property field : source.properties) {
-			if (field.name == null) {
-				continue;
-			}
-
-			if ("ComponentPackets".equals(field.name)) {
-				final Optional<Property> components =
-					buildAbilityComponents(field, guid, ability, owner);
-
-				if (!components.isPresent()) {
-					return Optional.empty();
+		final boolean[] wroteAbility = {false};
+		final Optional<Property> packet = PacketMint.mint(template
+			, new PacketMint.Identity(ability.prefab + "(Clone)", guid.toString(), guid
+				, ability.path, owner.ObjectName, owner.LevelName)
+			, (type, component) -> "InstanceID".equals(type) || "Persistence".equals(type)
+				|| isAbility(component)
+			, (type, copy) -> {
+				if (!"InstanceID".equals(type) && isAbility(copy)) {
+					stampNewAbility(copy, ability, owner);
+					wroteAbility[0] = true;
 				}
+			});
 
-				packet.properties.add(components.get());
-				continue;
-			}
-
-			if (!(field instanceof SimpleProperty)) {
-				// Location and Rotation ride along unchanged; the ability is
-				// moved onto its owner the moment the game restores it.
-				packet.properties.add(field);
-				continue;
-			}
-
-			Object value = ((SimpleProperty) field).value;
-			switch (field.name) {
-				case "ObjectName":      value = objectName; break;
-				case "ObjectID":        value = guid.toString(); break;
-				case "GUID":            value = guid; break;
-				case "PrefabResource":  value = ability.path; break;
-				case "Parent":          value = owner.ObjectName; break;
-				case "LevelName":       value = owner.LevelName; break;
-				default:                break;
-			}
-
-			final SimpleProperty copy = new SimpleProperty(field.name, field.type);
-			copy.value = value;
-			copy.obj = value;
-			packet.properties.add(copy);
-		}
-
-		final ObjectPersistencePacket materialised = new ObjectPersistencePacket();
-		materialised.ObjectName = objectName;
-		materialised.ObjectID = guid.toString();
-		materialised.GUID = guid;
-		materialised.PrefabResource = ability.path;
-		materialised.Parent = owner.ObjectName;
-		materialised.LevelName = owner.LevelName;
-		packet.obj = materialised;
-
-		return Optional.of(packet);
-	}
-
-	/**
-	 * The three components an ability object carries: the ability class itself,
-	 * an InstanceID and a Persistence. Only the handful of fields the game
-	 * writes for a freshly instantiated ability are set — everything else comes
-	 * back from the prefab, which is exactly right for a new one.
-	 */
-	private Optional<Property> buildAbilityComponents (
-		final Property template
-		, final UUID guid
-		, final NewAbility ability
-		, final ObjectPersistencePacket owner) {
-
-		if (!(template instanceof SingleDimensionalArrayProperty)) {
-			logger.error("ComponentPackets was not an array.%n");
-			return Optional.empty();
-		}
-
-		final SingleDimensionalArrayProperty source =
-			(SingleDimensionalArrayProperty) template;
-
-		final SingleDimensionalArrayProperty components =
-			new SingleDimensionalArrayProperty(source.name, source.type);
-
-		components.elementType = source.elementType;
-		boolean wroteAbility = false;
-
-		for (final Object item : source.items) {
-			if (!(item instanceof ComplexProperty)) {
-				continue;
-			}
-
-			final ComplexProperty component = (ComplexProperty) item;
-			final Optional<Property> typeString = component.findProperty("TypeString");
-			if (!typeString.isPresent() || !(typeString.get() instanceof SimpleProperty)) {
-				continue;
-			}
-
-			final Object type = ((SimpleProperty) typeString.get()).value;
-			final boolean isAbility = component
-				.<DictionaryProperty>findProperty("Variables")
-				.flatMap(v -> v.findEntry("EffectType"))
-				.isPresent();
-
-			if (!isAbility && !"InstanceID".equals(type) && !"Persistence".equals(type)) {
-				continue;
-			}
-
-			// Copy, never share: reusing the template's own Property objects
-			// makes two packets reference one object, and rewriting the GUID
-			// below then silently rewrites the template's too.
-			final ComplexProperty copy = EKUtils.copyComponent(component);
-			components.items.add(copy);
-
-			if ("InstanceID".equals(type)) {
-				setVariable(copy, "Guid", guid);
-				continue;
-			}
-
-			if (isAbility) {
-				// The class matters: the save writes the concrete component
-				// name, and a spell recorded as a plain GenericAbility has none
-				// of its state applied.
-				copy.findProperty("TypeString").ifPresent(property -> {
-					((SimpleProperty) property).value = ability.component;
-					property.obj = ability.component;
-				});
-
-				setVariable(copy, "Owner", UUID.fromString(owner.ObjectID));
-				setVariable(copy, "EffectType", effectTypeOf(ability.effect));
-
-				// A brand new ability is dormant; Restored() activates the
-				// passive ones itself on the next load.
-				setVariable(copy, "m_activated", false);
-				setVariable(copy, "m_activatedLaunching", false);
-				setVariable(copy, "m_applied", false);
-				setVariable(copy, "m_UITriggered", false);
-				setVariable(copy, "m_cooldownCounter", 0);
-				setVariable(copy, "m_perEncounterResetTimer", 0f);
-				setVariable(copy, "m_statusEffectsActivated", true);
-				setVariable(copy, "m_statusEffectsNeeded", true);
-				setVariable(copy, "MasteryLevel", 0);
-				setVariable(copy, "AppliedViaMod", false);
-				setVariable(copy, "IsVisibleOnUI", true);
-				setVariable(copy, "OverrideName", "");
-
-				// Spells carry two extra flags InstantiateAbility sets by hand:
-				// a learned spell is never free, and only a wizard's has to be
-				// in a grimoire to be cast. The template may well have been a
-				// non-spell ability, so these are added rather than assigned.
-				if (ability.spell) {
-					putVariable(copy, "IsFree", false);
-					putVariable(copy, "NeedsGrimoire"
-						, "Wizard".equalsIgnoreCase(ability.spellClass));
-				}
-
-				wroteAbility = true;
-			}
-		}
-
-		if (!wroteAbility) {
+		if (packet.isPresent() && !wroteAbility[0]) {
 			logger.error("Template ability object had no ability component to copy.%n");
 			return Optional.empty();
 		}
 
-		return Optional.of(components);
+		return packet;
+	}
+
+	/** An ability's own component is the one carrying an EffectType. */
+	private static boolean isAbility (final ComplexProperty component) {
+		return component.<DictionaryProperty>findProperty("Variables")
+			.flatMap(variables -> variables.findEntry("EffectType"))
+			.isPresent();
+	}
+
+	private static void stampNewAbility (
+		final ComplexProperty copy, final NewAbility ability, final ObjectPersistencePacket owner) {
+
+		// The class matters: the save writes the concrete component
+		// name, and a spell recorded as a plain GenericAbility has none
+		// of its state applied.
+		copy.findProperty("TypeString").ifPresent(property -> {
+			((SimpleProperty) property).value = ability.component;
+			property.obj = ability.component;
+		});
+
+		setVariable(copy, "Owner", UUID.fromString(owner.ObjectID));
+		setVariable(copy, "EffectType", effectTypeOf(ability.effect));
+
+		// A brand new ability is dormant; Restored() activates the
+		// passive ones itself on the next load.
+		setVariable(copy, "m_activated", false);
+		setVariable(copy, "m_activatedLaunching", false);
+		setVariable(copy, "m_applied", false);
+		setVariable(copy, "m_UITriggered", false);
+		setVariable(copy, "m_cooldownCounter", 0);
+		setVariable(copy, "m_perEncounterResetTimer", 0f);
+		setVariable(copy, "m_statusEffectsActivated", true);
+		setVariable(copy, "m_statusEffectsNeeded", true);
+		setVariable(copy, "MasteryLevel", 0);
+		setVariable(copy, "AppliedViaMod", false);
+		setVariable(copy, "IsVisibleOnUI", true);
+		setVariable(copy, "OverrideName", "");
+
+		// Spells carry two extra flags InstantiateAbility sets by hand:
+		// a learned spell is never free, and only a wizard's has to be
+		// in a grimoire to be cast. The template may well have been a
+		// non-spell ability, so these are added rather than assigned.
+		if (ability.spell) {
+			putVariable(copy, "IsFree", false);
+			putVariable(copy, "NeedsGrimoire"
+				, "Wizard".equalsIgnoreCase(ability.spellClass));
+		}
 	}
 
 	private static AbilityType effectTypeOf (final int ordinal) {
@@ -754,10 +658,6 @@ public class AbilityManager {
 		return Optional.empty();
 	}
 
-	/**
-	 * Independent copy of a component packet — the TypeString plus a fresh
-	 * Variables dictionary of new SimpleProperty instances.
-	 */
 	private static Optional<DictionaryProperty> statVariables (final Property character) {
 		return ((ComplexProperty) character)
 			.<SingleDimensionalArrayProperty>findProperty("ComponentPackets")
