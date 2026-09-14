@@ -18,19 +18,16 @@
 
 package uk.me.mantas.eternity.handlers;
 
-import org.cef.browser.CefBrowser;
-import org.cef.callback.CefQueryCallback;
-import org.cef.handler.CefMessageRouterHandlerAdapter;
 import org.json.JSONArray;
-import org.json.JSONException;
 import org.json.JSONObject;
-import uk.me.mantas.eternity.Logger;
-import uk.me.mantas.eternity.environment.Environment;
 import uk.me.mantas.eternity.game.GenericAbility.AbilityType;
 import uk.me.mantas.eternity.save.AbilityCatalog;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * Serves the ability catalog to the "add an ability or talent" browser.
@@ -43,94 +40,36 @@ import java.util.Map;
  * that character could actually take, straight from the game's own
  * AbilityProgressionTable rather than a guess based on prefab paths.
  */
-public class BrowseAbilities extends CefMessageRouterHandlerAdapter {
-	private static final Logger logger = Logger.getLogger(BrowseAbilities.class);
+public class BrowseAbilities extends CatalogQuery {
 	private static final int MAX_LIMIT = 200;
 
 	@Override
-	public boolean onQuery (
-		final CefBrowser browser
-		, final long id
-		, final String request
-		, final boolean persistent
-		, final CefQueryCallback callback) {
-
-		Environment.getInstance().workers().execute(() -> browse(request, callback));
-		return true;
-	}
-
-	@Override
-	public void onQueryCanceled (final CefBrowser browser, final long id) {
-		logger.error("Query #%d cancelled.%n", id);
-	}
-
-	private void browse (final String request, final CefQueryCallback callback) {
-		final String search;
-		final String kind;
-		final String characterClass;
-		final String spellClass;
-		final String companion;
-		final String sort;
-		final String subrace;
-		final boolean isPlayer;
-		final boolean anyClass;
-		final int offset;
-		final int limit;
-		final JSONArray iconKeys;
-
-		try {
-			final JSONObject json = new JSONObject(request);
-			search = json.optString("search", "").toLowerCase().trim();
-			kind = json.optString("kind", "");
-			characterClass = json.optString("characterClass", "");
-			spellClass = json.optString("spellClass", "");
-			companion = json.optString("progressionTable", "");
-			sort = json.optString("sort", "").toLowerCase();
-			subrace = json.optString("subrace", "");
-			isPlayer = json.optBoolean("isPlayer", false);
-			anyClass = json.optBoolean("anyClass", false);
-			offset = Math.max(0, json.optInt("offset", 0));
-			limit = Math.min(MAX_LIMIT, Math.max(1, json.optInt("limit", 60)));
-			iconKeys = json.optJSONArray("iconKeys");
-		} catch (final JSONException e) {
-			logger.error("Error parsing JSON request: %s%n", request);
-			callback.failure(-1, "Error parsing JSON request.");
-			return;
-		}
-
+	protected JSONObject answer (final JSONObject request) {
 		final AbilityCatalog catalog = AbilityCatalog.getInstance();
 
 		// Icon-only mode. The opener deliberately ships ability icons by name
 		// rather than by value — a full party's worth of art pushed its single
 		// reply past what the JCEF bridge carries — so the UI asks for the
 		// handful it is about to draw.
+		final JSONArray iconKeys = request.optJSONArray("iconKeys");
 		if (iconKeys != null) {
-			final JSONObject icons = new JSONObject();
-			for (int i = 0; i < iconKeys.length(); i++) {
-				final String key = iconKeys.optString(i, "");
-				catalog.lookup(key)
-					.filter(entry -> !entry.icon.isEmpty())
-					.ifPresent(entry -> {
-						final String data = catalog.iconData(entry.icon);
-						if (!data.isEmpty()) {
-							icons.put(key.toLowerCase(), data);
-						}
-					});
-			}
-
-			final JSONObject response = new JSONObject();
-			response.put("icons", icons);
-			response.put("available", catalog.size() > 0);
-			callback.success(response.toString());
-			return;
+			return icons(catalog, iconKeys);
 		}
+
+		final String search = request.optString("search", "").toLowerCase().trim();
+		final String kind = request.optString("kind", "");
+		final String spellClass = request.optString("spellClass", "");
 
 		// "Any class" drops the progression filter entirely: the save format
 		// happily holds an ability its owner could never have learned, and
 		// refusing to show them would be the editor deciding for the user.
-		final Map<String, AbilityCatalog.Unlock> allowed =
-			anyClass ? null
-				: catalog.unlocksFor(characterClass, companion, subrace, isPlayer);
+		final Map<String, AbilityCatalog.Unlock> allowed = request.optBoolean("anyClass", false)
+			? null
+			: catalog.unlocksFor(
+				request.optString("characterClass", "")
+				, request.optString("progressionTable", "")
+				, request.optString("subrace", "")
+				, request.optBoolean("isPlayer", false));
 
 		List<Map.Entry<String, AbilityCatalog.Entry>> matches =
 			catalog.search(search, kind, allowed);
@@ -142,7 +81,7 @@ public class BrowseAbilities extends CefMessageRouterHandlerAdapter {
 		if (!spellClass.isEmpty()) {
 			matches = matches.stream()
 				.filter(m -> spellClass.equalsIgnoreCase(m.getValue().characterClass))
-				.collect(java.util.stream.Collectors.toList());
+				.collect(Collectors.toList());
 		}
 
 		// Sorted here rather than in the client, because the client pages: it
@@ -150,74 +89,82 @@ public class BrowseAbilities extends CefMessageRouterHandlerAdapter {
 		// would put a level 8 spell above a level 1 one the moment the second
 		// page arrived. The catalog already hands these back by name, so the
 		// default needs no work.
-		if ("level".equals(sort)) {
-			matches.sort((a, b) -> {
-				final int byLevel =
-					Integer.compare(sortLevel(a, allowed), sortLevel(b, allowed));
-
-				if (byLevel != 0) {
-					return byLevel;
-				}
-
-				final int byName =
-					a.getValue().name.compareToIgnoreCase(b.getValue().name);
-				return byName != 0 ? byName : a.getKey().compareTo(b.getKey());
-			});
+		if ("level".equals(request.optString("sort", "").toLowerCase())) {
+			matches.sort(Comparator
+				.<Map.Entry<String, AbilityCatalog.Entry>>comparingInt(m -> sortLevel(m, allowed))
+				.thenComparing(m -> m.getValue().name, String.CASE_INSENSITIVE_ORDER)
+				.thenComparing(Map.Entry::getKey));
 		}
 
-		final JSONArray abilities = new JSONArray();
-		for (int i = offset; i < matches.size() && abilities.length() < limit; i++) {
-			final Map.Entry<String, AbilityCatalog.Entry> match = matches.get(i);
-			final AbilityCatalog.Entry entry = match.getValue();
-
-			final JSONObject ability = new JSONObject();
-			ability.put("key", match.getKey());
-			ability.put("displayName", entry.name);
-			ability.put("description", entry.description);
-			ability.put("kind", entry.kind);
-			ability.put("component", entry.component);
-			ability.put("effect", entry.effect);
-			ability.put("path", entry.path);
-			ability.put("prefab", AbilityCatalog.prefabNameOf(entry.path, match.getKey()));
-			ability.put("class", entry.characterClass);
-			ability.put("spell", "spell".equals(entry.kind));
-			ability.put("spellLevel", entry.spellLevel);
-			ability.put("level", entry.level);
-			ability.put("passive", entry.passive);
-			ability.put("category", entry.category);
-			ability.put("talentType", entry.talentType);
-			ability.put("icon", catalog.iconData(entry.icon));
-
-			// What adding this talent has to mint alongside it, resolved here so
-			// the UI never has to know how a talent becomes an ability.
-			ability.put("grants", grantsToJSON(catalog, entry));
-
-			final JSONArray modifies = new JSONArray();
-			entry.modifies.forEach(modifies::put);
-			ability.put("modifies", modifies);
-
-			final JSONObject skills = new JSONObject();
-			entry.skills.forEach(skills::put);
-			ability.put("skills", skills);
-
-			final AbilityCatalog.Unlock unlock =
-				allowed == null ? null : allowed.get(match.getKey());
-
-			if (unlock != null) {
-				ability.put("unlockLevel", unlock.level);
-				ability.put("unlockCategory", unlock.category);
-				ability.put("automatic", unlock.automatic);
-			}
-
-			abilities.put(ability);
-		}
-
+		final int offset = offset(request);
 		final JSONObject response = new JSONObject();
 		response.put("total", matches.size());
 		response.put("offset", offset);
-		response.put("abilities", abilities);
+		response.put("abilities", page(matches, offset, limit(request, 60, MAX_LIMIT)
+			, match -> row(catalog, match, allowed)));
+
 		response.put("available", catalog.size() > 0);
-		callback.success(response.toString());
+		return response;
+	}
+
+	private static JSONObject icons (final AbilityCatalog catalog, final JSONArray keys) {
+		final JSONObject icons = new JSONObject();
+		for (int i = 0; i < keys.length(); i++) {
+			final String key = keys.optString(i, "");
+			catalog.lookup(key)
+				.filter(entry -> !entry.icon.isEmpty())
+				.map(entry -> catalog.iconData(entry.icon))
+				.filter(data -> !data.isEmpty())
+				.ifPresent(data -> icons.put(key.toLowerCase(), data));
+		}
+
+		final JSONObject response = new JSONObject();
+		response.put("icons", icons);
+		response.put("available", catalog.size() > 0);
+		return response;
+	}
+
+	private static JSONObject row (
+		final AbilityCatalog catalog
+		, final Map.Entry<String, AbilityCatalog.Entry> match
+		, final Map<String, AbilityCatalog.Unlock> allowed) {
+
+		final AbilityCatalog.Entry entry = match.getValue();
+		final JSONObject ability = new JSONObject();
+		ability.put("key", match.getKey());
+		ability.put("displayName", entry.name);
+		ability.put("description", entry.description);
+		ability.put("kind", entry.kind);
+		ability.put("component", entry.component);
+		ability.put("effect", entry.effect);
+		ability.put("path", entry.path);
+		ability.put("prefab", AbilityCatalog.prefabNameOf(entry.path, match.getKey()));
+		ability.put("class", entry.characterClass);
+		ability.put("spell", "spell".equals(entry.kind));
+		ability.put("spellLevel", entry.spellLevel);
+		ability.put("level", entry.level);
+		ability.put("passive", entry.passive);
+		ability.put("category", entry.category);
+		ability.put("talentType", entry.talentType);
+		ability.put("icon", catalog.iconData(entry.icon));
+
+		// What adding this talent has to mint alongside it, resolved here so
+		// the UI never has to know how a talent becomes an ability.
+		ability.put("grants", grantsToJSON(catalog, entry));
+		ability.put("modifies", array(entry.modifies));
+
+		final JSONObject skills = new JSONObject();
+		entry.skills.forEach(skills::put);
+		ability.put("skills", skills);
+
+		final AbilityCatalog.Unlock unlock = allowed == null ? null : allowed.get(match.getKey());
+		if (unlock != null) {
+			ability.put("unlockLevel", unlock.level);
+			ability.put("unlockCategory", unlock.category);
+			ability.put("automatic", unlock.automatic);
+		}
+
+		return ability;
 	}
 
 	private static JSONArray grantsToJSON (
@@ -234,7 +181,7 @@ public class BrowseAbilities extends CefMessageRouterHandlerAdapter {
 			// grants it directly.
 			granted.put("effect", AbilityType.Talent.ordinal());
 
-			final java.util.Optional<AbilityCatalog.Entry> entry = catalog.lookup(key);
+			final Optional<AbilityCatalog.Entry> entry = catalog.lookup(key);
 			if (entry.isPresent()) {
 				granted.put("prefab", AbilityCatalog.prefabNameOf(entry.get().path, key));
 				granted.put("path", entry.get().path);
@@ -256,11 +203,6 @@ public class BrowseAbilities extends CefMessageRouterHandlerAdapter {
 		return grants;
 	}
 
-	/**
-	 * The prefab file name with its real casing, which is what an object's
-	 * ObjectName has to read. Bundle keys are lowercased, so the path is the
-	 * only place the original casing survives.
-	 */
 	/**
 	 * The level a player would look for. A spell's is its {@code SpellLevel} —
 	 * which chapter of a grimoire it lands in — and everything else's is the

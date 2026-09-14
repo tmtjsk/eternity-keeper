@@ -21,7 +21,6 @@ package uk.me.mantas.eternity.handlers;
 
 import org.cef.browser.CefBrowser;
 import org.cef.callback.CefQueryCallback;
-import org.cef.callback.CefRunFileDialogCallback;
 import org.cef.handler.CefDialogHandler.FileDialogMode;
 import org.cef.handler.CefMessageRouterHandlerAdapter;
 import org.json.JSONException;
@@ -35,7 +34,6 @@ import uk.me.mantas.eternity.save.SavedGameOpener;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Optional;
-import java.util.Vector;
 
 public class ImportCharacter extends CefMessageRouterHandlerAdapter {
 	private static final Logger logger = Logger.getLogger(ImportCharacter.class);
@@ -71,10 +69,8 @@ public class ImportCharacter extends CefMessageRouterHandlerAdapter {
 			Environment.getInstance().mutationWorker().execute(
 				() -> doImport(request, callback, chrPath, overwriteExisting));
 		} else {
-			// The file dialog itself must not block the mutation queue; only
-			// the import work moves there once a file has been chosen.
-			Environment.getInstance().workers().execute(
-				new SelectChrFile(browser, request, callback));
+			ChrDialog.choose(browser, FileDialogMode.FILE_DIALOG_OPEN, "Choose a character"
+				, callback, "NO_SAVE", chrFile -> analyseThenImport(request, callback, chrFile));
 		}
 
 		return true;
@@ -83,61 +79,6 @@ public class ImportCharacter extends CefMessageRouterHandlerAdapter {
 	@Override
 	public void onQueryCanceled (CefBrowser browser, long id) {
 		logger.error("Query #%d cancelled.%n", id);
-	}
-
-	private class SelectChrFile implements Runnable {
-		private final CefBrowser browser;
-		private final String request;
-		private final CefQueryCallback callback;
-
-		public SelectChrFile (
-			CefBrowser browser
-			, String request
-			, CefQueryCallback callback) {
-
-			this.browser = browser;
-			this.request = request;
-			this.callback = callback;
-		}
-
-		@Override
-		public void run () {
-			browser.runFileDialog(
-				FileDialogMode.FILE_DIALOG_OPEN
-				, "Choose a character"
-				, ""
-				, new Vector<String>(){{add(".chr");}}
-				, 0
-				, new FileCallback(request, callback));
-		}
-	}
-
-	private class FileCallback implements CefRunFileDialogCallback {
-		private final String request;
-		private final CefQueryCallback callback;
-
-		public FileCallback (
-			String request
-			, CefQueryCallback callback) {
-
-			this.request = request;
-			this.callback = callback;
-		}
-
-		@Override
-		public void onFileDialogDismissed (
-			final int selectedAcceptFilter
-			, final Vector<String> filenames) {
-
-			if (filenames.size() < 1 || filenames.get(0).length() < 1) {
-				callback.failure(-1, "NO_SAVE");
-				return;
-			}
-
-			final String chrFile = filenames.get(0);
-			Environment.getInstance().mutationWorker().execute(
-				() -> analyseThenImport(request, callback, chrFile));
-		}
 	}
 
 	// First phase: if the character already exists in the target save, ask
