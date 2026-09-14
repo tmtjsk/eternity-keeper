@@ -95,12 +95,39 @@ toggle, an inventory sale, a talent, a stronghold demolition, a grimoire
 change, a minted catalog item and a minted ability — saved, the written file
 reopened from the list, every edit present and the validator clean.
 
+### What the browsers offer, and where things sit (2026-09-14, second pass)
+
+**The catalogs offer only what the game ships.** The debug items were the
+visible part: 12 items and 9 abilities marked `DEBUG`, `Test`, `_Temp`,
+`_UNUSED_` or `DO_NOT_USE`, none of them in any file of twelve real saves. The
+larger part was invisible: **549 of the 2,156 item-catalog entries were not
+items** — companions, NPCs, creatures, placed traps, crafting recipes and data
+tables, each named after an item its bundle happened to carry
+(`Companion_Aloth` was "Aloth's Grimoire"). Adding one would have minted a
+character as an item. `save/ShippedContent` filters both browsers; lookups are
+untouched, so a save that holds such an object still shows its name. The
+`Prototype/` folder is *not* filtered: Currier's Key and Crypt's Master Key are
+in every mid-game save.
+
+**Layout, measured rather than eyeballed** (`layout_rules.py`, 15 checks):
+
+| Reported or found | Fix |
+|---|---|
+| Party packs one to a row in a 560px column | A card per member, three to a row, filling the panel; wraps below the paper doll rather than dropping to one card |
+| Grimoire sort buttons ~1,600px from the spell search | On the search row |
+| Abilities sort buttons ~500px from the search toolbar | On the search row |
+| An ability's + button ~700px from its name | Browser list capped at 560px |
+| Raw and globals values 830–1,100px from their names | Tables sized to content, name column 360px |
+| Attribute inputs 315px from their labels | 150px label column |
+| Stronghold upgrade rows 1,930px wide | Upgrade list capped at 1,180px |
+| Panel bar (title, Revert, Apply) in five places across eight tabs | One frame for every view, and a reserved scrollbar gutter so short tabs don't shift |
+
 ### Proposed, not done (needs a decision)
 
 | Item | Size | Recommendation |
 |---|---|---|
 | `README.md` | — | Rewrite: it still lists shipped features under "Planned" |
-| DEBUG items in the item catalog | a handful | The extractor keeps prefabs such as `Sword_DEBUG_The_Blade_of_Assuring_Quality`; filter them out, or label them, rather than offer test props as loot |
+| The item extractor's naming | `tools/itemdata-extract` | Skip non-item bundles at extraction too, so a regenerated catalog is clean at the source (the editor already filters them) |
 
 
 ---
