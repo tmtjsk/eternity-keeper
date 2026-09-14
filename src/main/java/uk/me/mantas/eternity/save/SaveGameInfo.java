@@ -195,6 +195,24 @@ public class SaveGameInfo {
 	 * the load screen advertising the old one until the game next saved for
 	 * itself.
 	 */
+	/**
+	 * A value as the game itself writes it. .NET spells a Boolean True or False,
+	 * and the editor's copy of one arrives as Java's true or false; the game
+	 * parses either, but a file the game could not have written is a file the
+	 * next reader has to wonder about.
+	 */
+	private static String inTheGamesSpelling (final String type, final String value) {
+		if (type == null || !type.startsWith("System.Boolean")) {
+			return value;
+		}
+
+		if ("true".equalsIgnoreCase(value)) {
+			return "True";
+		}
+
+		return "false".equalsIgnoreCase(value) ? "False" : value;
+	}
+
 	static void updateSaveInfo (
 			File saveDirectory, String newUserSaveName, Map<String, String> extraFields)
 			throws IOException {
@@ -216,7 +234,7 @@ public class SaveGameInfo {
 				// Only ever updated, never added: a field this file doesn't
 				// already carry isn't one the game reads from here.
 				if (target.size() > 0) {
-					target.attr("value", field.getValue());
+					target.attr("value", inTheGamesSpelling(target.attr("type"), field.getValue()));
 				}
 			}
 

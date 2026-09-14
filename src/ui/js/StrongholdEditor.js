@@ -373,8 +373,11 @@ var StrongholdEditor = function () {
 			, hint: 'Raises what taxes bring in, and what bandits take.'}
 		, {variable: 'Security', label: 'Security'
 			, hint: 'Protects the takings, and foils prisoner escapes.'}
+		// Measured in the game: three turns set here were played the moment the
+		// save loaded -- turns 153-155 in the log, 1,737cp of taxes collected
+		// and a companion's adventure resolved -- so they are not a bank.
 		, {variable: 'AvailableTurns', label: 'Turns available'
-			, hint: 'Stronghold turns you can still spend.'}
+			, hint: 'Turns waiting to be played. The game plays them as soon as the save loads: taxes are collected and events and adventures resolve.'}
 		, {variable: 'm_currentTurn', label: 'Current turn'
 			, hint: 'Taxes are collected every fifth turn.'}
 		, {variable: 'm_Debt', label: 'Debt'

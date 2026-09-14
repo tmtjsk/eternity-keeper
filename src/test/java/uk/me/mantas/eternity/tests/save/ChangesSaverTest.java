@@ -128,7 +128,8 @@ public class ChangesSaverTest extends TestHarness {
 				+ ", \"globals\":{"
 					+ "\"Global\":{\"GameState\":{\"Difficulty\":{"
 						+ "\"type\":\"uk.me.mantas.eternity.game.GameDifficulty\""
-						+ ", \"value\":\"StoryTime\"}}}"
+						+ ", \"value\":\"StoryTime\"}"
+						+ ", \"TrialOfIron\":{\"type\":\"java.lang.Boolean\",\"value\":\"true\"}}}"
 					+ ", \"InGameGlobal\":{\"GlobalVariables\":{"
 						+ "\"n_Eder_Cipher\":{\"type\":\"java.lang.Integer\",\"value\":\"50\"}"
 						+ ",\"b_gramrfel_prisoner\":{"
@@ -164,6 +165,12 @@ public class ChangesSaverTest extends TestHarness {
 		assertEquals(-17, saveinfoBytes[0]);
 		final Match xml = $(new String(EKUtils.removeBOM(saveinfoBytes), "UTF-8"));
 		assertEquals("TEST", xml.find("Simple[name='UserSaveName']").attr("value"));
+
+		// The load list reads these from saveinfo.xml, so they follow the edit --
+		// in the game's own spelling: .NET writes a Boolean as True or False,
+		// and the editor's copy arrives as true.
+		assertEquals("StoryTime", xml.find("Simple[name='Difficulty']").attr("value"));
+		assertEquals("True", xml.find("Simple[name='TrialOfIron']").attr("value"));
 
 		final File mobileObjectsFile = new File(saveDirectory, "MobileObjects.save");
 		final SharpSerializer deserializer =
