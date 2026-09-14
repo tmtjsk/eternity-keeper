@@ -1244,11 +1244,6 @@ body.theme-light table.dark-theme > tbody > tr > td.raw-locked {
 
 /* ---- Console view ------------------------------------------------------- */
 
-#consoleView {
-	padding: 10px 25px 30px 25px;
-	max-width: 1180px;
-}
-
 .console-achievements > * + * {
 	margin-left: 18px;
 }
@@ -1755,11 +1750,18 @@ body.theme-light #referenceTable td.reference-command {
 	box-shadow: 0 0 8px rgba(232, 213, 163, .75), inset 0 0 0 1px rgba(232, 213, 163, .5);
 }
 
-/* ---- party packs --------------------------------------------------------- */
-
+/* ---- party packs ----------------------------------------------------------
+   One card per party member, three to a row. The panel takes whatever width
+   the paper doll leaves; each card is a third of it, and never narrower than
+   its own 16-slot grid, so a window too narrow for three drops to two rather
+   than squeezing the grids. The panel needs room for two cards; with less
+   beside the paper doll it wraps underneath and takes the full width instead
+   of shrinking to one card a row. Chrome 45 has no CSS Grid and no flexbox
+   `gap`, so the gutter is each card's right margin, taken back by the
+   container. */
 .inv-pack-panel {
-	flex: 1 1 500px;
-	min-width: 500px;
+	flex: 1 1 0;
+	min-width: 830px;
 }
 
 .inv-panel-head {
@@ -1777,25 +1779,38 @@ body.theme-light #referenceTable td.reference-command {
 	font-size: 12px;
 }
 
+.inv-packs {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-start;
+	margin-right: -12px;
+}
+
 .inv-pack-row {
-	padding: 5px 4px;
+	flex: 0 0 calc(33.333% - 12px);
+	min-width: 392px;
+	margin: 0 12px 12px 0;
+	padding: 7px 8px 4px;
+	border: 1px solid rgba(201, 180, 126, .14);
 	border-radius: 3px;
-	white-space: nowrap;
+	background: rgba(0, 0, 0, .12);
 }
 
 .inv-pack-row-active {
 	background: rgba(232, 213, 163, .07);
-	box-shadow: inset 2px 0 0 #c9b47e;
+	border-color: rgba(201, 180, 126, .45);
+	box-shadow: inset 3px 0 0 #c9b47e;
 }
 
+/* Portrait, name and count on one line above the grid. */
 .inv-pack-owner {
-	display: inline-block;
-	vertical-align: middle;
-	width: 120px;
+	display: block;
+	height: 38px;
+	margin-bottom: 6px;
 	cursor: pointer;
 	font-size: 12px;
 	color: #cdbb92;
-	white-space: normal;
+	overflow: hidden;
 }
 
 .inv-pack-owner:hover .inv-pack-owner-name {
@@ -1804,14 +1819,18 @@ body.theme-light #referenceTable td.reference-command {
 
 .inv-pack-owner-name {
 	display: block;
+	padding-top: 3px;
 	line-height: 1.15;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .inv-pack-portrait {
 	width: 34px;
 	height: 34px;
 	float: left;
-	margin-right: 7px;
+	margin-right: 8px;
 	border-radius: 50%;
 	border: 2px solid rgba(201, 180, 126, .5);
 	object-fit: cover;
@@ -1828,11 +1847,10 @@ body.theme-light #referenceTable td.reference-command {
 	color: #8d7f63;
 }
 
+/* Two rows of eight 42px tiles with a 4px gutter. */
 .inv-grid {
-	display: inline-block;
-	vertical-align: middle;
 	font-size: 0;
-	width: 368px;
+	width: 376px;
 }
 
 .inv-grid .inv-tile {
@@ -2338,12 +2356,6 @@ body.theme-light .inv-panel-head {
    The party packs only need room for a 16-slot grid plus the owner column, so
    the panel is sized to its content rather than stretched across the window. */
 
-.inv-pack-panel {
-	flex: 0 1 auto;
-	min-width: 0;
-	max-width: 560px;
-}
-
 .inv-panel-head {
 	display: block;
 	overflow: hidden;
@@ -2508,12 +2520,6 @@ body.theme-light .sidebar-toggle:hover {
    Narrow windows stack the panels rather than letting the paper doll squeeze
    the party grids into unusable slivers. */
 
-@media (max-width: 1400px) {
-	.inv-pack-panel {
-		max-width: 100%;
-	}
-}
-
 @media (max-width: 1100px) {
 	.inv-doll-panel {
 		flex: 1 1 100%;
@@ -2558,22 +2564,6 @@ body.theme-light .sidebar-toggle:hover {
 	.inv-browse-grid {
 		max-height: 92px;
 	}
-}
-
-/* A 16-slot pack wraps to two rows of eight so it fits the panel instead of
-   running off the edge — the row itself must allow wrapping for that. */
-.inv-grid {
-	white-space: normal;
-	width: 376px;
-}
-
-.inv-pack-row {
-	white-space: normal;
-}
-
-.inv-pack-owner {
-	vertical-align: top;
-	padding-top: 4px;
 }
 
 /* Only meaningful once a save is open and the list has names in it. */
@@ -4763,17 +4753,32 @@ body.theme-light .raw-unnamed {
 	color: #6f5a3c;
 }
 
-/* By chapter or by name, in the spell browser's own heading. */
+/* By chapter or by name, on the search box's own row: a control belongs
+   beside the list it reorders, not at the far edge of the window. */
+.grm-toolbar {
+	display: flex;
+	align-items: center;
+	max-width: 680px;
+	margin-bottom: 12px;
+}
+
+.grm-toolbar .input-group {
+	flex: 0 1 320px;
+}
+
 .grm-sort {
-	float: right;
-	text-transform: none;
-	letter-spacing: 0;
+	flex: 0 0 auto;
+	margin-left: 10px;
+	white-space: nowrap;
 }
 
 .grm-sort-btn {
-	margin-left: 6px;
-	padding: 1px 9px;
+	padding: 4px 10px;
 	font-size: 11px;
+}
+
+.grm-sort-btn + .grm-sort-btn {
+	margin-left: 6px;
 }
 
 .grm-sort-on {
@@ -4831,16 +4836,22 @@ body.theme-light .grm-sort-on {
 	box-shadow: inset 2px 0 0 #c9b47e;
 }
 
+/* On the search row, after the filters, rather than at the far edge of the
+   panel heading: the ordering belongs with the other controls over the list. */
 .abl-sort {
-	float: right;
-	text-transform: none;
-	letter-spacing: 0;
+	display: inline-block;
+	vertical-align: middle;
+	margin-left: 16px;
+	white-space: nowrap;
 }
 
 .abl-sort-btn {
-	margin-left: 6px;
-	padding: 1px 9px;
+	padding: 3px 9px;
 	font-size: 11px;
+}
+
+.abl-sort-btn + .abl-sort-btn {
+	margin-left: 4px;
 }
 
 .abl-sort-on {
@@ -4993,4 +5004,82 @@ body.theme-light .abl-sort-on {
 
 body.theme-light .inv-status-warn {
 	color: #8a4b12;
+}
+
+/* ---- one frame for every tab ------------------------------------------------
+   Every view is a child of .main-panel and starts with its panel bar, so one
+   box for all of them puts the title, and Revert and Apply, in the same place
+   on every tab. Measured before this: eight tabs, five left edges (248-298px),
+   five tops (62-84px) and five right edges for the buttons, one of them
+   1,100px short because the console capped its whole view. The specificity
+   (0,2,0) is what lets this outrank the per-view rules above it. */
+.main-panel > .view {
+	margin: -8px -15px 0 -15px;
+	padding: 14px 18px 24px 18px;
+	max-width: none;
+}
+
+/* The console keeps its readable width for its own content, not its bar. */
+.main-panel > .console-view > :not(.panel-bar) {
+	max-width: 1130px;
+}
+
+/* ---- a value beside its name ------------------------------------------------
+   Full-width, the raw and globals tables put a variable's value 830-1,100px
+   from its name. Sized to their content instead, with room for the long names
+   and the enum dropdowns. */
+.main-panel > .raw > table.table,
+.main-panel > .globals > table.table {
+	width: auto;
+	min-width: 760px;
+	max-width: 100%;
+}
+
+.main-panel > .raw > table.table > tbody > tr > td:first-child,
+.main-panel > .globals > table.table > tbody > tr > td:first-child {
+	width: 360px;
+}
+
+/* A tab short enough not to scroll had no scrollbar, and its Revert and Apply
+   sat a scrollbar's width further right than on every tab that did. Always
+   reserving the gutter keeps them still when switching tabs. */
+html {
+	overflow-y: scroll;
+}
+
+/* ---- an attribute's input beside its label --------------------------------
+   Bootstrap halves split a 571px column, putting each input 315px from where
+   its label starts; the skills beside it sit 70px away. */
+.character .attributes .form-group > .control-label {
+	width: 150px;
+}
+
+.character .attributes .form-group > .control-label + div {
+	width: auto;
+}
+
+.character .stats {
+	width: 320px;
+}
+
+/* ---- an upgrade's cost and button beside its words --------------------------
+   Stretched across a 2560px window a row's description ended around 900px
+   and its stats and Build button began at 1,650px. */
+.sh-upgrades-panel {
+	flex: 0 1 1180px;
+	max-width: 1180px;
+}
+
+/* ---- an ability's + button beside its name ----------------------------------
+   The browser list took whatever the panel left beside the description, which
+   put each row's + button about 700px from the name it adds. A row is an
+   icon, two short lines and a button; the panel hugs the list and the
+   description instead. */
+.abl-browse-list {
+	flex: 0 1 560px;
+	max-width: 560px;
+}
+
+.abl-browser-panel {
+	max-width: 960px;
 }

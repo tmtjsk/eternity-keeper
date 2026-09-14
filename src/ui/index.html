@@ -964,8 +964,6 @@
 							<span>Add an ability, spell or talent</span>
 							<span class="abl-count" id="ablBrowseCount"
 							      data-bound="AbilityEditor"></span>
-							<span class="abl-sort" id="ablBrowseSort"
-							      data-bound="AbilityEditor"></span>
 						</div>
 						<div class="abl-search">
 							<input type="text" class="form-control" id="ablBrowseSearch"
@@ -976,6 +974,8 @@
 								<input type="checkbox" id="ablAnyClass" data-bound="AbilityEditor" />
 								Show everything, not just what this class can take
 							</label>
+							<span class="abl-sort" id="ablBrowseSort"
+							      data-bound="AbilityEditor"></span>
 						</div>
 						<!-- The list on the left, and what the highlighted row actually
 						     does on the right, the way the game explains a talent while
@@ -1142,22 +1142,20 @@
 								<div class="grm-browse-panel">
 									<div class="grm-browse-head">
 										<span>Wizard spells</span>
-										<span class="grm-sort" id="grmSort"
-										      data-bound="GrimoireEditor"></span>
 										<span class="grm-browse-subtitle">
 											Four to a level, exactly as the game allows &mdash;
 											a fifth is dropped when the save loads.
 										</span>
 									</div>
-									<form onsubmit="return false;">
-										<div class="form-group">
-											<div class="input-group">
-												<input type="text" class="form-control icon-left grm-search"
-												       id="grmSearch" data-bound="GrimoireEditor"
-												       placeholder="Search spells..." />
-												<span class="icon-left"><i class="fa fa-search"></i></span>
-											</div>
+									<form class="grm-toolbar" onsubmit="return false;">
+										<div class="input-group">
+											<input type="text" class="form-control icon-left grm-search"
+											       id="grmSearch" data-bound="GrimoireEditor"
+											       placeholder="Search spells..." />
+											<span class="icon-left"><i class="fa fa-search"></i></span>
 										</div>
+										<span class="grm-sort" id="grmSort"
+										      data-bound="GrimoireEditor"></span>
 									</form>
 									<div class="grm-browse" id="grmBrowse"
 									     data-bound="GrimoireEditor"></div>
