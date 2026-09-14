@@ -204,7 +204,7 @@ public class AbilityManager {
 		final List<Property> packets = new ArrayList<>(deserialized.getPackets());
 
 		for (final Change change : changes) {
-			final Optional<Property> owner = findCharacter(packets, change.character);
+			final Optional<Property> owner = EKUtils.findPacketById(packets, change.character);
 			if (!owner.isPresent()) {
 				logger.error("No character '%s' in this save.%n", change.character);
 				return false;
@@ -613,7 +613,7 @@ public class AbilityManager {
 			// Copy, never share: reusing the template's own Property objects
 			// makes two packets reference one object, and rewriting the GUID
 			// below then silently rewrites the template's too.
-			final ComplexProperty copy = copyComponent(component);
+			final ComplexProperty copy = EKUtils.copyComponent(component);
 			components.items.add(copy);
 
 			if ("InstanceID".equals(type)) {
@@ -758,44 +758,6 @@ public class AbilityManager {
 	 * Independent copy of a component packet — the TypeString plus a fresh
 	 * Variables dictionary of new SimpleProperty instances.
 	 */
-	private static ComplexProperty copyComponent (final ComplexProperty source) {
-		final ComplexProperty copy = new ComplexProperty(source.name, source.type);
-
-		for (final Property field : source.properties) {
-			if (field instanceof DictionaryProperty) {
-				final DictionaryProperty variables = (DictionaryProperty) field;
-				final DictionaryProperty copiedVariables =
-					new DictionaryProperty(variables.name, variables.type);
-
-				copiedVariables.keyType = variables.keyType;
-				copiedVariables.valueType = variables.valueType;
-
-				for (final Map.Entry<Property, Property> entry : variables.items) {
-					copiedVariables.items.add(new AbstractMap.SimpleEntry<>(
-						copySimple(entry.getKey()), copySimple(entry.getValue())));
-				}
-
-				copy.properties.add(copiedVariables);
-				continue;
-			}
-
-			copy.properties.add(copySimple(field));
-		}
-
-		return copy;
-	}
-
-	private static Property copySimple (final Property source) {
-		if (!(source instanceof SimpleProperty)) {
-			return source;
-		}
-
-		final SimpleProperty copy = new SimpleProperty(source.name, source.type);
-		copy.value = ((SimpleProperty) source).value;
-		copy.obj = source.obj;
-		return copy;
-	}
-
 	private static Optional<DictionaryProperty> statVariables (final Property character) {
 		return ((ComplexProperty) character)
 			.<SingleDimensionalArrayProperty>findProperty("ComponentPackets")
@@ -879,13 +841,4 @@ public class AbilityManager {
 		new java.util.HashSet<>(java.util.Arrays.asList(
 			"Consumable", "Equippable", "Weapon", "Container", "Trap", "Grimoire", "Item"));
 
-	private static Optional<Property> findCharacter (
-		final List<Property> packets, final String objectID) {
-
-		return packets.stream()
-			.filter(p -> p.obj instanceof ObjectPersistencePacket)
-			.filter(p -> objectID.equalsIgnoreCase(
-				((ObjectPersistencePacket) p.obj).ObjectID))
-			.findFirst();
-	}
 }

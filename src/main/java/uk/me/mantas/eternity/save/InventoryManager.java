@@ -29,7 +29,6 @@ import uk.me.mantas.eternity.serializer.properties.*;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.HashSet;
@@ -208,7 +207,7 @@ public class InventoryManager {
 
 		boolean packetsChanged = false;
 		for (final Change change : changes) {
-			final Optional<Property> owner = findCharacter(packets, change.character);
+			final Optional<Property> owner = EKUtils.findPacketById(packets, change.character);
 			if (!owner.isPresent()) {
 				logger.error("No character '%s' in target save.%n", change.character);
 				return false;
@@ -287,7 +286,7 @@ public class InventoryManager {
 				continue;
 			}
 
-			final Optional<Property> destOwner = findCharacter(packets, change.destCharacter);
+			final Optional<Property> destOwner = EKUtils.findPacketById(packets, change.destCharacter);
 			if (!destOwner.isPresent()) {
 				logger.error("No destination character '%s'.%n", change.destCharacter);
 				return false;
@@ -372,7 +371,7 @@ public class InventoryManager {
 
 		final boolean equipping = change.toEquipmentSlot >= 0;
 		final String wearerID = equipping ? change.destCharacter : change.character;
-		final Optional<Property> wearer = findCharacter(packets, wearerID);
+		final Optional<Property> wearer = EKUtils.findPacketById(packets, wearerID);
 
 		if (!wearer.isPresent()) {
 			logger.error("No character '%s' to wear the item.%n", wearerID);
@@ -399,7 +398,7 @@ public class InventoryManager {
 		// The pack the item comes from (equip) or goes to (unequip).
 		final String packCharacter = equipping ? change.character : change.destCharacter;
 		final String packComponent = equipping ? change.component : change.destComponent;
-		final Optional<Property> packOwner = findCharacter(packets, packCharacter);
+		final Optional<Property> packOwner = EKUtils.findPacketById(packets, packCharacter);
 
 		if (!packOwner.isPresent()) {
 			logger.error("No character '%s' for the pack side.%n", packCharacter);
@@ -694,7 +693,7 @@ public class InventoryManager {
 			// Copy, never share: adding the template's own properties here
 			// would make two packets reference one object, and rewriting the
 			// GUID below would then silently change the template item too.
-			final ComplexProperty copy = copyComponent(component);
+			final ComplexProperty copy = EKUtils.copyComponent(component);
 			components.items.add(copy);
 
 			if ("InstanceID".equals(type)) {
@@ -721,46 +720,6 @@ public class InventoryManager {
 	 * InstanceID and Persistence only ever hold simple values, so this doesn't
 	 * need to recurse any further.
 	 */
-	private static ComplexProperty copyComponent (final ComplexProperty source) {
-		final ComplexProperty copy = new ComplexProperty(source.name, source.type);
-
-		for (final Property field : source.properties) {
-			if (field instanceof DictionaryProperty) {
-				final DictionaryProperty variables = (DictionaryProperty) field;
-				final DictionaryProperty copiedVariables =
-					new DictionaryProperty(variables.name, variables.type);
-
-				copiedVariables.keyType = variables.keyType;
-				copiedVariables.valueType = variables.valueType;
-
-				for (final Map.Entry<Property, Property> entry : variables.items) {
-					copiedVariables.items.add(new AbstractMap.SimpleEntry<>(
-						copySimple(entry.getKey()), copySimple(entry.getValue())));
-				}
-
-				copy.properties.add(copiedVariables);
-				continue;
-			}
-
-			copy.properties.add(copySimple(field));
-		}
-
-		return copy;
-	}
-
-	private static Property copySimple (final Property source) {
-		if (!(source instanceof SimpleProperty)) {
-			// Nothing in these two components has a nested shape; anything
-			// unexpected is carried through untouched rather than dropped.
-			return source;
-		}
-
-		final SimpleProperty copy = new SimpleProperty(source.name, source.type);
-		copy.value = ((SimpleProperty) source).value;
-		copy.obj = source.obj;
-		return copy;
-	}
-
 	private static Optional<CollectionProperty> findEquipmentSlots (final Property character) {
 		return findEquipmentList(character, "EquipmentSetSerialized");
 	}
@@ -1110,13 +1069,4 @@ public class InventoryManager {
 			.map(p -> (Integer) ((SimpleProperty) p).value);
 	}
 
-	private static Optional<Property> findCharacter (
-		final List<Property> packets, final String objectID) {
-
-		return packets.stream()
-			.filter(p -> p.obj instanceof ObjectPersistencePacket)
-			.filter(p -> objectID.equalsIgnoreCase(
-				((ObjectPersistencePacket) p.obj).ObjectID))
-			.findFirst();
-	}
 }

@@ -26,7 +26,9 @@ import uk.me.mantas.eternity.serializer.DeserializedPackets;
 import uk.me.mantas.eternity.serializer.PacketDeserializer;
 import uk.me.mantas.eternity.serializer.SerializerFormat;
 import uk.me.mantas.eternity.serializer.properties.ComplexProperty;
+import uk.me.mantas.eternity.serializer.properties.DictionaryProperty;
 import uk.me.mantas.eternity.serializer.properties.Property;
+import uk.me.mantas.eternity.serializer.properties.SimpleProperty;
 import uk.me.mantas.eternity.serializer.properties.SingleDimensionalArrayProperty;
 
 import java.awt.*;
@@ -36,8 +38,10 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
+import java.util.AbstractMap;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.BinaryOperator;
 import java.util.function.Function;
@@ -246,6 +250,70 @@ public class EKUtils {
 			.filter(component ->
 				((ComponentPersistencePacket) component.obj).TypeString.equalsIgnoreCase(needle))
 			.findFirst();
+	}
+
+	/**
+	 * The packet whose ObjectID is {@code objectID}, compared ignoring case —
+	 * the save writes GUIDs in whatever case the game formatted them in.
+	 */
+	public static Optional<Property> findPacketById (
+		final List<Property> packets, final String objectID) {
+
+		return packets.stream()
+			.filter(p -> p.obj instanceof ObjectPersistencePacket)
+			.filter(p -> objectID.equalsIgnoreCase(((ObjectPersistencePacket) p.obj).ObjectID))
+			.findFirst();
+	}
+
+	/**
+	 * An independent copy of a component packet: its TypeString and a fresh
+	 * Variables dictionary of new SimpleProperty instances, every type carried
+	 * across exactly.
+	 *
+	 * <p>Never insert a template's own properties into a new packet instead.
+	 * Minting an item once did, so writing the new GUID into the copied
+	 * InstanceID also rewrote the template's, and the game dropped both items
+	 * on load without a word. The components this is used on — InstanceID,
+	 * Persistence, an ability's own — only ever hold simple values, so it does
+	 * not need to recurse further; anything with a nested shape is carried
+	 * through untouched rather than dropped.
+	 */
+	public static ComplexProperty copyComponent (final ComplexProperty source) {
+		final ComplexProperty copy = new ComplexProperty(source.name, source.type);
+
+		for (final Property field : source.properties) {
+			if (!(field instanceof DictionaryProperty)) {
+				copy.properties.add(copySimple(field));
+				continue;
+			}
+
+			final DictionaryProperty variables = (DictionaryProperty) field;
+			final DictionaryProperty copiedVariables =
+				new DictionaryProperty(variables.name, variables.type);
+
+			copiedVariables.keyType = variables.keyType;
+			copiedVariables.valueType = variables.valueType;
+
+			for (final Map.Entry<Property, Property> entry : variables.items) {
+				copiedVariables.items.add(new AbstractMap.SimpleEntry<>(
+					copySimple(entry.getKey()), copySimple(entry.getValue())));
+			}
+
+			copy.properties.add(copiedVariables);
+		}
+
+		return copy;
+	}
+
+	private static Property copySimple (final Property source) {
+		if (!(source instanceof SimpleProperty)) {
+			return source;
+		}
+
+		final SimpleProperty copy = new SimpleProperty(source.name, source.type);
+		copy.value = ((SimpleProperty) source).value;
+		copy.obj = source.obj;
+		return copy;
 	}
 
 	public static Optional<String> enumConstantName (final Object constant) {
