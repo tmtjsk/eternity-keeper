@@ -35,8 +35,8 @@ import java.io.IOException;
  *
  * <p>Every one of them takes {@code {oldSave, savedYet, ...}} and does the same
  * thing around its edit: runs on the mutation worker (invariant 9 — two edits
- * can never write the same file at once), works out which copy of the save is
- * the live one, refuses one that is not there, and reopens it through
+ * can never write the same file at once), asks {@code WorkingSave} which copy
+ * of the save to edit, refuses one that is not there, and reopens it through
  * {@link SavedGameOpener} so the UI gets exactly what opening it would give.
  * Subclasses supply only {@link #mutate}.
  *
@@ -77,23 +77,29 @@ public abstract class SaveMutationHandler extends CefMessageRouterHandlerAdapter
 
 	private void handle (final String request, final CefQueryCallback callback) {
 		final JSONObject json;
-		final File save;
+		final File opened;
+		final boolean savedYet;
 
 		try {
 			json = new JSONObject(request);
-			save = workingSave(json);
+			opened = new File(json.getString("oldSave"));
+			savedYet = json.getBoolean("savedYet");
 		} catch (final JSONException e) {
 			logger.error("Error parsing JSON request: %s%n", request);
 			callback.failure(-1, "Error parsing JSON request.");
 			return;
 		}
 
-		if (!save.exists()) {
-			callback.failure(-1, "Unable to find your save file.");
-			return;
-		}
-
+		File save = opened;
 		try {
+			// Never the directory the list unpacked: an edit the user goes on
+			// to discard must not be there when they open the save again.
+			save = Environment.getInstance().state().workingSave().forEditing(opened, savedYet);
+			if (!save.exists()) {
+				callback.failure(-1, "Unable to find your save file.");
+				return;
+			}
+
 			final String problem = mutate(save, json);
 			if (problem != null) {
 				callback.failure(-1, problem);
@@ -110,24 +116,5 @@ public abstract class SaveMutationHandler extends CefMessageRouterHandlerAdapter
 		}
 
 		new SavedGameOpener(save.getAbsolutePath(), callback).run();
-	}
-
-	/**
-	 * The copy of the save that is live now. Until the first Save that is the
-	 * one the list opened; afterwards it is the one that was written.
-	 */
-	private File workingSave (final JSONObject json) {
-		final File opened = new File(json.getString("oldSave"));
-		if (!json.getBoolean("savedYet")) {
-			return opened;
-		}
-
-		final File written = Environment.getInstance().state().previousSaveDirectory();
-		if (written == null) {
-			logger.error("Client reported we had already saved but directory didn't exist!%n");
-			return opened;
-		}
-
-		return written;
 	}
 }

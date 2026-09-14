@@ -26,6 +26,7 @@ import org.junit.After;
 import org.junit.Test;
 import uk.me.mantas.eternity.EKUtils;
 import uk.me.mantas.eternity.environment.Environment;
+import uk.me.mantas.eternity.handlers.OpenSavedGame;
 import uk.me.mantas.eternity.handlers.SaveMutationHandler;
 import uk.me.mantas.eternity.tests.TestHarness;
 
@@ -65,7 +66,7 @@ public class SaveMutationHandlerTest extends TestHarness {
 
 	@After
 	public void forgetThePreviousSave () {
-		Environment.getInstance().state().previousSaveDirectory(null);
+		Environment.getInstance().state().workingSave().opening();
 	}
 
 	/** A handler whose edit is whatever the test says it is. */
@@ -75,6 +76,7 @@ public class SaveMutationHandlerTest extends TestHarness {
 		final AtomicReference<Thread> ranOn = new AtomicReference<>();
 		String problem = null;
 		IOException throwing = null;
+		String marker = null;
 
 		@Override
 		protected String mutate (final File save, final JSONObject request) throws IOException {
@@ -84,6 +86,10 @@ public class SaveMutationHandlerTest extends TestHarness {
 
 			if (throwing != null) {
 				throw throwing;
+			}
+
+			if (marker != null) {
+				FileUtils.writeStringToFile(new File(save, marker), "edit", "UTF-8");
 			}
 
 			return problem;
@@ -122,17 +128,43 @@ public class SaveMutationHandlerTest extends TestHarness {
 			, worker.get(), probe.ranOn.get());
 	}
 
+	/**
+	 * Not the directory the list unpacked: an Apply the user goes on to discard
+	 * must not be there the next time they open the same save.
+	 */
 	@Test
-	public void anUnsavedSessionEditsTheSaveItWasOpenedFrom () throws Exception {
+	public void anUnsavedSessionEditsAPrivateCopyOfTheSaveItOpened () throws Exception {
+		final File save = workingSave();
+		final Probe probe = new Probe();
+		probe.marker = "edited.txt";
+		final CefQueryCallback callback = mock(CefQueryCallback.class);
+
+		send(probe, request(save, false), callback);
+		verify(callback, timeout(60000)).success(anyString());
+
+		assertNotEquals(save.getAbsoluteFile(), probe.sawSave.get().getAbsoluteFile());
+		assertEquals("saving names the new file after it", save.getName(), probe.sawSave.get().getName());
+		assertEquals("else", probe.sawRequest.get().getString("anything"));
+		assertTrue(new File(probe.sawSave.get(), "edited.txt").isFile());
+		assertFalse("the opened save is untouched", new File(save, "edited.txt").exists());
+	}
+
+	@Test
+	public void openingASaveFromTheListDropsEditsThatWereNeverSaved () throws Exception {
 		final File save = workingSave();
 		final Probe probe = new Probe();
 		final CefQueryCallback callback = mock(CefQueryCallback.class);
 
 		send(probe, request(save, false), callback);
 		verify(callback, timeout(60000)).success(anyString());
+		final File edited = probe.sawSave.get();
 
-		assertEquals(save.getAbsoluteFile(), probe.sawSave.get().getAbsoluteFile());
-		assertEquals("else", probe.sawRequest.get().getString("anything"));
+		new OpenSavedGame().onQuery(mock(CefBrowser.class), 0, save.getAbsolutePath(), false
+			, mock(CefQueryCallback.class));
+
+		Environment.getInstance().mutationWorker().submit(() -> {}).get(60, TimeUnit.SECONDS);
+		assertFalse("the private copy is gone", edited.exists());
+		assertEquals(save, Environment.getInstance().state().workingSave().forReading(save, false));
 	}
 
 	/**
@@ -143,7 +175,7 @@ public class SaveMutationHandlerTest extends TestHarness {
 	public void aSavedSessionEditsTheCopyItLastWrote () throws Exception {
 		final File opened = workingSave();
 		final File written = workingSave();
-		Environment.getInstance().state().previousSaveDirectory(written);
+		Environment.getInstance().state().workingSave().written(written);
 
 		final Probe probe = new Probe();
 		final CefQueryCallback callback = mock(CefQueryCallback.class);
@@ -163,7 +195,9 @@ public class SaveMutationHandlerTest extends TestHarness {
 		send(probe, request(opened, true), callback);
 		verify(callback, timeout(60000)).success(anyString());
 
-		assertEquals(opened.getAbsoluteFile(), probe.sawSave.get().getAbsoluteFile());
+		assertEquals(opened.getName(), probe.sawSave.get().getName());
+		assertEquals(Environment.getInstance().state().workingSave().forReading(opened, false)
+			, probe.sawSave.get());
 	}
 
 	@Test

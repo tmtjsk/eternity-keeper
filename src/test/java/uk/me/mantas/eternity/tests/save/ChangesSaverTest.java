@@ -81,8 +81,7 @@ public class ChangesSaverTest extends TestHarness {
 		+ "}";
 
 		ChangesSaver cls = new ChangesSaver(request, mockCallback);
-		when(mockEnvironment.state().previousSaveDirectory())
-			.thenReturn(new File("/404"));
+		mockEnvironment.state().workingSave().written(new File("/404"));
 
 		cls.run();
 		verify(mockCallback).failure(
@@ -156,7 +155,7 @@ public class ChangesSaverTest extends TestHarness {
 
 		cls.run();
 		verify(mockCallback).success("{\"success\":true}");
-		verify(mockEnvironment.state()).previousSaveDirectory(saveDirectory);
+		assertEquals(saveDirectory, mockEnvironment.state().workingSave().written());
 		assertTrue(new File(savesLocation, saveDirectory.getName()).exists());
 
 		final byte[] saveinfoBytes =
@@ -330,6 +329,62 @@ public class ChangesSaverTest extends TestHarness {
 		}
 
 		assertTrue("the portrait component was never reached", written);
+	}
+
+	/**
+	 * An Apply in the Inventory or Abilities tab edits a private copy of the
+	 * opened save, so the first Save has to start from that copy. Starting from
+	 * the directory the list unpacked would write every scalar edit and lose
+	 * every Apply.
+	 */
+	@Test
+	public void theFirstSaveStartsFromWhatTheManagersLeft () throws Exception {
+		final Environment mockEnvironment = mockEnvironment();
+		final File workingDirectory = EKUtils.createTempDir(PREFIX).get();
+		final File settingsFile = new File(workingDirectory, "settings.json");
+
+		FileUtils.writeStringToFile(settingsFile, "{}");
+		when(mockEnvironment.directory().settingsFile()).thenReturn(settingsFile);
+		when(mockEnvironment.directory().working()).thenReturn(workingDirectory);
+		when(mockEnvironment.factory().packetDeserializer())
+			.thenReturn(new PacketDeserializerFactory());
+		when(mockEnvironment.factory().sharpSerializer()).thenReturn(new SharpSerializerFactory());
+
+		final Settings mockSettings = mockSettings();
+		final JSONObject mockJSON = mock(JSONObject.class);
+		mockSettings.json = mockJSON;
+		doThrow(new JSONException("")).when(mockJSON).getString(anyString());
+
+		final File savesLocation = EKUtils.createTempDir(PREFIX).get();
+		when(mockJSON.optString(eq("savesLocation"), anyString()))
+			.thenReturn(savesLocation.getAbsolutePath());
+
+		final File opened = new File(
+			getClass().getResource("/ChangesSaverTest/id 0 Encampment.savegame").toURI());
+
+		final File applied = mockEnvironment.state().workingSave().forEditing(opened, false);
+		FileUtils.writeStringToFile(new File(applied, "applied.marker"), "an Apply", "UTF-8");
+
+		final String request = new JSONObject()
+			.put("savedYet", false)
+			.put("saveName", "AFTER APPLY")
+			.put("absolutePath", opened.getAbsolutePath())
+			.put("saveData", new JSONObject()
+				.put("characters", new org.json.JSONArray())
+				.put("currency", 1.0)
+				.put("globals", new JSONObject()
+					.put("Global", new JSONObject())
+					.put("InGameGlobal", new JSONObject())))
+			.toString();
+
+		final CefQueryCallback mockCallback = mock(CefQueryCallback.class);
+		new ChangesSaver(request, mockCallback).run();
+		verify(mockCallback).success("{\"success\":true}");
+
+		final File saveDirectory = new File(workingDirectory, "id 0 Encampment.savegame");
+		assertTrue("the Apply reached the written save"
+			, new File(saveDirectory, "applied.marker").isFile());
+		assertFalse("and the opened save never saw it", new File(opened, "applied.marker").exists());
 	}
 
 	private enum Enum {ONE, TWO}

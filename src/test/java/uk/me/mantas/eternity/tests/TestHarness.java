@@ -77,6 +77,10 @@ public abstract class TestHarness {
 
 	@After
 	public void cleanup () {
+		// The real environment is a singleton, so a private copy one test's
+		// edit made would otherwise still be the live save in the next.
+		Environment.getInstance().state().workingSave().opening();
+
 		File temp = new File(System.getProperty("java.io.tmpdir"));
 		File[] files = temp.listFiles();
 
@@ -132,6 +136,7 @@ public abstract class TestHarness {
 		when(mockEnvironment.directory()).thenReturn(mockDirectories);
 		when(mockEnvironment.factory()).thenReturn(mockFactory);
 		when(mockEnvironment.state()).thenReturn(mockState);
+		when(mockState.workingSave()).thenReturn(new WorkingSave());
 		when(mockEnvironment.variables()).thenReturn(mockVariables);
 		when(mockEnvironment.workers()).thenReturn(environment.workers());
 		when(mockEnvironment.mutationWorker()).thenReturn(environment.mutationWorker());

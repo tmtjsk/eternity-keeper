@@ -45,7 +45,11 @@ public class OpenSavedGame extends CefMessageRouterHandlerAdapter {
 			return true;
 		}
 
-		Environment.getInstance().workers().execute(new SavedGameOpener(request, callback));
+		// Whatever the last save left unsaved goes. Queued behind any edit
+		// still writing, so the copy is never deleted out from under one.
+		final Environment environment = Environment.getInstance();
+		environment.mutationWorker().execute(() -> environment.state().workingSave().opening());
+		environment.workers().execute(new SavedGameOpener(request, callback));
 		return true;
 	}
 

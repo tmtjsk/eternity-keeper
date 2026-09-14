@@ -42,7 +42,8 @@ import static uk.me.mantas.eternity.game.UnityEngine.Vector3;
 
 public class CharacterImporter {
 	private static final Logger logger = Logger.getLogger(CharacterImporter.class);
-	public final File saveFile;
+	private final File opened;
+	private final boolean savedYet;
 	private final File chrFile;
 	private final PacketDeserializerFactory packetDeserializer;
 
@@ -51,22 +52,11 @@ public class CharacterImporter {
 
 		final Environment environment = Environment.getInstance();
 		final JSONObject json = new JSONObject(request);
-		final String oldSavePath = json.getString("oldSave");
-		final boolean savedYet = json.getBoolean("savedYet");
+		opened = new File(json.getString("oldSave"));
+		savedYet = json.getBoolean("savedYet");
 
-		File saveFile = new File(oldSavePath);
-		if (savedYet) {
-			final File previouslySaved = environment.state().previousSaveDirectory();
-
-			if (previouslySaved == null) {
-				logger.error("Client reported we had already saved but directory didn't exist!%n");
-			} else {
-				saveFile = previouslySaved;
-			}
-		}
-
-		if (!saveFile.exists()) {
-			throw new FileNotFoundException(saveFile.getAbsolutePath());
+		if (!saveFile().exists()) {
+			throw new FileNotFoundException(saveFile().getAbsolutePath());
 		}
 
 		final File chrFile = new File(chrFilePath);
@@ -74,10 +64,17 @@ public class CharacterImporter {
 			throw new FileNotFoundException(chrFilePath);
 		}
 
-		this.saveFile = saveFile;
 		this.chrFile = chrFile;
-
 		packetDeserializer = environment.factory().packetDeserializer();
+	}
+
+	/**
+	 * The save as it stands now: the one the list opened, the private copy an
+	 * edit made of it, or the one last written. Asking for a conflict only
+	 * reads; the import itself is what makes the copy.
+	 */
+	public File saveFile () {
+		return Environment.getInstance().state().workingSave().forReading(opened, savedYet);
 	}
 
 	// Describes a character in the CHR file that already exists in the target
@@ -107,7 +104,7 @@ public class CharacterImporter {
 			return Optional.empty();
 		}
 
-		final File mobileObjectsFile = new File(saveFile, "MobileObjects.save");
+		final File mobileObjectsFile = new File(saveFile(), "MobileObjects.save");
 		final Optional<DeserializedPackets> deserialized =
 			packetDeserializer.forFile(mobileObjectsFile).deserialize();
 
@@ -144,7 +141,9 @@ public class CharacterImporter {
 			return false;
 		}
 
-		final File mobileObjectsFile = new File(saveFile, "MobileObjects.save");
+		final File editing = Environment.getInstance().state().workingSave()
+			.forEditing(opened, savedYet);
+		final File mobileObjectsFile = new File(editing, "MobileObjects.save");
 		final PacketDeserializer deserializer = packetDeserializer.forFile(mobileObjectsFile);
 		final Optional<DeserializedPackets> deserialized = deserializer.deserialize();
 		if (!deserialized.isPresent()) {

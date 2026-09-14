@@ -30,6 +30,7 @@ import uk.me.mantas.eternity.Logger;
 import uk.me.mantas.eternity.environment.Environment;
 import uk.me.mantas.eternity.save.CharacterExporter;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Optional;
@@ -115,10 +116,11 @@ public class ExportCharacter extends CefMessageRouterHandlerAdapter {
 			try {
 				final JSONObject json = new JSONObject(request);
 				final String guid = json.getString("GUID");
-				final String savePath = json.getString("absolutePath");
+				final File save = Environment.getInstance().state().workingSave().forReading(
+					new File(json.getString("absolutePath")), json.optBoolean("savedYet", false));
 
 				final CharacterExporter exporter = new CharacterExporter(
-					savePath
+					save.getAbsolutePath()
 					, guid
 					, addChrExtension(filename));
 

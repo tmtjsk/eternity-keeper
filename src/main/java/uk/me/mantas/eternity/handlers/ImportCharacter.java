@@ -193,7 +193,7 @@ public class ImportCharacter extends CefMessageRouterHandlerAdapter {
 
 			if (success) {
 				final SavedGameOpener opener = new SavedGameOpener(
-					importer.saveFile.getAbsolutePath()
+					importer.saveFile().getAbsolutePath()
 					, callback);
 
 				opener.run();

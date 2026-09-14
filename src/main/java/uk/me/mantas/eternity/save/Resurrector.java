@@ -20,6 +20,7 @@
 package uk.me.mantas.eternity.save;
 
 import net.lingala.zip4j.ZipFile;
+import org.apache.commons.io.FileUtils;
 import uk.me.mantas.eternity.EKUtils;
 import uk.me.mantas.eternity.Logger;
 import uk.me.mantas.eternity.Settings;
@@ -82,7 +83,12 @@ public class Resurrector {
 			return Result.NO_DONOR;
 		}
 
-		return transplant(donor.get(), companion.get()) ? Result.OK : Result.FAILED;
+		try {
+			return transplant(donor.get(), companion.get()) ? Result.OK : Result.FAILED;
+		} finally {
+			// The donor was unpacked into a workspace of its own for this.
+			FileUtils.deleteQuietly(donor.get().getParentFile());
+		}
 	}
 
 	// Scans the saves folder, newest first, for a save of the same
@@ -130,6 +136,10 @@ public class Resurrector {
 					, candidate.getName()
 					, e.getMessage());
 			}
+
+			// A mid-game MobileObjects.save is 10 MB or more, and a playthrough
+			// can have dozens of saves to look through.
+			FileUtils.deleteQuietly(workspace.get());
 		}
 
 		return Optional.empty();

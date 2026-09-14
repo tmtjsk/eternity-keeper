@@ -27,9 +27,8 @@ public class State {
 
 	public boolean closing = false;
 
-	private File previousSaveDirectory = null;
-	public File previousSaveDirectory () { return previousSaveDirectory; }
-	public void previousSaveDirectory (final File dir) { previousSaveDirectory = dir; }
+	private final WorkingSave workingSave = new WorkingSave();
+	public WorkingSave workingSave () { return workingSave; }
 
 	private SaveInfoLister currentSaveLister = null;
 	public SaveInfoLister currentSaveLister () { return currentSaveLister; }

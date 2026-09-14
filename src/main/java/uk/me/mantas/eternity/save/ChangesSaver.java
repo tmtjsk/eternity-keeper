@@ -31,6 +31,7 @@ import uk.me.mantas.eternity.EKUtils;
 import uk.me.mantas.eternity.Logger;
 import uk.me.mantas.eternity.Settings;
 import uk.me.mantas.eternity.environment.Environment;
+import uk.me.mantas.eternity.environment.WorkingSave;
 import uk.me.mantas.eternity.factory.PacketDeserializerFactory;
 import uk.me.mantas.eternity.game.ComponentPersistencePacket;
 import uk.me.mantas.eternity.game.EternityDateTime;
@@ -111,7 +112,8 @@ public class ChangesSaver implements Runnable {
 			final String absolutePath = request.getString("absolutePath");
 			final JSONObject saveData = request.getJSONObject("saveData");
 
-			File saveDirectory = environment.state().previousSaveDirectory();
+			final WorkingSave working = environment.state().workingSave();
+			File saveDirectory = working.written();
 			if (savedYet && saveDirectory == null) {
 				logger.error(
 						"Client claimed we had already saved but "
@@ -120,9 +122,12 @@ public class ChangesSaver implements Runnable {
 				savedYet = false;
 			}
 
+			// The first Save starts from whatever the managers' Applies left,
+			// which is not necessarily the directory the list opened.
 			if (!savedYet) {
-				saveDirectory = cloneExtractedSave(absolutePath);
-				environment.state().previousSaveDirectory(saveDirectory);
+				saveDirectory = cloneExtractedSave(
+					working.forReading(new File(absolutePath), false).getAbsolutePath());
+				working.written(saveDirectory);
 			}
 
 			SaveGameInfo.updateSaveInfo(

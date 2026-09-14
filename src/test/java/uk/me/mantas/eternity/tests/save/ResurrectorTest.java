@@ -405,12 +405,26 @@ public class ResurrectorTest extends TestHarness {
 		settings.json = new JSONObject();
 		settings.json.put("savesLocation", savesDir.get().getAbsolutePath());
 
+		final int workspacesBefore = donorWorkspaces();
 		final Optional<File> donor = new Resurrector(deadDir).findDonor(PREFIX_CALISCA);
 		assertTrue(donor.isPresent());
 
 		// The returned MobileObjects.save must actually contain the companion.
 		assertTrue(findByPrefix(deserialize(donor.get()).getPackets(), PREFIX_CALISCA)
 			.isPresent());
+
+		// Each candidate is unpacked somewhere to be looked at. The newer save
+		// without her was rejected, and its copy must not be left in temp --
+		// only the donor's own, which the caller is about to use.
+		assertEquals(workspacesBefore + 1, donorWorkspaces());
+		assertTrue(donor.get().getParentFile().getName().startsWith("EK-donor"));
+	}
+
+	private static int donorWorkspaces () {
+		final File[] found = new File(System.getProperty("java.io.tmpdir"))
+			.listFiles((dir, name) -> name.startsWith("EK-donor"));
+
+		return found == null ? 0 : found.length;
 	}
 
 	// A full transplant also un-fails the companion's quest when a quest path

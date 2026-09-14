@@ -132,10 +132,16 @@ public class CharacterImporterTest extends TestHarness {
 
 		assertTrue(importer.importCharacter());
 
+		// The import edits a private copy, never the directory the list
+		// unpacked -- a user who discards it must not find it on reopening.
+		assertNotEquals(saveDir.getAbsoluteFile(), importer.saveFile().getAbsoluteFile());
+		assertEquals(originalCount
+			, (int) deserialize(new File(saveDir, "MobileObjects.save")).getCount().obj);
+
 		// The modified save must contain every original object plus every
 		// object from the CHR file and declare the right count.
 		final DeserializedPackets modified =
-			deserialize(new File(saveDir, "MobileObjects.save"));
+			deserialize(new File(importer.saveFile(), "MobileObjects.save"));
 		final int modifiedCount = (int) modified.getCount().obj;
 
 		assertEquals(originalCount + chrCount, modifiedCount);
@@ -291,11 +297,12 @@ public class CharacterImporterTest extends TestHarness {
 			new CharacterImporter(requestJSON(saveDir), chrFile.getAbsolutePath());
 
 		assertTrue(importer.overwriteCharacter());
+		assertNotEquals(saveDir.getAbsoluteFile(), importer.saveFile().getAbsoluteFile());
 
 		// Exporting from and overwriting into the same save replaces the
 		// character's packets with an identical set so the count is stable.
 		final DeserializedPackets modified =
-			deserialize(new File(saveDir, "MobileObjects.save"));
+			deserialize(new File(importer.saveFile(), "MobileObjects.save"));
 
 		assertEquals(originalCount, (int) modified.getCount().obj);
 		assertEquals(originalCount, modified.getPackets().size());

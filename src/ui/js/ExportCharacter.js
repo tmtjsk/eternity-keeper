@@ -75,6 +75,9 @@ var ExportCharacter = function () {
 			request: JSON.stringify({
 				GUID: guid
 				, absolutePath: Eternity.SavedGame.state.info.absolutePath
+				// An Apply or a Save moves the character's current state out
+				// of the directory the list opened.
+				, savedYet: Eternity.Modifications.state.savedYet
 			})
 			, onSuccess: success
 			, onFailure: failure

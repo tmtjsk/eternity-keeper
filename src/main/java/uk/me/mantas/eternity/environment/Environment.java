@@ -114,6 +114,9 @@ public class Environment {
 	public static void joinAllWorkers () {
 		shutdownPool(getInstance().workers());
 		shutdownPool(getInstance().mutationWorker());
+
+		// Nothing is editing any more; don't leave an unsaved copy in temp.
+		getInstance().state().workingSave().opening();
 	}
 
 	private static void shutdownPool (final ExecutorService pool) {
