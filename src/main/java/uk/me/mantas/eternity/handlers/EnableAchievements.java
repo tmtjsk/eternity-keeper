@@ -16,88 +16,28 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
 package uk.me.mantas.eternity.handlers;
 
-import org.cef.browser.CefBrowser;
-import org.cef.callback.CefQueryCallback;
-import org.cef.handler.CefMessageRouterHandlerAdapter;
-import org.json.JSONException;
 import org.json.JSONObject;
-import uk.me.mantas.eternity.Logger;
-import uk.me.mantas.eternity.environment.Environment;
 import uk.me.mantas.eternity.save.AchievementsEnabler;
-import uk.me.mantas.eternity.save.SavedGameOpener;
 
 import java.io.File;
 import java.io.IOException;
 
-// Clears the cheat markers (GameState.CheatsEnabled and
-// AchievementTracker.m_disableAchievements) so Steam achievements work again
-// in a save touched by the in-game console. The request carries
-// {oldSave, savedYet}; on success the modified save is re-opened and
-// returned like openSavedGame.
-public class EnableAchievements extends CefMessageRouterHandlerAdapter {
-	private static final Logger logger = Logger.getLogger(EnableAchievements.class);
-
+// Turns Steam achievements back on in a save, or off again. The request carries
+// {oldSave, savedYet, enable}; enable defaults to true for older UIs.
+//
+// Only AchievementTracker.m_disableAchievements is touched. GameState's
+// CheatsEnabled is deliberately left alone: achievements are gated on the
+// tracker flag alone, and CheatsEnabled keeps live cheat effects working (god
+// mode's death immunity checks it), so clearing it would change the game
+// rather than just the achievements.
+public class EnableAchievements extends SaveMutationHandler {
 	@Override
-	public boolean onQuery (
-		CefBrowser browser
-		, long id
-		, String request
-		, boolean persistent
-		, CefQueryCallback callback) {
+	protected String mutate (final File save, final JSONObject request) throws IOException {
+		final boolean enable = request.optBoolean("enable", true);
 
-		Environment.getInstance().mutationWorker().execute(() -> enable(request, callback));
-		return true;
-	}
-
-	@Override
-	public void onQueryCanceled (CefBrowser browser, long id) {
-		logger.error("Query #%d cancelled.%n", id);
-	}
-
-	private void enable (final String request, final CefQueryCallback callback) {
-		try {
-			final JSONObject json = new JSONObject(request);
-			final String oldSavePath = json.getString("oldSave");
-			final boolean savedYet = json.getBoolean("savedYet");
-			// Toggle: true re-enables achievements, false marks the save as
-			// cheated. Missing means enable, for backwards compatibility.
-			final boolean enable = json.optBoolean("enable", true);
-
-			File saveFile = new File(oldSavePath);
-			if (savedYet) {
-				final File previouslySaved =
-					Environment.getInstance().state().previousSaveDirectory();
-
-				if (previouslySaved == null) {
-					logger.error(
-						"Client reported we had already saved "
-						+ "but directory didn't exist!%n");
-				} else {
-					saveFile = previouslySaved;
-				}
-			}
-
-			if (!saveFile.exists()) {
-				callback.failure(-1, "Unable to find your save file.");
-				return;
-			}
-
-			if (!new AchievementsEnabler(saveFile).set(enable)) {
-				callback.failure(-1,
-					"Could not update the cheat flags. See eternity.log for details.");
-				return;
-			}
-
-			new SavedGameOpener(saveFile.getAbsolutePath(), callback).run();
-		} catch (final JSONException e) {
-			logger.error("Error parsing JSON request: %s%n", request);
-			callback.failure(-1, "Error parsing JSON request.");
-		} catch (final IOException e) {
-			logger.error("%s%n", e.getMessage());
-			callback.failure(-1, "Error modifying temporary MobileObjects.save");
-		}
+		return new AchievementsEnabler(save).set(enable)
+			? null : "Could not update the cheat flags. See eternity.log for details.";
 	}
 }

@@ -523,6 +523,21 @@ public class AbilityCatalog {
 		return matches;
 	}
 
+	/**
+	 * The prefab name a save stores for this path: the file name, with the
+	 * casing the catalog recorded and without {@code .prefab}. The catalog's
+	 * own keys are lower-cased, so they cannot stand in for it.
+	 */
+	public static String prefabNameOf (final String path, final String fallback) {
+		if (path == null || path.isEmpty()) {
+			return fallback;
+		}
+
+		final String file = path.substring(path.lastIndexOf('/') + 1);
+		return file.endsWith(".prefab")
+			? file.substring(0, file.length() - ".prefab".length()) : file;
+	}
+
 	/** Base64 PNG for an icon, shared with the item catalog's icon directory. */
 	public String iconData (final String iconFile) {
 		return ItemCatalog.getInstance().iconData(iconFile);

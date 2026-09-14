@@ -277,4 +277,20 @@ public class AbilityCatalogTest extends TestHarness {
 		assertTrue(catalog.unlocksFor("Wizard", "", "Wood_Elf", true).isEmpty());
 		assertTrue(catalog.search("", "", null).isEmpty());
 	}
+
+	/**
+	 * The prefab name a save stores is the file name the catalog recorded, with
+	 * its own casing. BrowseAbilities and UpdateAbilities each had a copy of
+	 * this; the one here is what both use.
+	 */
+	@Test
+	public void aPrefabIsNamedAfterItsFileWithTheCatalogsCasing () {
+		assertEquals("TLN_Cautious_Attack", AbilityCatalog.prefabNameOf(
+			"Assets/Data/Prefabs/RPG/Talents/TLN_Cautious_Attack.prefab", "fallback"));
+
+		assertEquals("Fireball", AbilityCatalog.prefabNameOf("Fireball.prefab", "fallback"));
+		assertEquals("NoExtension", AbilityCatalog.prefabNameOf("a/b/NoExtension", "fallback"));
+		assertEquals("fallback", AbilityCatalog.prefabNameOf("", "fallback"));
+		assertEquals("fallback", AbilityCatalog.prefabNameOf(null, "fallback"));
+	}
 }

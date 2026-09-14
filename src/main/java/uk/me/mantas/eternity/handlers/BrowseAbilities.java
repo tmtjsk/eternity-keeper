@@ -178,7 +178,7 @@ public class BrowseAbilities extends CefMessageRouterHandlerAdapter {
 			ability.put("component", entry.component);
 			ability.put("effect", entry.effect);
 			ability.put("path", entry.path);
-			ability.put("prefab", prefabNameOf(entry.path, match.getKey()));
+			ability.put("prefab", AbilityCatalog.prefabNameOf(entry.path, match.getKey()));
 			ability.put("class", entry.characterClass);
 			ability.put("spell", "spell".equals(entry.kind));
 			ability.put("spellLevel", entry.spellLevel);
@@ -236,7 +236,7 @@ public class BrowseAbilities extends CefMessageRouterHandlerAdapter {
 
 			final java.util.Optional<AbilityCatalog.Entry> entry = catalog.lookup(key);
 			if (entry.isPresent()) {
-				granted.put("prefab", prefabNameOf(entry.get().path, key));
+				granted.put("prefab", AbilityCatalog.prefabNameOf(entry.get().path, key));
 				granted.put("path", entry.get().path);
 				granted.put("component", entry.get().component);
 				granted.put("displayName", entry.get().name);
@@ -286,15 +286,5 @@ public class BrowseAbilities extends CefMessageRouterHandlerAdapter {
 		}
 
 		return entry.level > 0 ? entry.level : Integer.MAX_VALUE;
-	}
-
-	private static String prefabNameOf (final String path, final String fallback) {
-		if (path == null || path.isEmpty()) {
-			return fallback;
-		}
-
-		final String file = path.substring(path.lastIndexOf('/') + 1);
-		return file.endsWith(".prefab")
-			? file.substring(0, file.length() - ".prefab".length()) : file;
 	}
 }

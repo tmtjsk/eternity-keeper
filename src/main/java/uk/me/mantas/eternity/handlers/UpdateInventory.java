@@ -19,117 +19,55 @@
 
 package uk.me.mantas.eternity.handlers;
 
-import org.cef.browser.CefBrowser;
-import org.cef.callback.CefQueryCallback;
-import org.cef.handler.CefMessageRouterHandlerAdapter;
 import org.json.JSONArray;
-import org.json.JSONException;
 import org.json.JSONObject;
-import uk.me.mantas.eternity.Logger;
-import uk.me.mantas.eternity.environment.Environment;
 import uk.me.mantas.eternity.save.InventoryManager;
 import uk.me.mantas.eternity.save.InventoryManager.Change;
-import uk.me.mantas.eternity.save.SavedGameOpener;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-// Edits the party-wide PlayerInventory/StashInventory. The request carries
-// {oldSave, savedYet, changes: [{character, component, itemGuid, stackSize,
-// destCharacter, destComponent, destSlot}]} where (character, component)
-// locates the container the item is in now — every party member has their own
-// pack, so the owner matters — stackSize <= 0 means remove, the dest* fields
-// default to staying put, and destSlot < 0 means "first free tile". On success
-// the modified save is re-opened and returned like openSavedGame.
-public class UpdateInventory extends CefMessageRouterHandlerAdapter {
-	private static final Logger logger = Logger.getLogger(UpdateInventory.class);
-
+// Moves, removes and creates items. The request carries {oldSave, savedYet,
+// changes: [{character, component, itemGuid, stackSize, destCharacter,
+// destComponent, destSlot}]} where (character, component) locates the
+// container the item is in now — every party member has their own pack, so the
+// owner matters — stackSize <= 0 means remove, the dest* fields default to
+// staying put, and destSlot < 0 means "first free tile".
+public class UpdateInventory extends SaveMutationHandler {
 	@Override
-	public boolean onQuery (
-		CefBrowser browser
-		, long id
-		, String request
-		, boolean persistent
-		, CefQueryCallback callback) {
+	protected String mutate (final File save, final JSONObject request) throws IOException {
+		final JSONArray changesJson = request.getJSONArray("changes");
+		final List<Change> changes = new ArrayList<>();
 
-		Environment.getInstance().mutationWorker().execute(() -> update(request, callback));
-		return true;
-	}
+		for (int i = 0; i < changesJson.length(); i++) {
+			final JSONObject change = changesJson.getJSONObject(i);
+			final Change parsed = new Change(
+				change.getString("character")
+				, change.getString("component")
+				, change.getString("itemGuid")
+				, change.getInt("stackSize")
+				, change.optString("destCharacter", change.getString("character"))
+				, change.optString("destComponent", change.getString("component"))
+				, change.optInt("destSlot", -1)
+				, change.optInt("fromEquipmentSlot", -1)
+				, change.optInt("toEquipmentSlot", -1));
 
-	@Override
-	public void onQueryCanceled (CefBrowser browser, long id) {
-		logger.error("Query #%d cancelled.%n", id);
-	}
+			parsed.weaponSet = change.optBoolean("weaponSet", false);
 
-	private void update (final String request, final CefQueryCallback callback) {
-		try {
-			final JSONObject json = new JSONObject(request);
-			final String oldSavePath = json.getString("oldSave");
-			final boolean savedYet = json.getBoolean("savedYet");
-			final JSONArray changesJson = json.getJSONArray("changes");
-
-			File saveFile = new File(oldSavePath);
-			if (savedYet) {
-				final File previouslySaved =
-					Environment.getInstance().state().previousSaveDirectory();
-
-				if (previouslySaved == null) {
-					logger.error(
-						"Client reported we had already saved "
-						+ "but directory didn't exist!%n");
-				} else {
-					saveFile = previouslySaved;
-				}
+			// Present only when the item is being created from the catalog
+			// rather than moved around.
+			final String prefab = change.optString("newItemPrefab", "");
+			if (!prefab.isEmpty()) {
+				parsed.newItemPrefab = prefab;
+				parsed.newItemPath = change.optString("newItemPath", "");
 			}
 
-			if (!saveFile.exists()) {
-				callback.failure(-1, "Unable to find your save file.");
-				return;
-			}
-
-			final List<Change> changes = new ArrayList<>();
-			for (int i = 0; i < changesJson.length(); i++) {
-				final JSONObject change = changesJson.getJSONObject(i);
-				final Change parsed = new Change(
-					change.getString("character")
-					, change.getString("component")
-					, change.getString("itemGuid")
-					, change.getInt("stackSize")
-					, change.optString(
-						"destCharacter", change.getString("character"))
-					, change.optString(
-						"destComponent", change.getString("component"))
-					, change.optInt("destSlot", -1)
-					, change.optInt("fromEquipmentSlot", -1)
-					, change.optInt("toEquipmentSlot", -1));
-
-				parsed.weaponSet = change.optBoolean("weaponSet", false);
-
-				// Present only when the item is being created from the catalog
-				// rather than moved around.
-				final String prefab = change.optString("newItemPrefab", "");
-				if (!prefab.isEmpty()) {
-					parsed.newItemPrefab = prefab;
-					parsed.newItemPath = change.optString("newItemPath", "");
-				}
-
-				changes.add(parsed);
-			}
-
-			if (!new InventoryManager(saveFile).apply(changes)) {
-				callback.failure(-1, "Inventory update failed. See eternity.log for details.");
-				return;
-			}
-
-			new SavedGameOpener(saveFile.getAbsolutePath(), callback).run();
-		} catch (final JSONException e) {
-			logger.error("Error parsing JSON request: %s%n", request);
-			callback.failure(-1, "Error parsing JSON request.");
-		} catch (final IOException e) {
-			logger.error("%s%n", e.getMessage());
-			callback.failure(-1, "Error modifying temporary MobileObjects.save");
+			changes.add(parsed);
 		}
+
+		return new InventoryManager(save).apply(changes)
+			? null : "Inventory update failed. See eternity.log for details.";
 	}
 }

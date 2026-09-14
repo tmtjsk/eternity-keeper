@@ -19,16 +19,9 @@
 
 package uk.me.mantas.eternity.handlers;
 
-import org.cef.browser.CefBrowser;
-import org.cef.callback.CefQueryCallback;
-import org.cef.handler.CefMessageRouterHandlerAdapter;
-import org.json.JSONException;
 import org.json.JSONObject;
-import uk.me.mantas.eternity.Logger;
-import uk.me.mantas.eternity.environment.Environment;
 import uk.me.mantas.eternity.save.CompanionRegistry;
 import uk.me.mantas.eternity.save.Resurrector;
-import uk.me.mantas.eternity.save.SavedGameOpener;
 
 import java.io.File;
 import java.io.IOException;
@@ -36,84 +29,30 @@ import java.io.IOException;
 // Resurrects a companion who died in-game. The request carries
 // {oldSave, savedYet, companion} where companion is a CompanionRegistry key
 // (the UI takes it from the synthetic "dead:<key>" character GUID). The
-// donor save is found automatically among same-playthrough saves. On success
-// the modified save is re-opened and returned like openSavedGame.
-public class ResurrectCharacter extends CefMessageRouterHandlerAdapter {
-	private static final Logger logger = Logger.getLogger(ResurrectCharacter.class);
-
+// donor save is found automatically among same-playthrough saves.
+public class ResurrectCharacter extends SaveMutationHandler {
 	@Override
-	public boolean onQuery (
-		CefBrowser browser
-		, long id
-		, String request
-		, boolean persistent
-		, CefQueryCallback callback) {
+	protected String mutate (final File save, final JSONObject request) throws IOException {
+		final String companionKey = request.getString("companion");
 
-		Environment.getInstance().mutationWorker().execute(() -> resurrect(request, callback));
-		return true;
-	}
+		switch (new Resurrector(save).resurrect(companionKey)) {
+			case OK:
+				return null;
 
-	@Override
-	public void onQueryCanceled (CefBrowser browser, long id) {
-		logger.error("Query #%d cancelled.%n", id);
-	}
+			case UNKNOWN_COMPANION:
+				return "Unknown companion: " + companionKey;
 
-	private void resurrect (final String request, final CefQueryCallback callback) {
-		try {
-			final JSONObject json = new JSONObject(request);
-			final String oldSavePath = json.getString("oldSave");
-			final boolean savedYet = json.getBoolean("savedYet");
-			final String companionKey = json.getString("companion");
+			case NO_DONOR:
+				return String.format(
+					"No other save from this playthrough contains %s alive. "
+					+ "Resurrection needs a save made while they still lived."
+					, CompanionRegistry.byKey(companionKey)
+						.map(c -> c.displayName)
+						.orElse(companionKey));
 
-			File saveFile = new File(oldSavePath);
-			if (savedYet) {
-				final File previouslySaved =
-					Environment.getInstance().state().previousSaveDirectory();
-
-				if (previouslySaved == null) {
-					logger.error(
-						"Client reported we had already saved "
-						+ "but directory didn't exist!%n");
-				} else {
-					saveFile = previouslySaved;
-				}
-			}
-
-			if (!saveFile.exists()) {
-				callback.failure(-1, "Unable to find your save file.");
-				return;
-			}
-
-			final String displayName = CompanionRegistry.byKey(companionKey)
-				.map(c -> c.displayName)
-				.orElse(companionKey);
-
-			switch (new Resurrector(saveFile).resurrect(companionKey)) {
-				case OK:
-					new SavedGameOpener(saveFile.getAbsolutePath(), callback).run();
-					return;
-
-				case UNKNOWN_COMPANION:
-					callback.failure(-1, "Unknown companion: " + companionKey);
-					return;
-
-				case NO_DONOR:
-					callback.failure(-1, String.format(
-						"No other save from this playthrough contains %s alive. "
-						+ "Resurrection needs a save made while they still lived."
-						, displayName));
-					return;
-
-				case FAILED:
-				default:
-					callback.failure(-1, "Resurrection failed. See eternity.log for details.");
-			}
-		} catch (final JSONException e) {
-			logger.error("Error parsing JSON request: %s%n", request);
-			callback.failure(-1, "Error parsing JSON request.");
-		} catch (final IOException e) {
-			logger.error("%s%n", e.getMessage());
-			callback.failure(-1, "Error modifying temporary MobileObjects.save");
+			case FAILED:
+			default:
+				return "Resurrection failed. See eternity.log for details.";
 		}
 	}
 }

@@ -18,15 +18,9 @@
 
 package uk.me.mantas.eternity.handlers;
 
-import org.cef.browser.CefBrowser;
-import org.cef.callback.CefQueryCallback;
-import org.cef.handler.CefMessageRouterHandlerAdapter;
 import org.json.JSONArray;
-import org.json.JSONException;
 import org.json.JSONObject;
 import uk.me.mantas.eternity.Logger;
-import uk.me.mantas.eternity.environment.Environment;
-import uk.me.mantas.eternity.save.SavedGameOpener;
 import uk.me.mantas.eternity.save.StrongholdManager;
 import uk.me.mantas.eternity.save.StrongholdManager.Change;
 
@@ -41,101 +35,48 @@ import java.util.List;
 //
 // Order within the list is preserved and meaningful: building an upgrade adds
 // its own Prestige and Security on top of whatever the numbers are at that
-// moment, exactly as Stronghold.CompleteBuildingUpgrade would have. On success
-// the modified save is re-opened and returned like openSavedGame.
-public class UpdateStronghold extends CefMessageRouterHandlerAdapter {
+// moment, exactly as Stronghold.CompleteBuildingUpgrade would have.
+public class UpdateStronghold extends SaveMutationHandler {
 	private static final Logger logger = Logger.getLogger(UpdateStronghold.class);
 
 	@Override
-	public boolean onQuery (
-		CefBrowser browser
-		, long id
-		, String request
-		, boolean persistent
-		, CefQueryCallback callback) {
+	protected String mutate (final File save, final JSONObject request) throws IOException {
+		final JSONArray changesJson = request.getJSONArray("changes");
+		final List<Change> changes = new ArrayList<>();
 
-		Environment.getInstance().mutationWorker().execute(() -> update(request, callback));
-		return true;
-	}
+		for (int i = 0; i < changesJson.length(); i++) {
+			final JSONObject change = changesJson.getJSONObject(i);
+			final String kind = change.getString("kind");
+			final String name = change.optString("name", "");
 
-	@Override
-	public void onQueryCanceled (CefBrowser browser, long id) {
-		logger.error("Query #%d cancelled.%n", id);
-	}
+			switch (kind) {
+				case "activate":
+					changes.add(Change.activate(change.optBoolean("flag", true)));
+					break;
 
-	private void update (final String request, final CefQueryCallback callback) {
-		try {
-			final JSONObject json = new JSONObject(request);
-			final String oldSavePath = json.getString("oldSave");
-			final boolean savedYet = json.getBoolean("savedYet");
-			final JSONArray changesJson = json.getJSONArray("changes");
+				case "addUpgrade":
+					changes.add(Change.addUpgrade(name));
+					break;
 
-			File saveFile = new File(oldSavePath);
-			if (savedYet) {
-				final File previouslySaved =
-					Environment.getInstance().state().previousSaveDirectory();
+				case "removeUpgrade":
+					changes.add(Change.removeUpgrade(name));
+					break;
 
-				if (previouslySaved == null) {
-					logger.error(
-						"Client reported we had already saved "
-						+ "but directory didn't exist!%n");
-				} else {
-					saveFile = previouslySaved;
-				}
+				case "setNumber":
+					changes.add(Change.setNumber(name, change.optInt("number", 0)));
+					break;
+
+				case "setFlag":
+					changes.add(Change.setFlag(name, change.optBoolean("flag", false)));
+					break;
+
+				default:
+					logger.error("Unknown stronghold change kind '%s'.%n", kind);
+					break;
 			}
-
-			if (!saveFile.exists()) {
-				callback.failure(-1, "Unable to find your save file.");
-				return;
-			}
-
-			final List<Change> changes = new ArrayList<>();
-			for (int i = 0; i < changesJson.length(); i++) {
-				final JSONObject change = changesJson.getJSONObject(i);
-				final String kind = change.getString("kind");
-				final String name = change.optString("name", "");
-
-				switch (kind) {
-					case "activate":
-						changes.add(Change.activate(change.optBoolean("flag", true)));
-						break;
-
-					case "addUpgrade":
-						changes.add(Change.addUpgrade(name));
-						break;
-
-					case "removeUpgrade":
-						changes.add(Change.removeUpgrade(name));
-						break;
-
-					case "setNumber":
-						changes.add(Change.setNumber(name, change.optInt("number", 0)));
-						break;
-
-					case "setFlag":
-						changes.add(Change.setFlag(name, change.optBoolean("flag", false)));
-						break;
-
-					default:
-						logger.error("Unknown stronghold change kind '%s'.%n", kind);
-						break;
-				}
-			}
-
-			if (!new StrongholdManager(saveFile).apply(changes)) {
-				callback.failure(
-					-1, "Stronghold update failed. See eternity.log for details.");
-
-				return;
-			}
-
-			new SavedGameOpener(saveFile.getAbsolutePath(), callback).run();
-		} catch (final JSONException e) {
-			logger.error("Error parsing JSON request: %s%n", request);
-			callback.failure(-1, "Error parsing JSON request.");
-		} catch (final IOException e) {
-			logger.error("%s%n", e.getMessage());
-			callback.failure(-1, "Error modifying temporary MobileObjects.save");
 		}
+
+		return new StrongholdManager(save).apply(changes)
+			? null : "Stronghold update failed. See eternity.log for details.";
 	}
 }

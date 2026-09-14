@@ -18,19 +18,12 @@
 
 package uk.me.mantas.eternity.handlers;
 
-import org.cef.browser.CefBrowser;
-import org.cef.callback.CefQueryCallback;
-import org.cef.handler.CefMessageRouterHandlerAdapter;
 import org.json.JSONArray;
-import org.json.JSONException;
 import org.json.JSONObject;
-import uk.me.mantas.eternity.Logger;
-import uk.me.mantas.eternity.environment.Environment;
 import uk.me.mantas.eternity.save.AbilityCatalog;
 import uk.me.mantas.eternity.save.AbilityManager;
 import uk.me.mantas.eternity.save.AbilityManager.Change;
 import uk.me.mantas.eternity.save.AbilityManager.NewAbility;
-import uk.me.mantas.eternity.save.SavedGameOpener;
 
 import java.io.File;
 import java.io.IOException;
@@ -45,109 +38,54 @@ import java.util.Map;
 // addAbility / removeAbility / addTalent / removeTalent. Removal addresses an
 // ability by its own object GUID, since a wizard can carry two copies of the
 // same spell; addition carries everything needed to mint the object, resolved
-// from the catalog by the UI. On success the modified save is re-opened and
-// returned like openSavedGame.
-public class UpdateAbilities extends CefMessageRouterHandlerAdapter {
-	private static final Logger logger = Logger.getLogger(UpdateAbilities.class);
-
+// from the catalog by the UI.
+public class UpdateAbilities extends SaveMutationHandler {
 	@Override
-	public boolean onQuery (
-		final CefBrowser browser
-		, final long id
-		, final String request
-		, final boolean persistent
-		, final CefQueryCallback callback) {
+	protected String mutate (final File save, final JSONObject request) throws IOException {
+		final JSONArray changesJson = request.getJSONArray("changes");
+		final List<Change> changes = new ArrayList<>();
 
-		Environment.getInstance().mutationWorker().execute(() -> update(request, callback));
-		return true;
-	}
+		for (int i = 0; i < changesJson.length(); i++) {
+			final JSONObject change = changesJson.getJSONObject(i);
+			final String kind = change.getString("kind");
+			final String character = change.getString("character");
 
-	@Override
-	public void onQueryCanceled (final CefBrowser browser, final long id) {
-		logger.error("Query #%d cancelled.%n", id);
-	}
+			switch (kind) {
+				case "addAbility":
+					changes.add(Change.addAbility(character, newAbility(change)));
+					break;
 
-	private void update (final String request, final CefQueryCallback callback) {
-		try {
-			final JSONObject json = new JSONObject(request);
-			final String oldSavePath = json.getString("oldSave");
-			final boolean savedYet = json.getBoolean("savedYet");
-			final JSONArray changesJson = json.getJSONArray("changes");
+				case "removeAbility":
+					changes.add(Change.removeAbility(character, change.getString("abilityGuid")));
+					break;
 
-			File saveFile = new File(oldSavePath);
-			if (savedYet) {
-				final File previouslySaved =
-					Environment.getInstance().state().previousSaveDirectory();
+				case "addTalent":
+					changes.add(Change.addTalent(
+						character
+						, change.getString("talent")
+						, grants(change.optJSONArray("grants"))
+						, skills(change.optJSONObject("skills"))));
 
-				if (previouslySaved == null) {
-					logger.error(
-						"Client reported we had already saved "
-						+ "but directory didn't exist!%n");
-				} else {
-					saveFile = previouslySaved;
-				}
+					break;
+
+				case "removeTalent":
+					changes.add(Change.removeTalent(
+						character
+						, change.getString("talent")
+						, prefabs(change.optJSONArray("grants"), change.getString("talent"))
+						, skills(change.optJSONObject("skills"))));
+
+					break;
+
+				default:
+					// Nothing is applied when any part of the request is
+					// nonsense: half a change set is worse than none.
+					return "Unknown ability change '" + kind + "'.";
 			}
-
-			if (!saveFile.exists()) {
-				callback.failure(-1, "Unable to find your save file.");
-				return;
-			}
-
-			final List<Change> changes = new ArrayList<>();
-			for (int i = 0; i < changesJson.length(); i++) {
-				final JSONObject change = changesJson.getJSONObject(i);
-				final String kind = change.getString("kind");
-				final String character = change.getString("character");
-
-				switch (kind) {
-					case "addAbility":
-						changes.add(Change.addAbility(character, newAbility(change)));
-						break;
-
-					case "removeAbility":
-						changes.add(Change.removeAbility(
-							character, change.getString("abilityGuid")));
-
-						break;
-
-					case "addTalent":
-						changes.add(Change.addTalent(
-							character
-							, change.getString("talent")
-							, grants(change.optJSONArray("grants"))
-							, skills(change.optJSONObject("skills"))));
-
-						break;
-
-					case "removeTalent":
-						changes.add(Change.removeTalent(
-							character
-							, change.getString("talent")
-							, prefabs(change.optJSONArray("grants"), change.getString("talent"))
-							, skills(change.optJSONObject("skills"))));
-
-						break;
-
-					default:
-						logger.error("Unknown ability change kind '%s'.%n", kind);
-						callback.failure(-1, "Unknown ability change '" + kind + "'.");
-						return;
-				}
-			}
-
-			if (!new AbilityManager(saveFile).apply(changes)) {
-				callback.failure(-1, "Ability update failed. See eternity.log for details.");
-				return;
-			}
-
-			new SavedGameOpener(saveFile.getAbsolutePath(), callback).run();
-		} catch (final JSONException e) {
-			logger.error("Error parsing JSON request: %s%n", request);
-			callback.failure(-1, "Error parsing JSON request.");
-		} catch (final IOException e) {
-			logger.error("%s%n", e.getMessage());
-			callback.failure(-1, "Error modifying temporary MobileObjects.save");
 		}
+
+		return new AbilityManager(save).apply(changes)
+			? null : "Ability update failed. See eternity.log for details.";
 	}
 
 	private static NewAbility newAbility (final JSONObject json) {
@@ -162,11 +100,7 @@ public class UpdateAbilities extends CefMessageRouterHandlerAdapter {
 
 	private static List<NewAbility> grants (final JSONArray json) {
 		final List<NewAbility> abilities = new ArrayList<>();
-		if (json == null) {
-			return abilities;
-		}
-
-		for (int i = 0; i < json.length(); i++) {
+		for (int i = 0; json != null && i < json.length(); i++) {
 			abilities.add(newAbility(json.getJSONObject(i)));
 		}
 
@@ -185,59 +119,35 @@ public class UpdateAbilities extends CefMessageRouterHandlerAdapter {
 	 * working against an install with no catalog.
 	 */
 	private static List<String> prefabs (final JSONArray json, final String talent) {
+		final AbilityCatalog catalog = AbilityCatalog.getInstance();
 		final List<String> names = new ArrayList<>();
 
-		for (final String key : AbilityCatalog.getInstance().lookup(talent)
+		for (final String key : catalog.lookup(talent)
 			.map(entry -> entry.grants).orElse(Collections.emptyList())) {
 
-			AbilityCatalog.getInstance().lookup(key).ifPresent(granted ->
-				names.add(prefabNameOf(granted.path, key)));
+			catalog.lookup(key).ifPresent(granted ->
+				names.add(AbilityCatalog.prefabNameOf(granted.path, key)));
 		}
 
-		if (json != null) {
-			for (int i = 0; i < json.length(); i++) {
-				final Object entry = json.get(i);
-				final String name = entry instanceof JSONObject
-					? ((JSONObject) entry).getString("prefab") : String.valueOf(entry);
+		for (int i = 0; json != null && i < json.length(); i++) {
+			final Object entry = json.get(i);
+			final String name = entry instanceof JSONObject
+				? ((JSONObject) entry).getString("prefab") : String.valueOf(entry);
 
-				if (!containsIgnoreCase(names, name)) {
-					names.add(name);
-				}
+			if (names.stream().noneMatch(name::equalsIgnoreCase)) {
+				names.add(name);
 			}
 		}
 
 		return names;
 	}
 
-	private static boolean containsIgnoreCase (final List<String> names, final String needle) {
-		for (final String name : names) {
-			if (name.equalsIgnoreCase(needle)) {
-				return true;
-			}
-		}
-
-		return false;
-	}
-
-	/** The prefab file name with the casing the catalog recorded. */
-	private static String prefabNameOf (final String path, final String fallback) {
-		if (path == null || path.isEmpty()) {
-			return fallback;
-		}
-
-		final String file = path.substring(path.lastIndexOf('/') + 1);
-		return file.endsWith(".prefab")
-			? file.substring(0, file.length() - ".prefab".length()) : file;
-	}
-
 	private static Map<String, Integer> skills (final JSONObject json) {
 		final Map<String, Integer> bonuses = new LinkedHashMap<>();
-		if (json == null) {
-			return bonuses;
-		}
-
-		for (final String skill : json.keySet()) {
-			bonuses.put(skill, json.optInt(skill, 0));
+		if (json != null) {
+			for (final String skill : json.keySet()) {
+				bonuses.put(skill, json.optInt(skill, 0));
+			}
 		}
 
 		return bonuses;
