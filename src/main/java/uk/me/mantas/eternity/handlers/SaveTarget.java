@@ -20,6 +20,7 @@ package uk.me.mantas.eternity.handlers;
 
 import org.cef.browser.CefBrowser;
 import org.cef.callback.CefQueryCallback;
+import org.cef.handler.CefDialogHandler.FileDialogMode;
 import org.cef.handler.CefMessageRouterHandlerAdapter;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -28,12 +29,9 @@ import uk.me.mantas.eternity.Settings;
 import uk.me.mantas.eternity.environment.Environment;
 import uk.me.mantas.eternity.save.ChangesSaver;
 
-import javax.swing.JComponent;
-import javax.swing.JFileChooser;
-import javax.swing.SwingUtilities;
-import javax.swing.UIManager;
 import java.io.File;
-import java.util.Locale;
+import java.util.Optional;
+import java.util.Vector;
 
 /**
  * Tells the UI exactly where a save is about to land, and lets the user pick
@@ -44,8 +42,24 @@ import java.util.Locale;
  * {@code <sessionID> <gameID> <SceneTitle>.savegame}, which is exactly why
  * people struggle to find the file they just wrote. Two actions:
  * {@code {action:"preview", oldSave}} answers with the real file name and
- * folder, and {@code {action:"choose"}} opens a folder picker and stores the
- * result as the new saves location.
+ * folder, and {@code {action:"choose", fileName}} asks the user for a folder
+ * and stores it as the new saves location.
+ *
+ * <p><b>Choosing used to freeze the editor.</b> It opened a Swing
+ * {@code JFileChooser} on the event dispatch thread, from inside a CEF query.
+ * A modal Swing dialog with no owner disables every frame in the process — the
+ * main window reported {@code enabled=False} while it was up — and it could
+ * open behind whatever had focus, which left a window that ignored every click
+ * with no dialog in sight to explain why. A Swing modal loop running inside a
+ * CEF-hosted window is also the kind of thing that turns a hang into a native
+ * crash, and that is what the user saw.
+ *
+ * <p>Now it uses CEF's own native Save dialog, the one Export Character has
+ * always used: it is owned by the browser window and runs through CEF rather
+ * than through a second event loop. The bundled JCEF has no folder mode, so the
+ * dialog opens on the file name the game will actually use, and only the folder
+ * it points into is kept — a save renamed here would not appear on the game's
+ * load screen.
  */
 public class SaveTarget extends CefMessageRouterHandlerAdapter {
 	private static final Logger logger = Logger.getLogger(SaveTarget.class);
@@ -60,11 +74,13 @@ public class SaveTarget extends CefMessageRouterHandlerAdapter {
 
 		final String action;
 		final String oldSave;
+		final String fileName;
 
 		try {
 			final JSONObject json = new JSONObject(request);
 			action = json.optString("action", "preview");
 			oldSave = json.optString("oldSave", "");
+			fileName = json.optString("fileName", "");
 		} catch (final JSONException e) {
 			logger.error("Error parsing JSON request: %s%n", request);
 			callback.failure(-1, "Error parsing JSON request.");
@@ -72,10 +88,14 @@ public class SaveTarget extends CefMessageRouterHandlerAdapter {
 		}
 
 		if ("choose".equals(action)) {
-			// The bundled JCEF predates CEF's folder-picker mode, so this uses
-			// Swing's directory chooser instead. It has to run on the event
-			// dispatch thread like any other Swing dialog.
-			SwingUtilities.invokeLater(() -> chooseFolder(callback));
+			browser.runFileDialog(
+				FileDialogMode.FILE_DIALOG_SAVE
+				, "Choose where to save (the game names the file itself)"
+				, dialogStartingPath(currentLocation(), fileName)
+				, new Vector<>()
+				, 0
+				, (selectedFilter, chosen) -> choose(chosen, callback));
+
 			return true;
 		}
 
@@ -86,6 +106,41 @@ public class SaveTarget extends CefMessageRouterHandlerAdapter {
 	@Override
 	public void onQueryCanceled (final CefBrowser browser, final long id) {
 		logger.error("Query #%d cancelled.%n", id);
+	}
+
+	/**
+	 * Where the dialog should open: the game's own file name, inside the
+	 * current saves folder when there is one.
+	 */
+	public static String dialogStartingPath (final String folder, final String fileName) {
+		if (folder == null || folder.isEmpty()) {
+			return fileName == null ? "" : fileName;
+		}
+
+		return new File(folder, fileName == null ? "" : fileName).getAbsolutePath();
+	}
+
+	/**
+	 * The folder a Save dialog's answer points into, or empty when the user
+	 * cancelled or named somewhere that does not exist. A name typed into the
+	 * dialog is deliberately dropped: only its folder is kept.
+	 */
+	public static Optional<File> folderFromDialog (final Vector<String> chosen) {
+		if (chosen == null || chosen.isEmpty()) {
+			return Optional.empty();
+		}
+
+		final String path = chosen.get(0);
+		if (path == null || path.trim().isEmpty()) {
+			return Optional.empty();
+		}
+
+		final File picked = new File(path);
+		final File folder = picked.isDirectory() ? picked : picked.getParentFile();
+
+		return folder != null && folder.isDirectory()
+			? Optional.of(folder.getAbsoluteFile())
+			: Optional.empty();
 	}
 
 	private static String currentLocation () {
@@ -99,60 +154,19 @@ public class SaveTarget extends CefMessageRouterHandlerAdapter {
 		callback.success(response.toString());
 	}
 
-	// Swing takes its file-chooser wording from the system locale, which would
-	// otherwise put a Polish dialog in the middle of an English editor.
-	private static void useEnglishChooserLabels () {
-		JComponent.setDefaultLocale(Locale.ENGLISH);
-		UIManager.put("FileChooser.cancelButtonText", "Cancel");
-		UIManager.put("FileChooser.cancelButtonToolTipText", "Cancel");
-		UIManager.put("FileChooser.lookInLabelText", "Look in:");
-		UIManager.put("FileChooser.folderNameLabelText", "Folder:");
-		UIManager.put("FileChooser.fileNameLabelText", "Folder name:");
-		UIManager.put("FileChooser.filesOfTypeLabelText", "Files of type:");
-		UIManager.put("FileChooser.upFolderToolTipText", "Up one level");
-		UIManager.put("FileChooser.homeFolderToolTipText", "Home");
-		UIManager.put("FileChooser.newFolderToolTipText", "Create new folder");
-		UIManager.put("FileChooser.listViewButtonToolTipText", "List");
-		UIManager.put("FileChooser.detailsViewButtonToolTipText", "Details");
-		UIManager.put("FileChooser.fileNameHeaderText", "Name");
-		UIManager.put("FileChooser.fileSizeHeaderText", "Size");
-		UIManager.put("FileChooser.fileTypeHeaderText", "Type");
-		UIManager.put("FileChooser.fileDateHeaderText", "Modified");
-	}
+	private void choose (final Vector<String> chosen, final CefQueryCallback callback) {
+		final Optional<File> folder = folderFromDialog(chosen);
 
-	private void chooseFolder (final CefQueryCallback callback) {
-		useEnglishChooserLabels();
-
-		final JFileChooser chooser = new JFileChooser();
-		chooser.setLocale(Locale.ENGLISH);
-		chooser.setDialogTitle("Choose where to save");
-		chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-		chooser.setAcceptAllFileFilterUsed(false);
-
-		final String current = currentLocation();
-		if (!current.isEmpty()) {
-			final File directory = new File(current);
-			if (directory.isDirectory()) {
-				chooser.setCurrentDirectory(directory);
-			}
-		}
-
-		if (chooser.showDialog(null, "Save here") != JFileChooser.APPROVE_OPTION) {
+		if (!folder.isPresent()) {
 			callback.failure(-1, "NO_FOLDER");
 			return;
 		}
 
-		final File chosen = chooser.getSelectedFile();
-		if (chosen == null || !chosen.isDirectory()) {
-			callback.failure(-1, "NOT_A_DIRECTORY");
-			return;
-		}
-
-		Settings.getInstance().json.put("savesLocation", chosen.getAbsolutePath());
+		Settings.getInstance().json.put("savesLocation", folder.get().getAbsolutePath());
 		Settings.getInstance().save();
 
 		final JSONObject response = new JSONObject();
-		response.put("directory", chosen.getAbsolutePath());
+		response.put("directory", folder.get().getAbsolutePath());
 		callback.success(response.toString());
 	}
 }

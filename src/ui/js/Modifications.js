@@ -103,11 +103,18 @@ Modifications.prototype.refreshSaveTarget = function () {
 	});
 };
 
+// The picker is CEF's own native Save dialog, prefilled with the file name the
+// game will use; only the folder it points into is kept. (It used to be a Swing
+// JFileChooser, whose modal loop disabled the whole editor window and could
+// open out of sight behind it -- the freeze users hit on this very button.)
 Modifications.prototype.chooseSaveFolder = function () {
 	var self = this;
 
 	window.saveTarget({
-		request: JSON.stringify({action: 'choose'})
+		request: JSON.stringify({
+			action: 'choose'
+			, fileName: self.html.saveTargetFile.text() || ''
+		})
 		, onSuccess: response => {
 			var target = JSON.parse(response);
 			self.html.saveTargetFolder.text(target.directory).attr('title', target.directory);
