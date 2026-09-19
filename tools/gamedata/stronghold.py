@@ -29,6 +29,9 @@ from UnityPy.helpers.TypeTreeGenerator import TypeTreeGenerator
 # Set by configure(), which extract_gamedata.py calls; never hard-coded.
 ROOT = GAME = BUNDLE = TEXT = OUT = ICONS = None
 
+# Why icons could not be written, the first few.
+icon_failures = []
+
 
 def configure(game_root, out):
     """Read from the install at `game_root` and write into `out`."""
@@ -116,7 +119,12 @@ def save_icon(by_id, pointer, seen):
             texture.image.save(os.path.join(ICONS, icon_file))
             seen.add(icon_file)
         return icon_file
-    except Exception:
+    except Exception as failure:
+        # Remembered rather than raised: one bad texture should not cost the
+        # whole catalog, but none written at all is a broken reader, and
+        # extract_gamedata.py reports the first reason.
+        if len(icon_failures) < 3:
+            icon_failures.append("%s: %s" % (type(failure).__name__, failure))
         return ""
 
 

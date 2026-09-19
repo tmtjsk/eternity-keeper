@@ -70,7 +70,9 @@ Step "Eternity Keeper $version, JDK $Jdk"
 Step 'Building the jar and Eternity Keeper.exe'
 $env:JAVA_HOME = $Jdk
 $env:Path = "$Jdk\bin;$env:Path"
-$mavenArgs = @('-B', '-Pwin64', 'install')
+# clean: with a fixed jar name, shade would otherwise re-read the last build's
+# already-shaded jar as its input.
+$mavenArgs = @('-B', '-Pwin64', 'clean', 'install')
 if ($SkipTests) { $mavenArgs += '-DskipTests' }
 Push-Location $repo
 try {
@@ -88,18 +90,30 @@ $frozen = Join-Path $target 'gamedata'
 	--paths (Join-Path $repo 'tools\gamedata') `
 	--hidden-import items --hidden-import stronghold --hidden-import identity `
 	--collect-all UnityPy --collect-all TypeTreeGeneratorAPI `
-	--collect-binaries texture2ddecoder --collect-binaries etcpak `
-	--collect-binaries astc_encoder `
-	--exclude-module fmod_toolkit `
+	--collect-all texture2ddecoder --collect-all etcpak --collect-all astc_encoder `
+	--collect-all archspec `
+	--paths (Join-Path $PSScriptRoot 'stubs') --hidden-import fmod_toolkit `
 	--distpath $frozen --workpath (Join-Path $target 'gamedata-build') `
 	--specpath (Join-Path $target 'gamedata-build') `
 	(Join-Path $repo 'tools\gamedata\extract_gamedata.py')
 if ($LASTEXITCODE -ne 0) { Fail 'PyInstaller failed.' }
 
-# FMOD is proprietary and must not ship; UnityPy only wants it for audio clips,
-# which the reader never touches.
-if (Get-ChildItem $frozen -Recurse -Filter 'fmod*' -ErrorAction SilentlyContinue) {
+# FMOD is proprietary and must not ship. UnityPy imports fmod_toolkit whenever
+# it exports anything, icons included, and the real one loads FMOD's DLL on
+# import -- so stubs\fmod_toolkit stands in for it (the reader never touches
+# audio). Leaving the module out altogether broke every icon.
+if (Get-ChildItem $frozen -Recurse -Include 'fmod*.dll', 'libfmod*' -ErrorAction SilentlyContinue) {
 	Fail 'FMOD found in the frozen reader; it must not be redistributed.'
+}
+
+# Icons are where a frozen build breaks: texture decoding pulls in native
+# decoders, archspec's CPU tables and (via UnityPy.export) fmod_toolkit, none of
+# which PyInstaller finds on its own. Each of those once left the reader
+# writing every catalog and not one icon. The full run against a real install
+# is tools\ui-tests\gamedata_ui.py with EK_RELEASE set; it takes minutes.
+$selfTest = & (Join-Path $frozen 'extract_gamedata\extract_gamedata.exe') --self-test 2>&1
+if ($LASTEXITCODE -ne 0) {
+	Fail "The frozen reader cannot decode textures:`n$($selfTest | Out-String)"
 }
 
 # A folder that is not the game has to be refused, in the protocol the editor reads.

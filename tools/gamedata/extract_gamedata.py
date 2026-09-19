@@ -98,6 +98,14 @@ def swap_into_place(staging, out):
     remove(previous)
 
 
+def require_icons(staging, folder, what, failures):
+    """A catalog without a single icon is a broken reader, not a quiet game."""
+    if count_files(os.path.join(staging, folder)) > 0:
+        return
+    reason = failures[0] if failures else "no reason was given"
+    raise RuntimeError("No %s icons could be written (%s)." % (what, reason))
+
+
 def extract(game, out):
     # Imported here rather than at the top so a bad --game answers at once
     # instead of after UnityPy has loaded.
@@ -115,10 +123,12 @@ def extract(game, out):
         ITEMS_END * done // total,
         "Reading item and ability bundles (%d of %d)" % (done, total))
     items.main()
+    require_icons(staging, "icons", "item and ability", items.icon_failures)
 
     progress(ITEMS_END, "Reading stronghold upgrades")
     stronghold.configure(game, staging)
     stronghold.main()
+    require_icons(staging, "stronghold-icons", "stronghold", stronghold.icon_failures)
 
     progress(STRONGHOLD_END, "Reading deities and paladin orders")
     identity.configure(game, staging)
@@ -130,12 +140,38 @@ def extract(game, out):
     swap_into_place(staging, out)
 
 
+def self_test():
+    """Load everything icon export needs, without a game install.
+
+    A frozen build can read every catalog and still write no icon at all:
+    texture decoding reaches native decoders, archspec's CPU tables and, via
+    UnityPy.export, fmod_toolkit -- none of which PyInstaller finds by itself.
+    This touches each of them, so the release build can check its own output
+    in a second instead of a full run.
+    """
+    import archspec.cpu
+    import astc_encoder
+    import etcpak
+    import texture2ddecoder
+    from PIL import Image
+    from UnityPy.export import Texture2DConverter
+
+    archspec.cpu.host()
+    say("OK UnityPy.export, texture2ddecoder, etcpak, astc_encoder, archspec, Pillow")
+    return 0
+
+
 def main(argv=None):
     for stream in (sys.stdout, sys.stderr):
         try:
             stream.reconfigure(encoding="utf-8", errors="replace")
         except (AttributeError, ValueError):
             pass
+
+    if argv is None:
+        argv = sys.argv[1:]
+    if argv == ["--self-test"]:
+        return self_test()
 
     parser = argparse.ArgumentParser(
         description="Read item, ability, stronghold and identity data out of a "
