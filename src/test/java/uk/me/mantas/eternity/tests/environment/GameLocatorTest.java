@@ -80,10 +80,13 @@ public class GameLocatorTest extends TestHarness {
 		}
 	}
 
+	// Canonical, because that is what the locator answers with. Temp can be an
+	// 8.3 short path (C:\Users\RUNNER~1\... on GitHub's runners), and the long
+	// name the locator hands back is the same folder spelled differently.
 	private File tempDir () throws IOException {
 		final Optional<File> directory = EKUtils.createTempDir(PREFIX);
 		assertTrue(directory.isPresent());
-		return directory.get();
+		return directory.get().getCanonicalFile();
 	}
 
 	/** A directory the editor would accept: it has the data folder in it. */
