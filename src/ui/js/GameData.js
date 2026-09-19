@@ -157,7 +157,7 @@ GameData.prototype.renderBanner = function (state) {
 		message.append($('<strong>').text('Item names and icons are not loaded yet. '))
 			.append(document.createTextNode(
 				'Eternity Keeper reads them, with abilities, stronghold upgrades and '
-				+ 'deities, from your game install in ' + state.game + '. It takes about ten '
+				+ 'deities, from your game install in ' + state.game + '. It takes a few '
 				+ 'minutes and only needs doing once. Until then, items show their '
 				+ 'file names.'));
 	}

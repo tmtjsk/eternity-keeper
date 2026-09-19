@@ -23,7 +23,7 @@ FIRST LAUNCH
 - The editor looks for your game and your saves. If it cannot find the game,
   it opens Settings: enter the folder that holds PillarsOfEternity_Data.
 - It then offers to read item names and icons, abilities, stronghold upgrades
-  and deities from your game. This takes about ten minutes and is needed only
+  and deities from your game. This takes a few minutes and is needed only
   once. Until it is done, items show their file names.
 
 

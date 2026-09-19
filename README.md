@@ -20,7 +20,7 @@ for everything added since.
 
 Nothing needs installing: the zip carries the Java 8 runtime and the embedded
 browser the editor uses. On first launch it finds your game and saves, then
-offers to read item names and icons from your install (about ten minutes, once).
+offers to read item names and icons from your install (a few minutes, once).
 
 Windows is the supported platform for 1.0. Linux builds compile but are
 untested; macOS has no build yet.

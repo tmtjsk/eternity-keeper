@@ -15,7 +15,7 @@ Compared with upstream Eternity Keeper 0.21a, from 2016:
   shortcut or a USB stick. Settings from an older copy are brought across once.
 - **Game data is read for you.** Item names and icons, abilities, stronghold
   upgrades and deities come from your own game install. The editor offers to
-  read them on first launch (about ten minutes, once), shows its progress, and
+  read them on first launch (a few minutes, once), shows its progress, and
   can do it again from Settings after the game updates.
 - **Finds the game wherever it is installed**: Steam libraries on any drive,
   GOG, Epic, or common folders on every drive. A Microsoft Store copy is

@@ -49,8 +49,8 @@ means the folder is not a game install; 1 means a stage failed. The output is
 assembled in `<out>.new` and moved into place only when every stage has
 succeeded, so a failed or stopped run leaves the previous data untouched.
 
-A full run opens all 4,604 object bundles and takes about ten minutes. Its
-expected summary:
+A full run opens all 4,604 object bundles and takes a few minutes (195 seconds
+on the development machine). Its expected summary:
 
     DONE: 2156 items, 976 abilitys, 273 spells, 191 talents, 1387 icons, 0 bundles unreadable
     25 upgrades, 28 hirelings, 25 icons
