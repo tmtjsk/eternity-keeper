@@ -77,7 +77,9 @@ if ($SkipTests) { $mavenArgs += '-DskipTests' }
 Push-Location $repo
 try {
 	& $mvn.Source @mavenArgs
-	if ($LASTEXITCODE -ne 0) { Fail 'The Maven build failed.' }
+	# The usual cause of a failed clean is an editor still running from this
+	# checkout: its log and settings under target\ui-tests are open.
+	if ($LASTEXITCODE -ne 0) { Fail 'The Maven build failed. If it could not delete files in target, close any editor started from this checkout (java.exe, jcef_helper.exe) and run again.' }
 } finally {
 	Pop-Location
 }
