@@ -24,6 +24,7 @@ import org.json.JSONObject;
 import org.json.JSONTokener;
 import uk.me.mantas.eternity.Logger;
 import uk.me.mantas.eternity.Settings;
+import uk.me.mantas.eternity.environment.AppPaths;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -213,9 +214,10 @@ public class ItemCatalog {
 	}
 
 	// The catalog is derived from the user's own game install, so it lives
-	// outside the source tree. Prefer an explicit setting, then the usual
-	// spots relative to wherever the app was launched from. Shared with
-	// AbilityCatalog, which sits in the same directory.
+	// outside the app: in the data folder the extractor writes to, or one of
+	// the itemdata folders earlier builds used (AppPaths.gameDataCandidates).
+	// An explicit setting beats all of them. Shared with the other catalogs,
+	// which sit in the same directory.
 	static Optional<File> locateDataDirectory (final String requiredFile) {
 		final List<File> candidates = new ArrayList<>();
 
@@ -232,13 +234,7 @@ public class ItemCatalog {
 			// No usable setting; fall through to the conventional locations.
 		}
 
-		final File workingDirectory = new File(System.getProperty("user.dir", "."));
-		candidates.add(new File(workingDirectory, "itemdata"));
-
-		final File parent = workingDirectory.getAbsoluteFile().getParentFile();
-		if (parent != null) {
-			candidates.add(new File(parent, "itemdata"));
-		}
+		candidates.addAll(AppPaths.forThisProcess().gameDataCandidates());
 
 		for (final File candidate : candidates) {
 			if (candidate != null && new File(candidate, requiredFile).isFile()) {
