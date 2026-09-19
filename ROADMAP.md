@@ -35,11 +35,13 @@ against a real 13-character save; see §2 for what the last full pass found.
 
 ### Known limitations, stated plainly
 
-- **The item catalog is generated offline** by a Python script; the editor
-  degrades to prettified file names without it.
+- **Game data is read from the player's install, not shipped.** The editor
+  runs the reader itself (a few minutes, once) and degrades to prettified
+  file names until it has.
+- **Windows only for 1.0.** Linux still compiles but is untested; Mac has no
+  JCEF build at all.
 - **The game's own UI sprites are not extractable** — item icons are fine, but the
   inventory chrome lives in an `InventoryAtlas` whose sprite rects aren't readable.
-- **Mac is unsupported** — JCEF natives aren't bundled.
 
 ---
 
@@ -126,8 +128,7 @@ in every mid-game save.
 
 | Item | Size | Recommendation |
 |---|---|---|
-| `README.md` | — | Rewrite: it still lists shipped features under "Planned" |
-| The item extractor's naming | `tools/itemdata-extract` | Skip non-item bundles at extraction too, so a regenerated catalog is clean at the source (the editor already filters them) |
+| The item extractor's naming | `tools/gamedata/items.py` | Skip non-item bundles at extraction too, so a regenerated catalog is clean at the source (the editor already filters them) |
 | Load-list party portraits | small | The game's load list draws `0.png`…`4.png` from inside the save, frozen at its last save; after a party or portrait edit it shows the old faces. Regenerate them from the party's small portraits on Save |
 
 ### Verified in the game (2026-09-14)
@@ -229,7 +230,7 @@ Two halves are not in the assembly. A subrace's racial ability is one row of
 the game's own `racial` progression table, which `AbilityCatalog` already
 carries, so the Moon Godlike line reads *Silver Tide* with the game's own
 description. Deity and paladin-order dispositions are inspector arrays on the
-`Religion` behaviour attached to InGameGlobal, so `tools/identity-extract`
+`Religion` behaviour attached to InGameGlobal, so `tools/gamedata/identity.py`
 pulls them into `itemdata/identity.json` alongside the ±20/40/60% ladder
 `GetCurrentBonusMultiplier()` applies — for the player character alone.
 
@@ -345,7 +346,7 @@ does the game's arithmetic itself, which means it needs the game's numbers — 2
 upgrades' worth of cost, build time, prestige, security, prerequisite, icon and
 `UpgradeCompletedGlobalVariableName`, none of which are in the save. They live
 on the `Stronghold` behaviour attached to the `InGameGlobal` prefab, and
-`tools/stronghold-extract` pulls them out. Demolishing also cascades: taking
+`tools/gamedata/stronghold.py` pulls them out. Demolishing also cascades: taking
 down an upgrade takes everything built on top of it, the way the game's own
 tree requires.
 
@@ -618,8 +619,50 @@ writing anything; the copy lands in `<saves folder>/converted/`, which the list
 never shows because `SaveGameExtractor` filters on `File::isFile`.
 
 
-### 4.4 Bundle the item catalog extractor
-So users aren't asked to install Python.
+### 4.4 Bundle the item catalog extractor — *done*
+
+`tools/gamedata/extract_gamedata.py` runs the three extractors (items and
+abilities, stronghold, identity) with the game path as an argument, speaks a
+`PROGRESS`/`DONE`/`ERROR` line protocol, and swaps its output into place only
+when every stage succeeded. A release ships it frozen by PyInstaller; the
+editor offers to run it on first launch (`environment/GameDataExtraction`,
+`handlers/GameData`, `ui/js/GameData.js`). Its output was checked against the
+data the editor had been using: all five catalogs and all 1,412 icons
+byte-identical.
+
+### 4.5 A release people can install — *done, 1.0.0-beta*
+
+| Blocker | What was done |
+|---|---|
+| Needed Java 8, Maven and a checkout | `tools/release/build-release.ps1` zips `Eternity Keeper.exe` (Launch4j), the jar, the UI, the JCEF natives, a Java 8 JRE and the frozen reader. 119 MB |
+| Ran only from its own folder | `environment/AppPaths`: the UI is found beside the jar, settings and the log live in `%APPDATA%\Eternity Keeper`, old settings are adopted once |
+| Game data needed Python and hand-edited paths | 4.4 above |
+| DevTools port 13002 open to any local program | Off unless `-Dek.debugPort` asks for it |
+
+Tested end to end from the zip, extracted to a path with spaces and started
+with an empty data folder (`tools/ui-tests/gamedata_ui.py` with `EK_RELEASE`):
+27 checks, from the bundled Java and the data folder through a real read of the
+game data by the frozen reader to real names and icons in the item browser.
+That test is what found the launcher's unquoted library path (the editor never
+started) and the frozen reader writing no icons at all.
+
+org.json went from 20141113 (the JSON License, whose "shall be used for Good,
+not Evil" clause is widely read as GPL-incompatible) to 20250517, which is
+public domain. It was a drop-in: the 398 Java tests and every UI suite pass on
+it unchanged.
+
+Cleanup at the same time: 32-bit Windows natives (74 MB), the Linux launchers,
+the updater's jar lists and dead platform helpers deleted; README rewritten;
+`CHANGELOG.md`, `CONTRIBUTING.md`, `THIRD-PARTY-NOTICES.md`; the UI suites
+moved into `tools/ui-tests`; GitHub Actions for tests and tagged releases; a
+bug-report form that asks for `eternity.log`.
+
+### 4.6 Still open before a public release
+
+| Item | Why |
+|---|---|
+| Unsigned executable | SmartScreen warns on first run; the README says how to proceed. Code signing costs money |
+| Verified on one machine | The zip has been tested from a fresh folder here, not on a clean Windows install without Python or a JDK |
 
 ---
 
@@ -664,6 +707,7 @@ Features first, per the project owner's direction; compatibility afterwards.
 8. ~~Save validation pass (3.2)~~ done
 8b. ~~Multi-store detection (4.1)~~ done
 9. ~~Faster conversion (4.3)~~ done, with the premise corrected
-10. **Then**: Mac support (4.2) ← next, and the only item left that is
-    packaging rather than save format
+10. ~~A release people can install (4.4, 4.5)~~ done, 1.0.0-beta
+10b. The open items in 4.6 ← next
+10c. Mac support (4.2)
 11. ~~Delete the auto-updater and bootstrapper~~ done, in the audit (§2)

@@ -70,6 +70,8 @@ Compared with upstream Eternity Keeper 0.21a, from 2016:
   and GOG builds older than the 2017 Unity update.
 - The embedded browser's remote-debugging port is off unless asked for
   (`-Dek.debugPort`): it let any program on the machine drive the editor.
+- org.json is now a public-domain release. The 2014 one was under the JSON
+  License, whose "Good, not Evil" clause is at odds with the GPL.
 
 ### Removed
 

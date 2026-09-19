@@ -540,10 +540,10 @@ public class IdentityCatalog {
 		return json;
 	}
 
-	// org.json 20141113 declares JSONArray(Collection<Object>) and
-	// JSONObject(Map<String, Object>), so a List<String> or a
-	// Map<String, Integer> binds to the Object overload instead and either
-	// throws or reflects over the collection as a bean. Build both by hand.
+	// Built by hand because org.json 20141113 declared JSONArray(Collection<Object>)
+	// and JSONObject(Map<String, Object>): a List<String> or a Map<String, Integer>
+	// bound to the Object overload instead and threw or was reflected over as a
+	// bean. The current org.json takes wildcards; building by hand stays correct.
 	private static JSONArray array (final List<String> values) {
 		final JSONArray result = new JSONArray();
 		for (final String value : values) {

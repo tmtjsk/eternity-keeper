@@ -109,7 +109,11 @@ public abstract class CatalogQuery extends CefMessageRouterHandlerAdapter {
 		return rows;
 	}
 
-	/** This org.json only takes a {@code Collection<Object>}. */
+	/**
+	 * A JSON array of any collection. Written when org.json (20141113) took only
+	 * a {@code Collection<Object>}; the current one takes {@code Collection<?>},
+	 * so this is now a convenience rather than a workaround.
+	 */
 	public static JSONArray array (final Collection<?> values) {
 		final JSONArray array = new JSONArray();
 		values.forEach(array::put);

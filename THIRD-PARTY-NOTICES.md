@@ -28,7 +28,7 @@ Eternity is a trademark of its respective owners.
 
 | Component | Version | License |
 |---|---|---|
-| JSON in Java (org.json) | 20141113 | The JSON License (MIT terms plus "The Software shall be used for Good, not Evil") |
+| JSON in Java (org.json) | 20250517 | Public domain |
 | Apache Commons IO | 2.4 | Apache 2.0 |
 | zip4j | 2.6.4 | Apache 2.0 |
 | jOOX | 1.3.0 | Apache 2.0 |
