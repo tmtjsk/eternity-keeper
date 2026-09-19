@@ -23,6 +23,7 @@ import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import uk.me.mantas.eternity.EKUtils;
 import uk.me.mantas.eternity.Logger;
 import uk.me.mantas.eternity.Settings;
 import uk.me.mantas.eternity.environment.*;
@@ -78,6 +79,13 @@ public abstract class TestHarness {
 	@Before
 	public void setup () {
 		preexisting = Arrays.stream(ours()).map(File::getName).collect(Collectors.toSet());
+
+		// The app keeps its settings and log in %APPDATA%\Eternity Keeper, so
+		// without this every test that reached Settings created that folder
+		// for real and wrote into the user's own editor. An EK- folder made
+		// after the snapshot above is deleted by cleanup with everything else.
+		System.setProperty(AppPaths.DATA_PROPERTY
+			, EKUtils.createTempDir(PREFIX).get().getAbsolutePath());
 		Environment.initialise();
 		Settings.clear();
 
