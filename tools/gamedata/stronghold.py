@@ -1,5 +1,5 @@
 # One-time stronghold catalog extraction from the user's own Pillars of Eternity
-# install, in the same spirit as tools/itemdata-extract: the editor needs the
+# install, in the same spirit as items.py: the editor needs the
 # game's own numbers for every upgrade, and they live in a Unity asset rather
 # than in the save or the assembly.
 #
@@ -26,13 +26,20 @@ import sys
 import UnityPy
 from UnityPy.helpers.TypeTreeGenerator import TypeTreeGenerator
 
-ROOT = r"D:\Steam\steamapps\common\Pillars of Eternity"
-GAME = os.path.join(ROOT, "PillarsOfEternity_Data")
-BUNDLE = os.path.join(GAME, "assetbundles", "prefabs", "objectbundle",
-                      "ingameglobal.unity3d")
-TEXT = os.path.join(GAME, "data", "localized", "en", "text", "game")
-OUT = r"D:\PillarsEditor\itemdata"
-ICONS = os.path.join(OUT, "stronghold-icons")
+# Set by configure(), which extract_gamedata.py calls; never hard-coded.
+ROOT = GAME = BUNDLE = TEXT = OUT = ICONS = None
+
+
+def configure(game_root, out):
+    """Read from the install at `game_root` and write into `out`."""
+    global ROOT, GAME, BUNDLE, TEXT, OUT, ICONS
+    ROOT = game_root
+    GAME = os.path.join(ROOT, "PillarsOfEternity_Data")
+    BUNDLE = os.path.join(GAME, "assetbundles", "prefabs", "objectbundle",
+                          "ingameglobal.unity3d")
+    TEXT = os.path.join(GAME, "data", "localized", "en", "text", "game")
+    OUT = out
+    ICONS = os.path.join(OUT, "stronghold-icons")
 
 # StrongholdUpgrade.Type, in enum order. The save stores these by ordinal, so
 # the ordinal is the identity and the name is only a label -- note the game's
@@ -274,4 +281,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit("Run extract_gamedata.py, which runs this with the game and output folders.")

@@ -70,6 +70,9 @@ Settings.prototype.save = function () {
 	var success = () => {
 		self.transition({saving: false});
 		self.html.settingsDialog.modal('hide');
+
+		// The game data is read from this folder, so what it offers changes with it.
+		Eternity.GameData.refresh();
 	};
 
 	var failure = () => {

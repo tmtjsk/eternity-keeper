@@ -790,7 +790,7 @@ var SavedGame = function () {
 			.addClass('save-warning-note')
 			.text('The game drops what it cannot resolve, usually without an error. '
 				+ 'If this appeared after an edit, undo it by reopening the save '
-				+ 'rather than writing this one out. Full detail is in eternity.log.'));
+				+ 'rather than writing this one out. Full detail is in eternity.log (Settings shows where it is).'));
 	};
 
 	var populateSkills = (data) => {

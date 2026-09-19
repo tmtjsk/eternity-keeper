@@ -54,7 +54,7 @@ import java.util.Optional;
  * have added alongside it.
  *
  * <p>Parsing Unity bundles from Java 8 isn't realistic, so the table is
- * extracted once by {@code tools/stronghold-extract} into a plain
+ * extracted by {@code tools/gamedata/stronghold.py} into a plain
  * {@code stronghold.json} next to the item catalog, which this class reads.
  * With no catalog present the stronghold editor simply reports that it has
  * nothing to offer, the same way the item catalog degrades.

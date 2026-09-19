@@ -65,7 +65,7 @@ import java.util.Optional;
  * ability comes from the game's own {@code racial} AbilityProgressionTable,
  * which {@link AbilityCatalog} already carries; and what a priest's deity or a
  * paladin's order favours lives on the {@code Religion} behaviour attached to
- * the InGameGlobal prefab, extracted once by {@code tools/identity-extract}
+ * the InGameGlobal prefab, extracted by {@code tools/gamedata/identity.py}
  * into {@code identity.json}. Both degrade to silence when absent — the
  * compiled tables are always available.
  */

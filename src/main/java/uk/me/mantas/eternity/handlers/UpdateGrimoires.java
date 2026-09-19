@@ -75,6 +75,6 @@ public class UpdateGrimoires extends SaveMutationHandler {
 		}
 
 		return new GrimoireManager(save).apply(changes)
-			? null : "Grimoire update failed. See eternity.log for details.";
+			? null : "Grimoire update failed. Details are in eternity.log; Settings shows where it is.";
 	}
 }

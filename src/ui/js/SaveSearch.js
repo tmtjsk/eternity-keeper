@@ -187,13 +187,13 @@ SaveSearch.prototype.open = function (info, i) {
 		if (response.error) {
 			var msg;
 			if (response.error === 'DESERIALIZATION_ERR') {
-				msg = 'Error deserializing save file, please report your eternity.log file.';
+				msg = 'Error deserializing save file, please report it with your eternity.log (Settings shows where it is).';
 			} else if (response.error === 'NOT_EXISTS') {
 				msg = 'Save file "' + info.absolutePath + '" does not exist.';
 			} else if (response.msg) {
 				msg = response.msg;
 			} else {
-				msg = 'Unknown error when opening save file, please report your eternity.log file.';
+				msg = 'Unknown error when opening save file, please report it with your eternity.log (Settings shows where it is).';
 			}
 
 			Eternity.GenericError.render({msg: msg});

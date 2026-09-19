@@ -52,7 +52,7 @@ public class ResurrectCharacter extends SaveMutationHandler {
 
 			case FAILED:
 			default:
-				return "Resurrection failed. See eternity.log for details.";
+				return "Resurrection failed. Details are in eternity.log; Settings shows where it is.";
 		}
 	}
 }

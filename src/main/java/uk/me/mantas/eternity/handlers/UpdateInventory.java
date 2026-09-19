@@ -68,6 +68,6 @@ public class UpdateInventory extends SaveMutationHandler {
 		}
 
 		return new InventoryManager(save).apply(changes)
-			? null : "Inventory update failed. See eternity.log for details.";
+			? null : "Inventory update failed. Details are in eternity.log; Settings shows where it is.";
 	}
 }

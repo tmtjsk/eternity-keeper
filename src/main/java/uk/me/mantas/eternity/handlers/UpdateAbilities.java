@@ -85,7 +85,7 @@ public class UpdateAbilities extends SaveMutationHandler {
 		}
 
 		return new AbilityManager(save).apply(changes)
-			? null : "Ability update failed. See eternity.log for details.";
+			? null : "Ability update failed. Details are in eternity.log; Settings shows where it is.";
 	}
 
 	private static NewAbility newAbility (final JSONObject json) {

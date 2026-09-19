@@ -44,7 +44,7 @@ var ImportCharacter = function () {
 		if (response.error) {
 			var msg;
 			if (response.error === 'DESERIALIZATION_ERR') {
-				msg = 'Error deserializing save file, please report your eternity.log file.';
+				msg = 'Error deserializing save file, please report it with your eternity.log (Settings shows where it is).';
 			} else {
 				msg = response.error;
 			}

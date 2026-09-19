@@ -77,6 +77,6 @@ public class UpdateStronghold extends SaveMutationHandler {
 		}
 
 		return new StrongholdManager(save).apply(changes)
-			? null : "Stronghold update failed. See eternity.log for details.";
+			? null : "Stronghold update failed. Details are in eternity.log; Settings shows where it is.";
 	}
 }

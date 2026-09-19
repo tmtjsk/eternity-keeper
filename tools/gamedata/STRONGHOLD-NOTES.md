@@ -1,24 +1,16 @@
-# Stronghold catalog extraction
+# Stronghold data: notes
 
-Adds `stronghold.json` and `stronghold-icons/` to `D:\PillarsEditor\itemdata` —
-the numbers and artwork the editor's Stronghold tab shows for Caed Nua.
+`stronghold.py` writes `stronghold.json` and `stronghold-icons/` — the numbers
+and artwork the editor's Stronghold tab shows for Caed Nua. Run it through
+`extract_gamedata.py` (see [README.md](README.md)).
 
 | File | What it holds |
 |---|---|
 | `stronghold.json` | All 25 buildable upgrades: display name and description, cost and build time, the Prestige and Security they are worth, which upgrade has to come first, the global variable they drive, whether they unlock a resting boon — plus the 28 hirelings and `MaxHirelings` |
 | `stronghold-icons/` | The 25 upgrade icons the game's own list uses |
 
-Same policy as `itemdata-extract`: read out of the user's own game install, and
-written OUTSIDE the git repo. Without it the Stronghold tab still reports what a
-save holds, but has no upgrade list to offer.
-
-    pip install UnityPy TypeTreeGeneratorAPI
-    python extract_stronghold.py
-
-Expected output:
-
-    wrote D:\PillarsEditor\itemdata\stronghold.json
-      25 upgrades, 28 hirelings, 25 icons
+Without it the Stronghold tab still reports what a save holds, but has no
+upgrade list to offer.
 
 ## Why this is more awkward than the item catalog
 

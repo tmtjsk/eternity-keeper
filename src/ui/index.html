@@ -52,6 +52,20 @@
 					     program read. -->
 					<div class="settings-note" id="settingsNote"
 					     data-bound="Settings"></div>
+					<!-- Item names and icons, abilities, stronghold upgrades and deities,
+					     read out of the install above. GameData.js draws this and the
+					     banner on the save list from the same state. -->
+					<div class="settings-gamedata">
+						<label>Game data</label>
+						<div class="settings-gamedata-row">
+							<span id="settingsGameData" data-bound="GameData"></span>
+							<button type="button" class="btn btn-primary btn-sm"
+							        id="settingsGameDataStart" data-bound="GameData"></button>
+						</div>
+						<div class="gd-progress" id="settingsGameDataProgress"
+						     data-bound="GameData"><div class="gd-bar"></div></div>
+					</div>
+					<p class="settings-files" id="settingsFiles" data-bound="GameData"></p>
 				</div>
 				<div class="modal-footer">
 					<button type="button" class="btn btn-primary btn-sm" id="saveSettings"
@@ -583,6 +597,19 @@
 							<i class="fa fa-spinner fa-pulse"></i> <span></span>
 						</button>
 					</form>
+					<!-- Offered until the game's own data has been read: without it the
+					     editor still works, but every item shows its prefab file name.
+					     Inside the search container so it goes wherever the save list
+					     goes. -->
+					<div class="game-data-banner" id="gameDataBanner" data-bound="GameData">
+						<button type="button" class="close" id="gameDataDismiss"
+						        data-bound="GameData" title="Dismiss"><span>&times;</span></button>
+						<div class="gd-message" id="gameDataMessage" data-bound="GameData"></div>
+						<div class="gd-progress" id="gameDataProgress"
+						     data-bound="GameData"><div class="gd-bar"></div></div>
+						<button type="button" class="btn btn-primary btn-sm" id="gameDataStart"
+						        data-bound="GameData"></button>
+					</div>
 				</div>
 				<div class="row save-blocks" id="saveBlocks" data-bound="SaveSearch"></div>
 				<!-- Only ever seen when something is actually wrong: the save the editor
@@ -1309,6 +1336,7 @@
 	<script src="js/GenericError.js"></script>
 	<script src="js/Progress.js"></script>
 	<script src="js/Settings.js"></script>
+	<script src="js/GameData.js"></script>
 	<script src="js/SaveSearch.js"></script>
 	<script src="js/SavedGame.js"></script>
 	<script src="js/CurrencyEditor.js"></script>

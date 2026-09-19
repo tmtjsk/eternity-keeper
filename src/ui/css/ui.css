@@ -5083,3 +5083,137 @@ html {
 .abl-browser-panel {
 	max-width: 960px;
 }
+
+/* Reading the game's own data (GameData.js): a banner on the save list until
+   it has been done, and a row in Settings. The banner lives on the page, so it
+   has a light-mode override; the Settings row is inside a modal, which keeps
+   the dark chrome in both themes, so it has none. */
+.game-data-banner {
+	position: relative;
+	margin: 12px 0 0 0;
+	padding: 11px 40px 12px 14px;
+	max-width: 900px;
+	background: rgba(211, 168, 110, .09);
+	border: 1px solid #6d5636;
+	border-left: 3px solid #d3a86e;
+	border-radius: 3px;
+	font-size: 13px;
+	line-height: 1.55;
+	color: #dccbaa;
+}
+
+.game-data-banner strong {
+	color: #ecd3a4;
+}
+
+.game-data-banner .gd-message {
+	margin-bottom: 9px;
+}
+
+.game-data-banner button.close {
+	position: absolute;
+	top: 6px;
+	right: 8px;
+	padding: 4px 8px;
+	color: #dccbaa;
+	opacity: .7;
+}
+
+.game-data-banner.gd-failed {
+	background: rgba(120, 40, 20, .22);
+	border-color: #9c4b3a;
+}
+
+.game-data-banner.gd-failed strong {
+	color: #e8c0b4;
+}
+
+.game-data-banner.gd-done {
+	background: rgba(90, 130, 70, .14);
+	border-color: #56733f;
+	border-left-color: #8fb56e;
+}
+
+.game-data-banner.gd-done .gd-message {
+	margin-bottom: 0;
+}
+
+.gd-progress {
+	height: 6px;
+	max-width: 520px;
+	margin: 0 0 10px 0;
+	background: rgba(255, 255, 255, .09);
+	border-radius: 3px;
+	overflow: hidden;
+}
+
+.gd-bar {
+	width: 0;
+	height: 100%;
+	background: #d3a86e;
+	transition: width .4s ease-out;
+}
+
+body.theme-light .game-data-banner {
+	background: rgba(176, 138, 80, .10);
+	border-color: #c8ad82;
+	border-left-color: #a87a36;
+	color: #4b3b22;
+}
+
+body.theme-light .game-data-banner strong,
+body.theme-light .game-data-banner button.close {
+	color: #3d2e17;
+}
+
+body.theme-light .game-data-banner.gd-failed {
+	background: rgba(156, 75, 58, .12);
+	border-color: #9c4b3a;
+}
+
+body.theme-light .game-data-banner.gd-failed strong {
+	color: #7c2f1c;
+}
+
+body.theme-light .game-data-banner.gd-done {
+	background: rgba(90, 130, 70, .12);
+	border-color: #8fb56e;
+	border-left-color: #56733f;
+}
+
+body.theme-light .gd-progress {
+	background: rgba(0, 0, 0, .10);
+}
+
+body.theme-light .gd-bar {
+	background: #a87a36;
+}
+
+.settings-gamedata {
+	margin-top: 16px;
+}
+
+.settings-gamedata-row {
+	display: flex;
+	align-items: center;
+	margin-bottom: 8px;
+	font-size: 12px;
+	line-height: 1.55;
+}
+
+.settings-gamedata-row span {
+	flex: 1 1 auto;
+	margin-right: 12px;
+}
+
+.settings-gamedata-row .btn {
+	flex: 0 0 auto;
+}
+
+.settings-files {
+	margin: 14px 0 0 0;
+	font-size: 11px;
+	line-height: 1.55;
+	color: #a2937a;
+	word-break: break-all;
+}

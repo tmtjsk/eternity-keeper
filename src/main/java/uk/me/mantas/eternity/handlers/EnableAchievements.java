@@ -38,6 +38,6 @@ public class EnableAchievements extends SaveMutationHandler {
 		final boolean enable = request.optBoolean("enable", true);
 
 		return new AchievementsEnabler(save).set(enable)
-			? null : "Could not update the cheat flags. See eternity.log for details.";
+			? null : "Could not update the cheat flags. Details are in eternity.log; Settings shows where it is.";
 	}
 }

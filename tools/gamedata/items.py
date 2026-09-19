@@ -11,15 +11,24 @@ import json
 import os
 import re
 import sys
-import traceback
 
 import UnityPy
 
-GAME = r"D:\Steam\steamapps\common\Pillars of Eternity\PillarsOfEternity_Data"
-BUNDLES = os.path.join(GAME, "assetbundles", "prefabs", "objectbundle")
-TEXT = os.path.join(GAME, "data", "localized", "en", "text", "game")
-OUT = r"D:\PillarsEditor\itemdata"
-ICONS = os.path.join(OUT, "icons")
+# Set by configure(), which extract_gamedata.py calls; never hard-coded.
+GAME = BUNDLES = TEXT = OUT = ICONS = None
+
+# Called with (bundles read, bundles in all) while main() runs.
+on_progress = None
+
+
+def configure(game_root, out):
+    """Read from the install at `game_root` and write into `out`."""
+    global GAME, BUNDLES, TEXT, OUT, ICONS
+    GAME = os.path.join(game_root, "PillarsOfEternity_Data")
+    BUNDLES = os.path.join(GAME, "assetbundles", "prefabs", "objectbundle")
+    TEXT = os.path.join(GAME, "data", "localized", "en", "text", "game")
+    OUT = out
+    ICONS = os.path.join(OUT, "icons")
 
 # DatabaseString.StringTableType -> stringtable file name (decompiled enum).
 TABLES = {
@@ -414,6 +423,8 @@ def main():
         if index % 250 == 0:
             print("  %d/%d  (%d catalogued)" % (index, len(names), len(catalog)),
                   flush=True)
+        if on_progress and (index % 25 == 0 or index == len(names)):
+            on_progress(index, len(names))
         try:
             env = UnityPy.load(os.path.join(BUNDLES, bundle))
             objects = list(env.objects)
@@ -662,8 +673,4 @@ def main():
 
 
 if __name__ == "__main__":
-    try:
-        main()
-    except Exception:
-        traceback.print_exc()
-        sys.exit(1)
+    sys.exit("Run extract_gamedata.py, which runs this with the game and output folders.")

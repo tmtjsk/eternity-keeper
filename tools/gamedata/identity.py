@@ -1,5 +1,5 @@
 # One-time extraction of the deity and paladin-order data from the user's own
-# Pillars of Eternity install, in the same spirit as tools/stronghold-extract.
+# Pillars of Eternity install, in the same spirit as stronghold.py.
 #
 # Almost everything the identity panel needs is a static table compiled into
 # Assembly-CSharp -- RaceAbilityAdjustment, CultureAbilityAdjustment,
@@ -26,12 +26,19 @@ import sys
 import UnityPy
 from UnityPy.helpers.TypeTreeGenerator import TypeTreeGenerator
 
-ROOT = r"D:\Steam\steamapps\common\Pillars of Eternity"
-GAME = os.path.join(ROOT, "PillarsOfEternity_Data")
-BUNDLE = os.path.join(GAME, "assetbundles", "prefabs", "objectbundle",
-                      "ingameglobal.unity3d")
-TEXT = os.path.join(GAME, "data", "localized", "en", "text", "game")
-OUT = r"D:\PillarsEditor\itemdata"
+# Set by configure(), which extract_gamedata.py calls; never hard-coded.
+ROOT = GAME = BUNDLE = TEXT = OUT = None
+
+
+def configure(game_root, out):
+    """Read from the install at `game_root` and write into `out`."""
+    global ROOT, GAME, BUNDLE, TEXT, OUT
+    ROOT = game_root
+    GAME = os.path.join(ROOT, "PillarsOfEternity_Data")
+    BUNDLE = os.path.join(GAME, "assetbundles", "prefabs", "objectbundle",
+                          "ingameglobal.unity3d")
+    TEXT = os.path.join(GAME, "data", "localized", "en", "text", "game")
+    OUT = out
 
 # Disposition.Axis, in enum order.
 AXES = ["Benevolent", "Cruel", "Clever", "Stoic", "Aggressive", "Diplomatic",
@@ -178,4 +185,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit("Run extract_gamedata.py, which runs this with the game and output folders.")

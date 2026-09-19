@@ -314,9 +314,8 @@ var StrongholdEditor = function () {
 		if (catalog().length < 1) {
 			self.html.shUpgrades.append($('<div>')
 				.addClass('sh-empty')
-				.text('No stronghold data is installed, so upgrades cannot be '
-					+ 'listed. Run tools/stronghold-extract against your game '
-					+ 'install to add it.'));
+				.text('The game data has not been read yet, so upgrades cannot '
+					+ 'be listed. Read it from your game install in Settings.'));
 
 			return;
 		}

@@ -80,6 +80,7 @@ var Editor = function () {
 			self.SaveSearch.render({searchPath: searchPath});
 			self.Settings.render(
 				{gameLocation: gameLocation, notes: response.notes || []});
+			self.GameData.refresh();
 			self.SaveSearch.search();
 		};
 
@@ -204,6 +205,7 @@ var Editor = function () {
 	self.GenericError = new GenericError();
 	self.Progress = new Progress();
 	self.Settings = new Settings();
+	self.GameData = new GameData();
 	self.SaveSearch = new SaveSearch();
 	self.SavedGame = new SavedGame();
 	self.CurrencyEditor = new CurrencyEditor();

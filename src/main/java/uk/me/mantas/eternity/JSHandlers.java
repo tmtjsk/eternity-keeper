@@ -78,6 +78,7 @@ public class JSHandlers {
 		handlers.put("browseItems", new BrowseItems());
 		handlers.put("browseAbilities", new BrowseAbilities());
 		handlers.put("browsePortraits", new BrowsePortraits());
+		handlers.put("gameData", new GameData());
 
 		handlers.put("closeWindow", new CloseWindow(frame));
 		return handlers;
