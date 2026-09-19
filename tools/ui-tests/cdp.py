@@ -67,9 +67,11 @@ class Page:
         return found
 
     def eval(self, expression):
+        # No awaitPromise: the editor's Chrome 45 predates it and ignores it,
+        # handing back a Promise as {}. Leave an answer on window and
+        # wait_for it instead.
         result = self.call(
-            "Runtime.evaluate", expression=expression, returnByValue=True,
-            awaitPromise=True)
+            "Runtime.evaluate", expression=expression, returnByValue=True)
         detail = result.get("exceptionDetails")
         if detail:
             raise RuntimeError("JS error: %s" % (

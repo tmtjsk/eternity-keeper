@@ -32,9 +32,7 @@ def settings():
 
 
 def restart():
-    subprocess.call(["taskkill", "/F", "/IM", "java.exe"], stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL)
-    time.sleep(3)
+    config.stop_editors()
     subprocess.Popen([JAVA, "-Dek.data=" + settings(), "-Dek.debugPort=%d" % config.PORT,
                       "-Djava.library.path=" + os.path.join(REPO, "lib", "native", "win64"),
                       "-jar", os.path.join(REPO, "target", "eternity-keeper.jar")], cwd=REPO,

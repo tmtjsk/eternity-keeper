@@ -26,10 +26,7 @@ FULL = "full" in sys.argv[1:]
 
 
 def launch():
-    for image in ("java.exe", "javaw.exe"):
-        subprocess.call(["taskkill", "/F", "/IM", image], stdout=subprocess.DEVNULL,
-                        stderr=subprocess.DEVNULL)
-    time.sleep(3)
+    config.stop_editors()
     for folder in (DATA, CWD):
         shutil.rmtree(folder, ignore_errors=True)
         os.makedirs(folder)
@@ -169,12 +166,23 @@ if FULL:
     check("Settings says when and from where", "read from" in row and GAME.lower() in row.lower(), row)
     page.eval("$('#settingsDialog').modal('hide')")
 
-    # The browsers use the new data straight away.
-    names = page.eval("""new Promise(function(resolve){ window.browseItems({
-      request: JSON.stringify({search: 'sword', category: 'all', offset: 0}),
-      onSuccess: function(r){ resolve(JSON.parse(r)); }, onFailure: function(c, m){ resolve(m); }}); })""")
-    first = (names.get("items") or [{}])[0] if isinstance(names, dict) else names
-    check("the item browser shows real names", isinstance(first, dict)
-          and first.get("displayName") and "_" not in first.get("displayName", "_"), first)
+    # The browsers use the new data straight away. (Chrome 45 predates
+    # awaitPromise, so the answer is left on window and polled for.)
+    page.eval("""window.__browsed = null; window.browseItems({
+      request: JSON.stringify({search: 'sword', filter: 0, offset: 0, limit: 10}),
+      onSuccess: function(r){ window.__browsed = JSON.parse(r); },
+      onFailure: function(c, m){ window.__browsed = {failed: m}; }}); true""")
+    page.wait_for("window.__browsed !== null", 30, "the item browser")
+    items = page.eval("""(window.__browsed.items || []).map(function(i){
+      return {name: i.displayName, key: i.key, icon: (i.icon || '').length}; })""")
+    check("the item browser shows real names", items and all(
+        "_" not in item["name"] for item in items), items[:3])
+    # A reader that wrote every catalog and no icon at all once passed every
+    # check above.
+    check("and real icons", items and all(item["icon"] > 0 for item in items), items[:3])
+
+    data = page.eval("Eternity.GameData.state.data")
+    check("every item icon was written", data and data.get("icons") == 1387, data)
+    check("and every stronghold icon", data and data.get("strongholdIcons") == 25, data)
 
 sys.exit(summary(page))

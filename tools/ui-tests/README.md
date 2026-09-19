@@ -52,8 +52,10 @@ python tools/ui-tests/run_suites.py writes.py mint.py
 
 `run_suites.py` starts a fresh editor for each suite, with its own settings in
 `target\ui-tests\data`, and writes each suite's output to
-`target\ui-tests\suite-<name>.log`. It closes every running `java.exe` first.
-Close your own editor before running it.
+`target\ui-tests\suite-<name>.log`. It closes every running editor first
+(`java.exe`, `javaw.exe` and the browser's `jcef_helper.exe`, which outlives
+a killed java and keeps the DevTools port bound). Close your own editor before
+running it.
 
 | Suite | Checks |
 |---|---|
@@ -70,7 +72,7 @@ Close your own editor before running it.
 | `layout_rules.py` | Measured layout rules (packs three to a row, controls beside what they act on…) |
 | `look_variants.py` | The overflow checks at 1440px and in light mode |
 | `catalog_offer.py` | The browsers offer only shipped content |
-| `gamedata_ui.py` | The game-data banner and Settings row on a first launch; `full` also runs a real extraction (about ten minutes) |
+| `gamedata_ui.py` | The game-data banner and Settings row on a first launch; `full` also runs a real extraction (a few minutes) |
 
 `gamedata_ui.py` starts its own editor with an empty data folder, so run it
 directly rather than through `run_suites.py`.

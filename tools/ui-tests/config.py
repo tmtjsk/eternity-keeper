@@ -50,3 +50,23 @@ SETTINGS = {
 }
 
 os.makedirs(OUT, exist_ok=True)
+
+
+def stop_editors():
+    """Close every editor, and wait until the DevTools port is free again.
+
+    The embedded browser's helper processes (jcef_helper.exe) outlive a killed
+    java and keep the port bound, and a new editor that cannot bind it starts
+    with no DevTools at all -- which looks exactly like one that never started.
+    """
+    import socket, subprocess, time
+    for image in ("java.exe", "javaw.exe", "jcef_helper.exe"):
+        subprocess.call(["taskkill", "/F", "/IM", image], stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL)
+    deadline = time.time() + 30
+    while time.time() < deadline:
+        with socket.socket() as probe:
+            if probe.connect_ex(("127.0.0.1", PORT)) != 0:
+                return
+        time.sleep(1)
+    raise RuntimeError("port %d is still in use after closing every editor" % PORT)
