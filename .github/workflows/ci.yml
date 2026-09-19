@@ -33,7 +33,15 @@ jobs:
           node-version: '20'
 
       - name: Java tests
-        run: mvn -B -Pwin64 test
+        shell: bash
+        run: |
+          set -o pipefail
+          mvn -B -Pwin64 test 2>&1 | tee mvn.log
+
+      # Logs need a GitHub sign-in to read; annotations do not.
+      - name: Report failing tests
+        if: failure()
+        run: python .github/scripts/test_failures.py
 
       - name: UI merge tests
         run: node src/test/js/SaveMergeTest.js
