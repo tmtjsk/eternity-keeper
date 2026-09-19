@@ -1,0 +1,79 @@
+# Tests on every push and pull request. A tag named v* also builds the Windows
+# zip and attaches it to a draft pre-release, to be checked and published by
+# hand.
+name: CI
+
+on:
+  push:
+    branches: ['**']
+    tags: ['v*']
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Java 8: the embedded browser's natives are Java 8 era, and the jar
+      # targets it.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '8'
+          java-package: jdk
+          architecture: x64
+          cache: maven
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Java tests
+        run: mvn -B -Pwin64 test
+
+      - name: UI merge tests
+        run: node src/test/js/SaveMergeTest.js
+
+      - name: Game-data reader compiles
+        run: python -m py_compile tools/gamedata/extract_gamedata.py tools/gamedata/items.py tools/gamedata/stronghold.py tools/gamedata/identity.py
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: test
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '8'
+          java-package: jdk
+          architecture: x64
+          cache: maven
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+
+      - name: Game-data reader packages
+        run: python -m pip install -r tools/gamedata/requirements.txt
+
+      # The JDK's own jre\ folder is what ships.
+      - name: Build the zip
+        shell: pwsh
+        run: ./tools/release/build-release.ps1 -Jdk $env:JAVA_HOME -SkipTests
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          prerelease: true
+          files: |
+            target/release/*.zip
+            target/release/*.sha256
