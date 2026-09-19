@@ -22,11 +22,13 @@
 // the right, and the shared stash below.
 //
 // Items move the way they do in the game — click once to pick up, click again
-// to drop — and double-clicking a stackable opens a quantity panel. Packs and
-// the stash are freely editable; equipment, quick items and weapon sets are
-// shown but read-only, because dropping an item into a slot it isn't valid for
-// (a sword on someone's feet, armour in a quick slot) is exactly the sort of
-// thing that corrupts a save.
+// to drop — and double-clicking a stackable opens a quantity panel. Packs, the
+// stash and the eleven equipment slots are editable. An item only goes into a
+// slot the game itself would allow — the item's own slot flags, its class
+// restriction, and whether the wearer has that slot at all (grimoire for
+// wizards, head for non-godlike, pet for the player) — because a sword on
+// someone's feet is exactly the sort of thing that corrupts a save. Quick items
+// and weapon sets are shown but not yet editable.
 var InventoryEditor = function () {
 	var self = this;
 
