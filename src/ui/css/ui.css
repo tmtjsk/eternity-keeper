@@ -1570,7 +1570,7 @@ body.theme-light #referenceTable td.reference-command {
 }
 
 .inv-doll-panel {
-	flex: 0 0 330px;
+	flex: 0 0 420px;
 }
 
 .inv-doll-name {
@@ -1583,46 +1583,48 @@ body.theme-light #referenceTable td.reference-command {
 	margin-bottom: 10px;
 }
 
+/* The paper doll: a column of five slots down each side of the portrait, as
+   the game draws it around its 3D model. The portrait is sized to the
+   columns (five slots tall) rather than the other way round, and the three
+   are centred in the panel. Chrome 45 has no CSS Grid and no flexbox `gap`,
+   so the spacing is margins. */
 .inv-doll {
-	display: block;
+	display: flex;
+	justify-content: center;
+	align-items: stretch;
 }
 
-/* Three equipment slots to a row. Chrome 45 has no CSS Grid and no flexbox
-   `gap`, so the columns are thirds with their own margins. */
-.inv-slots {
-	display: flex;
-	flex-wrap: wrap;
-	margin-top: 10px;
-	padding-top: 10px;
-	border-top: 1px solid rgba(201, 180, 126, .22);
+.inv-slot-column {
+	flex: 0 0 58px;
+	width: 58px;
 }
 
 .inv-equip-slot {
-	flex: 0 0 33.333%;
-	width: 33.333%;
 	text-align: center;
-	padding: 0 2px;
-	margin-bottom: 10px;
+	height: 62px;
 }
 
 .inv-equip-slot .inv-tile {
 	margin: 0 auto;
 }
 
-/* Room enough for "Right ring" on one line, which the 54px columns did not
-   have. */
 .inv-slot-label {
 	display: block;
 	font-size: 10px;
 	line-height: 1.2;
 	color: #8d7f63;
 	margin-top: 3px;
+	white-space: nowrap;
 }
 
+/* 5 slots x 62px, less the last one's gap under its label; 210:330 is the
+   shape of the game's large portraits. */
 .inv-portrait {
-	margin: 0;
+	flex: 0 0 196px;
+	width: 196px;
+	height: 306px;
+	margin: 0 8px;
 	text-align: center;
-	min-height: 210px;
 	background: radial-gradient(ellipse at center, rgba(40, 62, 68, .85), rgba(10, 14, 16, .95));
 	border: 1px solid rgba(201, 180, 126, .3);
 	border-radius: 3px;
@@ -1630,8 +1632,10 @@ body.theme-light #referenceTable td.reference-command {
 }
 
 .inv-portrait img {
-	max-width: 100%;
-	max-height: 240px;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	object-position: top;
 }
 
 .inv-doll-lower {
@@ -1642,7 +1646,7 @@ body.theme-light #referenceTable td.reference-command {
 }
 
 .inv-quick {
-	flex: 0 0 110px;
+	flex: 0 0 138px;
 	margin-right: 14px;
 }
 
@@ -1658,16 +1662,24 @@ body.theme-light #referenceTable td.reference-command {
 	margin-bottom: 4px;
 }
 
+/* Three to a row, as the game has them. */
 .inv-quick-slots {
 	font-size: 0;
-	width: 96px;
+	width: 138px;
 }
 
 .inv-quick-slots .inv-tile {
 	margin: 0 4px 4px 0;
 }
 
+/* Two by two, as the game has them: I and II over III and IV. */
+.inv-weapon-sets {
+	display: flex;
+	flex-wrap: wrap;
+}
+
 .inv-weapon-set {
+	flex: 0 0 50%;
 	font-size: 0;
 	margin-bottom: 4px;
 	white-space: nowrap;
@@ -2612,15 +2624,6 @@ body.sidebar-collapsed .sidebar-toggle {
 	color: #f0dcab;
 }
 
-/* Keep the paper doll portrait its natural shape when the panel goes
-   full-width on a narrow window. */
-.inv-portrait {
-	max-width: 240px;
-}
-
-.inv-doll {
-	justify-content: center;
-}
 
 /* Slide the content across as the list opens and closes rather than snapping. */
 .main-panel {

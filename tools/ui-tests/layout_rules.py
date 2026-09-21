@@ -57,6 +57,48 @@ check("party packs: no pack grid spills out of its card", E("""$('#invPacks .inv
 widths = sorted(set(r[2] - r[0] for r in rows))
 check("party packs: the cards line up as columns", len(widths) == 1, widths)
 
+# ---- inventory: the paper doll as the game draws it -------------------------
+# Read off the game's own inventory screen (v3.9.5, 2026-09-21): Head, Chest,
+# the right-hand ring, Feet and Pet down the left of the doll; Neck, Hands, the
+# left-hand ring, Waist and Grimoire down the right. The doll faces you, so the
+# character's right hand is on your left. Quick items sit three to a row and
+# weapon sets two by two, I and II over III and IV.
+slots = E("""$('#inventoryView .inv-equip-slot:visible').toArray().map(function(e){
+  var b = e.getBoundingClientRect();
+  return {slot: e.getAttribute('data-slot'), l: Math.round(b.left), r: Math.round(b.right),
+          t: Math.round(b.top), b: Math.round(b.bottom)}; })""")
+portrait = rect("#invPortrait")
+left = sorted([s for s in slots if portrait and s["r"] <= portrait["l"]], key=lambda s: s["t"])
+right = sorted([s for s in slots if portrait and s["l"] >= portrait["r"]], key=lambda s: s["t"])
+check("doll: left of the portrait, top to bottom, as in the game",
+      [s["slot"] for s in left] == ["Head", "Chest", "RightRing", "Feet", "Pet"], [s["slot"] for s in left])
+check("doll: right of the portrait, top to bottom, as in the game",
+      [s["slot"] for s in right] == ["Neck", "Hands", "LeftRing", "Waist", "Grimoire"], [s["slot"] for s in right])
+check("doll: no slot anywhere else", len(slots) == 10 and len(left) + len(right) == 10, len(slots))
+check("doll: each side is one straight column",
+      len({s["l"] for s in left}) == 1 and len({s["l"] for s in right}) == 1,
+      [sorted({s["l"] for s in left}), sorted({s["l"] for s in right})])
+if left and right and portrait:
+    check("doll: the columns sit against the portrait",
+          portrait["l"] - max(s["r"] for s in left) <= 16 and min(s["l"] for s in right) - portrait["r"] <= 16,
+          "gaps %s / %s" % (portrait["l"] - max(s["r"] for s in left), min(s["l"] for s in right) - portrait["r"]))
+    check("doll: the columns run the portrait's height",
+          left[0]["t"] - portrait["t"] <= 12 and portrait["b"] - left[-1]["b"] <= 24,
+          "top %s, bottom %s" % (left[0]["t"] - portrait["t"], portrait["b"] - left[-1]["b"]))
+
+quick = E("""$('#invQuickSlots .inv-tile:visible').toArray().map(function(e){
+  return Math.round(e.getBoundingClientRect().top); })""")
+check("quick items: three to a row, as in the game", quick and quick.count(quick[0]) == 3, quick)
+sets = E("""$('#invWeaponSets .inv-weapon-set:visible').toArray().map(function(e){
+  var b = e.getBoundingClientRect(); return [Math.round(b.left), Math.round(b.top)]; })""")
+check("weapon sets: I and II side by side, III and IV under them",
+      len(sets) == 4 and sets[0][1] == sets[1][1] and sets[2][1] == sets[3][1]
+      and sets[2][1] > sets[0][1] and sets[0][0] == sets[2][0] and sets[1][0] > sets[0][0], sets)
+doll_panel = rect(".inv-doll-panel")
+check("doll: nothing spills out of its panel", E("""$('.inv-doll-panel .inv-tile:visible').filter(function(){
+  var t = this.getBoundingClientRect(), p = $('.inv-doll-panel')[0].getBoundingClientRect();
+  return t.right > p.right + 1 || t.left < p.left - 1; }).length""") == 0, doll_panel)
+
 # ---- grimoire: sort beside the spell search ---------------------------------
 view("GRIMOIRE", 3.5)
 ok, detail = beside("#grmSort", "#grmSearch")

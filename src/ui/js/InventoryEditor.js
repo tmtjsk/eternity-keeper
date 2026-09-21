@@ -78,19 +78,25 @@ var InventoryEditor = function () {
 	var QUICKBAR = 'QuickbarInventory';
 	var WEAPONS = 'WeaponSets';
 
-	// Slot order as the game's own inventory screen lays them out: head down
-	// the left with the pet at the bottom, neck down the right. The deprecated
-	// cape slot is never populated, so it isn't shown at all.
-	// EquipmentSetSerialized's own order, minus the deprecated Cape, which is
-	// always empty and has no slot in the game's own UI either. Three to a row.
-	var DOLL_SLOTS = ['Head', 'Neck', 'Chest', 'Hands', 'RightRing', 'LeftRing'
-		, 'Feet', 'Waist', 'Grimoire', 'Pet'];
+	// The paper doll as the game's own inventory screen draws it (read off
+	// v3.9.5): a column down each side of the character. The doll faces you,
+	// so the character's right hand -- and the right-hand ring -- is on your
+	// left. The deprecated Cape slot is always empty and the game has no slot
+	// for it, so neither does this.
+	var DOLL_LEFT = ['Head', 'Chest', 'RightRing', 'Feet', 'Pet'];
+	var DOLL_RIGHT = ['Neck', 'Hands', 'LeftRing', 'Waist', 'Grimoire'];
 
+	// What the slot says under its tile. The game calls both rings "Ring".
 	var SLOT_LABELS = {
 		Head: 'Head', Neck: 'Neck', Chest: 'Armour', Hands: 'Hands'
-		, RightRing: 'Right ring', LeftRing: 'Left ring', Feet: 'Feet'
+		, RightRing: 'Ring', LeftRing: 'Ring', Feet: 'Feet'
 		, Waist: 'Waist', Grimoire: 'Grimoire', Pet: 'Pet', Cape: 'Cape'
 	};
+
+	// And in full, where it has to be told apart: a tooltip, a refusal.
+	var SLOT_TITLES = $.extend({}, SLOT_LABELS, {
+		RightRing: 'Right-hand ring', LeftRing: 'Left-hand ring'
+	});
 
 	// Index into EquipmentSetSerialized, and the Equippable flag an item must
 	// carry to be allowed there.
@@ -591,7 +597,7 @@ var InventoryEditor = function () {
 		var flag = SLOT_FLAG[slotName];
 		if (!item.slots || item.slots.indexOf(flag) < 0) {
 			return item.displayName + ' cannot be worn in the '
-				+ (SLOT_LABELS[slotName] || slotName).toLowerCase() + ' slot.';
+				+ (SLOT_TITLES[slotName] || slotName).toLowerCase() + ' slot.';
 		}
 
 		if (item.classes && item.classes.length > 0
@@ -685,7 +691,8 @@ var InventoryEditor = function () {
 
 		self.html.invCharacterName.text(characterName(guid));
 		self.html.invPortrait.empty();
-		self.html.invSlots.empty();
+		self.html.invSlotsLeft.empty();
+		self.html.invSlotsRight.empty();
 		self.html.invQuickSlots.empty();
 		self.html.invWeaponSets.empty();
 
@@ -720,14 +727,20 @@ var InventoryEditor = function () {
 					bindTile(tile, equipmentKey, index, item);
 				}
 
+				if (!item && available) {
+					tile.attr('title', SLOT_TITLES[name] || name);
+				}
+
 				host.append($('<div>').addClass('inv-equip-slot')
+					.attr('data-slot', name)
 					.append(tile)
 					.append($('<span>').addClass('inv-slot-label')
 						.text(SLOT_LABELS[name] || name)));
 			});
 		};
 
-		renderSlots(self.html.invSlots, DOLL_SLOTS);
+		renderSlots(self.html.invSlotsLeft, DOLL_LEFT);
+		renderSlots(self.html.invSlotsRight, DOLL_RIGHT);
 
 		var quickKey = containerKey(guid, QUICKBAR);
 		var quick = containers[quickKey];

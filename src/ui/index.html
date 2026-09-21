@@ -863,14 +863,15 @@
 					<div class="inv-doll-panel">
 						<div class="inv-doll-name" id="invCharacterName"
 						     data-bound="InventoryEditor"></div>
+						<!-- As the game's own inventory screen draws the paper doll:
+						     a column of slots down each side of the character. The
+						     portrait stands in for the game's 3D model. -->
 						<div class="inv-doll">
+							<div class="inv-slot-column" id="invSlotsLeft"
+							     data-bound="InventoryEditor"></div>
 							<div class="inv-portrait" id="invPortrait"
 							     data-bound="InventoryEditor"></div>
-							<!-- One grid rather than two columns flanking the portrait:
-							     three slots to a row reads across the way the rest of the
-							     view does, and gives each label room for its own words
-							     instead of wrapping "Right ring" inside 54px. -->
-							<div class="inv-slots" id="invSlots"
+							<div class="inv-slot-column" id="invSlotsRight"
 							     data-bound="InventoryEditor"></div>
 						</div>
 						<div class="inv-doll-lower">

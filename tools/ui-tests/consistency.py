@@ -37,9 +37,9 @@ def set_identity(field, value):
 
 def blocked_slots():
     return json.loads(page.eval("""JSON.stringify(
-      $('#invSlots .inv-equip-slot').filter(function(){
+      $('#inventoryView .inv-equip-slot').filter(function(){
         return $(this).find('.inv-tile-blocked').length > 0;
-      }).map(function(){ return $(this).find('.inv-slot-label').text(); }).get())"""))
+      }).map(function(){ return $(this).attr('data-slot'); }).get())"""))
 
 
 # ---- who the character starts as -------------------------------------------
