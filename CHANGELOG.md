@@ -27,7 +27,8 @@ Compared with upstream Eternity Keeper 0.21a, from 2016:
 ### Editing
 
 - **Inventory**: every party member's pack, their equipment and the shared
-  stash, with real names and icons. Move items between characters, equip and
+  stash, with real names and icons, and the equipment laid out around the
+  character the way the game's own inventory screen has it. Move items between characters, equip and
   unequip them (the game's slot, class and race rules are enforced), change
   stack sizes, add any of the game's items, sell junk in bulk, tidy stacks.
 - **Abilities and talents**: see what a character knows and add anything their
@@ -40,6 +41,8 @@ Compared with upstream Eternity Keeper 0.21a, from 2016:
   order, showing what each choice does to the character sheet.
 - **Skills** edited as the ranks the game shows, not raw points.
 - **Portraits**: pick any portrait on your install, including ones you added.
+  The game's load list shows the new faces too: Save redraws the party
+  thumbnails stored in the save, which the game only updates when it saves.
 - **Resurrect dead companions**, including their failed personal quest and
   Sagani's pet.
 - **Party management** from anywhere: swap companions between the party and the

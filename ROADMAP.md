@@ -129,7 +129,6 @@ in every mid-game save.
 | Item | Size | Recommendation |
 |---|---|---|
 | The item extractor's naming | `tools/gamedata/items.py` | Skip non-item bundles at extraction too, so a regenerated catalog is clean at the source (the editor already filters them) |
-| Load-list party portraits | small | The game's load list draws `0.png`…`4.png` from inside the save, frozen at its last save; after a party or portrait edit it shows the old faces. Regenerate them from the party's small portraits on Save |
 
 ### Verified in the game (2026-09-14)
 
@@ -670,6 +669,9 @@ bug-report form that asks for `eternity.log`.
 
 Not requested, offered for the record.
 
+- ~~**Load-list party portraits.**~~ Done (2026-09-21): `save/PartyPortraits`
+  redraws `0.png`…`5.png` on Save from each member's small portrait, in party
+  slot order; verified in the game's load list.
 - ~~**Backup-before-save.**~~ Done (2026-09-21): `save/SaveBackups` copies a
   save into `<data>\backups` before Delete, Rename, or a Save that replaces a
   file of the same name; File → Backups restores, never over a save that is

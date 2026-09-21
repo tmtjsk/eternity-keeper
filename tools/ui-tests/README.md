@@ -79,7 +79,9 @@ running it.
 directly rather than through `run_suites.py`.
 
 `ingame_save.py` and `ingame_save_b.py` build two saves that exercise every
-editor feature, for loading in the game itself; `filedialog.py` answers the
+editor feature, for loading in the game itself; `ingame_portraits.py` builds
+one whose load-list thumbnails have changed (the Watcher's face, a smaller
+party) and checks them in the file; `filedialog.py` answers the
 native file dialogs the editor opens. They are not pass/fail suites.
 
 A caution: many page reloads in one session can leave queries unanswered, which
