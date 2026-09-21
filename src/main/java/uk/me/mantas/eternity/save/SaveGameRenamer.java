@@ -51,6 +51,10 @@ public class SaveGameRenamer {
 	}
 
 	public void rename (final String newUserSaveName) throws IOException {
+		// This rewrites the player's own file in place, so it is copied first,
+		// and a save that cannot be copied is not touched.
+		SaveBackups.forThisProcess().backup(saveArchive, SaveBackups.Reason.RENAME);
+
 		SaveGameInfo.updateSaveInfo(extractedDirectory, newUserSaveName);
 
 		final File saveinfo = new File(extractedDirectory, "saveinfo.xml");

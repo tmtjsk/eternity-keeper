@@ -24,6 +24,9 @@ import org.apache.commons.io.FileUtils;
 import org.joox.Match;
 import org.junit.Test;
 import uk.me.mantas.eternity.EKUtils;
+import uk.me.mantas.eternity.save.SaveBackups;
+import uk.me.mantas.eternity.save.SaveBackups.Backup;
+import uk.me.mantas.eternity.save.SaveBackups.Reason;
 import uk.me.mantas.eternity.save.SaveGameRenamer;
 import uk.me.mantas.eternity.tests.TestHarness;
 
@@ -33,6 +36,7 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 
 import static org.joox.JOOX.$;
@@ -82,6 +86,29 @@ public class SaveGameRenamerTest extends TestHarness {
 
 		// The rest of the archive is intact.
 		assertTrue(new File(reExtracted, "MobileObjects.save").exists());
+	}
+
+	/** Renaming rewrites the player's own file, so a copy of it comes first. */
+	@Test
+	public void theSaveIsBackedUpAsItWasBeforeRenaming () throws URISyntaxException, IOException {
+		final File workingDir = EKUtils.createTempDir(PREFIX).get();
+		final File fixture = new File(
+			getClass().getResource("/ChangesSaverTest/id 0 Encampment.savegame").toURI());
+		final File extracted = new File(workingDir, "extracted.savegame");
+		FileUtils.copyDirectory(fixture, extracted);
+
+		final File archive = new File(workingDir, "abc 7 Encampment.savegame");
+		new ZipFile(archive).addFiles(new ArrayList<>(Arrays.asList(extracted.listFiles())));
+		final byte[] before = FileUtils.readFileToByteArray(archive);
+
+		new SaveGameRenamer(archive.getAbsolutePath(), extracted.getAbsolutePath()).rename(NEW_NAME);
+
+		final List<Backup> backups = SaveBackups.forThisProcess().list();
+		assertEquals(1, backups.size());
+		assertEquals(Reason.RENAME, backups.get(0).reason);
+		assertEquals("Start", backups.get(0).userSaveName);
+		assertEquals(archive.getCanonicalFile(), backups.get(0).original);
+		assertArrayEquals(before, FileUtils.readFileToByteArray(backups.get(0).file));
 	}
 
 	@Test(expected = FileNotFoundException.class)

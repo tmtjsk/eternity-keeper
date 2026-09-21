@@ -172,6 +172,10 @@ public class ChangesSaver implements Runnable {
 		logger.info("Packaging save game to: %s%n", saveFile.getAbsolutePath());
 
 		if (saveFile.exists()) {
+			// It is the player's file -- an earlier edit, or a save that shares
+			// the name -- so it is copied into the backups before it goes. One
+			// that cannot be copied stops the Save rather than being lost.
+			SaveBackups.forThisProcess().backup(saveFile, SaveBackups.Reason.OVERWRITE);
 			logger.info("Old save file exists, attempting to delete: %s%n", saveFile.getAbsolutePath());
 			if (!FileUtils.deleteQuietly(saveFile)) {
 				logger.warn("Unable to delete old save game '%s', attempting overwrite.%n", saveFile.getAbsolutePath());

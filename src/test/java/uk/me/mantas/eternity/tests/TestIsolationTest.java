@@ -55,5 +55,6 @@ public class TestIsolationTest extends TestHarness {
 		assertTrue(paths.data().getPath(), inTemp(paths.data()));
 		assertTrue(paths.logFile().getPath(), inTemp(paths.logFile()));
 		assertTrue(paths.gameData().getPath(), inTemp(paths.gameData()));
+		assertTrue(paths.backups().getPath(), inTemp(paths.backups()));
 	}
 }

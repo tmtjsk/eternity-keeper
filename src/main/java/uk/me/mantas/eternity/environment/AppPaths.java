@@ -167,6 +167,11 @@ public final class AppPaths {
 		return new File(data(), "cef.log");
 	}
 
+	/** Copies of saves taken before the editor deletes, renames or replaces one. */
+	public File backups () {
+		return new File(data(), "backups");
+	}
+
 	/** Where the game-data extractor writes. */
 	public File gameData () {
 		return new File(data(), "gamedata");
