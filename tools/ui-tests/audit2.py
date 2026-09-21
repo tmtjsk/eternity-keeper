@@ -87,6 +87,14 @@ time.sleep(1.2)
 audit_open(page, "settingsDialog")
 close(page, "settingsDialog")
 
+# Empty here; backups_ui.py measures it again with a real backup in it.
+page.eval("$('#menuBackups').click()")
+page.wait_for("$('#backupsDialog').is(':visible') && !Eternity.Backups.state.loading",
+              30, "the Backups dialog")
+time.sleep(0.6)
+audit_open(page, "backupsDialog")
+close(page, "backupsDialog")
+
 # ---- with a save open ------------------------------------------------------
 open_save(page, SAVE)
 

@@ -203,6 +203,36 @@
 		</div>
 	</div>
 
+	<!-- The copies taken before a save is deleted, renamed or replaced
+	     (Backups.js, save/SaveBackups). Modals keep the dark chrome in both
+	     themes, so nothing here has a light-mode override. -->
+	<div class="modal fade" id="backupsDialog" role="dialog" data-bound="Backups">
+		<div class="modal-dialog">
+			<div class="modal-content">
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal">
+						<span>&times;</span>
+					</button>
+					<h4 class="modal-title">Backups</h4>
+				</div>
+				<div class="modal-body">
+					<p class="bk-intro" id="backupsIntro" data-bound="Backups"></p>
+					<div class="bk-list" id="backupsList" data-bound="Backups"></div>
+					<p class="bk-status" id="backupsStatus" data-bound="Backups"></p>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="pm-btn pm-btn-dialog" id="backupsOpenFolder"
+					        data-bound="Backups">
+						<i>&#10094;</i> Open folder <i>&#10095;</i>
+					</button>
+					<button type="button" class="pm-btn pm-btn-dialog" data-dismiss="modal">
+						<i>&#10094;</i> Close <i>&#10095;</i>
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
 	<div class="modal fade" id="deleteSaveDialog" role="dialog" data-bound="SaveSearch">
 		<div class="modal-dialog modal-sm">
 			<div class="modal-content">
@@ -214,8 +244,8 @@
 				</div>
 				<div class="modal-body">
 					<p class="pm-dialog-subject"></p>
-					<p>This will permanently delete the save file from your disk.
-						This cannot be undone.</p>
+					<p>This deletes the save file from your disk. A copy is kept
+						under File &rarr; Backups, where it can be put back.</p>
 				</div>
 				<div class="modal-footer">
 					<button type="button" class="pm-btn pm-btn-dialog" data-dismiss="modal">
@@ -468,6 +498,11 @@
 									</a>
 								</li>
 								<li class="divider"></li>
+								<li>
+									<a href="javascript:void(0);" id="menuBackups" data-bound="Backups">
+										<i class="fa fa-fw fa-history"></i> Backups&hellip;
+									</a>
+								</li>
 								<li>
 									<a data-toggle="modal" href="#settingsDialog" id="menu-settings">
 										<i class="fa fa-fw fa-cog"></i> Settings&hellip;</a>
@@ -1337,6 +1372,7 @@
 	<script src="js/Progress.js"></script>
 	<script src="js/Settings.js"></script>
 	<script src="js/GameData.js"></script>
+	<script src="js/Backups.js"></script>
 	<script src="js/SaveSearch.js"></script>
 	<script src="js/SavedGame.js"></script>
 	<script src="js/CurrencyEditor.js"></script>

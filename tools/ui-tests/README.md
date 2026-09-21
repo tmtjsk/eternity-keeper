@@ -46,7 +46,7 @@ write saves there (they delete what they write).
 ## Running
 
 ```bash
-python tools/ui-tests/run_suites.py
+python tools/ui-tests/run_suites.py                     # every suite below but gamedata_ui
 python tools/ui-tests/run_suites.py writes.py mint.py
 ```
 
@@ -72,6 +72,7 @@ running it.
 | `layout_rules.py` | Measured layout rules (packs three to a row, controls beside what they act on…) |
 | `look_variants.py` | The overflow checks at 1440px and in light mode |
 | `catalog_offer.py` | The browsers offer only shipped content |
+| `backups_ui.py` | A save deleted from the list is copied first; File → Backups restores it, refuses to restore over it, and a rename is copied too (works on a throwaway copy of one test save) |
 | `gamedata_ui.py` | The game-data banner and Settings row on a first launch; `full` also runs a real extraction (a few minutes) |
 
 `gamedata_ui.py` starts its own editor with an empty data folder, so run it

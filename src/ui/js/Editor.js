@@ -206,6 +206,7 @@ var Editor = function () {
 	self.Progress = new Progress();
 	self.Settings = new Settings();
 	self.GameData = new GameData();
+	self.Backups = new Backups();
 	self.SaveSearch = new SaveSearch();
 	self.SavedGame = new SavedGame();
 	self.CurrencyEditor = new CurrencyEditor();
