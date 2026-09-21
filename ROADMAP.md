@@ -670,9 +670,10 @@ bug-report form that asks for `eternity.log`.
 
 Not requested, offered for the record.
 
-- **Backup-before-save.** The editor never overwrites originals, but Steam Cloud
-  has deleted saves during testing on this project before. A one-click backup
-  folder would be cheap insurance.
+- ~~**Backup-before-save.**~~ Done (2026-09-21): `save/SaveBackups` copies a
+  save into `<data>\backups` before Delete, Rename, or a Save that replaces a
+  file of the same name; File → Backups restores, never over a save that is
+  there. Delete also stopped accepting any path the page sent.
 - **Save comparison.** Diff two saves and show what changed — the single most
   useful thing when working out whether an edit took effect.
 - **Validation pass before writing.** Assert the invariants already learned:

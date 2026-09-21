@@ -26,9 +26,11 @@ Windows is the supported platform for 1.0. Linux builds compile but are
 untested; macOS has no build yet.
 
 **Your saves are safe.** The editor never writes to the save you opened: Save
-always writes a new save file, which the game lists beside the original. Keep
-a backup of `%USERPROFILE%\Saved Games\Pillars of Eternity` anyway until you
-have loaded an edited save in the game.
+always writes a new save file, which the game lists beside the original. Before
+it deletes or renames a save, or replaces one with the same name, it keeps a
+copy; File → Backups puts any of the last ten back. Keep a backup of
+`%USERPROFILE%\Saved Games\Pillars of Eternity` anyway until you have loaded an
+edited save in the game.
 
 ## What it edits
 

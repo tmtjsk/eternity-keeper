@@ -60,7 +60,10 @@ cannot load at all. Most were learned the hard way.
    extends `handlers/SaveMutationHandler`, which does that.
 8. **The page never replaces its save data wholesale** after an edit; replies
    go through `SavedGame.adopt`, which keeps the user's unsaved changes.
-9. **Check what the game does on load before editing a field.** Several stored
+9. **Anything that changes or removes a file already in the saves folder
+   takes a copy first** with `save/SaveBackups`, and stops if the copy fails.
+   Delete, Rename and a Save that replaces a same-named file all do.
+10. **Check what the game does on load before editing a field.** Several stored
    values are recomputed from something else every time a save loads (a
    companion's base attributes, every `<Skill>Bonus`), so editing them does
    nothing.

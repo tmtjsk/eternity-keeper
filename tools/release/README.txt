@@ -32,6 +32,10 @@ YOUR SAVES ARE SAFE
 Eternity Keeper never writes to the save you opened. Save always writes a
 new save file, and the game lists it beside the original.
 
+Before it deletes or renames a save, or replaces one of the same name, it
+keeps a copy. File > Backups lists the ten most recent and puts any of them
+back.
+
 Keep a copy of your saves folder anyway, at least until you have loaded an
 edited save in the game:
     %USERPROFILE%\Saved Games\Pillars of Eternity

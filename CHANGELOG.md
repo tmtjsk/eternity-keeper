@@ -56,6 +56,11 @@ Compared with upstream Eternity Keeper 0.21a, from 2016:
 
 - **Your original save is never written to.** Edits go to a private working
   copy, and Save writes a new file.
+- **Backups.** Before the editor deletes a save, renames one or replaces a file
+  of the same name when saving, it keeps a copy. File → Backups lists the ten
+  most recent and puts any of them back; restoring never replaces a save that
+  is there.
+- Delete on the save list only ever deletes a `.savegame` file.
 - Unsaved edits survive every Apply: a change made on one tab is not lost when
   another tab reloads the save.
 - A save that breaks the format's own rules is flagged when it opens, before
