@@ -36,7 +36,8 @@ Compared with upstream Eternity Keeper 0.21a, from 2016:
 - **Grimoires**: edit a wizard's spellbook four spells to a level, the way the
   game lays it out.
 - **Stronghold**: build and demolish Caed Nua's upgrades with the game's own
-  Prestige and Security arithmetic, and edit turns, debt and taxes.
+  Prestige and Security arithmetic, dismiss hirelings and release prisoners the
+  way the game's own buttons do, and edit turns, debt and taxes.
 - **Identity**: race, subrace, class, culture, background, deity and paladin
   order, showing what each choice does to the character sheet.
 - **Skills** edited as the ranks the game shows, not raw points.

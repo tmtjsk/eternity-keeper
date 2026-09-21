@@ -326,8 +326,8 @@ never do. The sensible reading of the request is *select a set, delete it,
 credit the purse*, with stacking as tidy-up where the cap allows.
 *Effort: medium, most of it in the catalog. Risk: low — deletion and a scalar.*
 
-**2.2 Stronghold editor** — *the upgrades and scalars are done; hirelings and
-prisoners are not*
+**2.2 Stronghold editor** — *done: upgrades, scalars, dismissing hirelings
+and releasing prisoners; taking people on is deliberately not offered*
 
 Shipped as a Stronghold tab laid out like the game's own screen: the upgrade
 list down the middle, prestige and security gauges in a rail on the right. It
@@ -354,12 +354,28 @@ save the game loads with Prestige 47 (down the +1 it was worth), Security 44,
 every other upgrade still Completed, and the Curio Shop offered for purchase
 again at 1,800cp / 2 days — exactly the price the catalog carries.
 
-**Still to do:** hirelings and prisoners are shown read-only. Both are lists of
-manufactured objects rather than enum values — a `StrongholdHireling` carries a
-`CharacterStats` prefab reference — so adding one is the item-minting problem
-again. Dismissing and releasing are symmetric with demolishing (remove from the
-list, subtract the adjustments) and would be the cheap half.
-*Effort: medium for the remainder. Risk: low for removals, medium for minting.*
+**Hirelings and prisoners (2026-09-21).** Each is listed by the game's own
+name, with Dismiss and Release doing exactly what the game's buttons do.
+`Stronghold.DismissHireling` takes the entry out of `m_hirelingsHired`, sets
+its `HiredGlobalVariableName` to 0 and, only if the hireling is `Paid`, takes
+their Prestige and Security back off — an unpaid one's share already came off
+when the pay cycle could not pay them. `RemovePrisoner`, which is what the
+game's own Release button calls, clears the prisoner's global and drops the
+entry; a visitor asking after them is left alone, as the game leaves it. The
+names are not in the save: a hireling carries `SerializedNameId`, a string id
+into the characters table, and a prisoner a pair of `DatabaseString`s, so
+`save/GameText` reads the install's `data/localized/en/text/game/*.stringtable`
+(names fall back to the global, "Crucible", without an install).
+
+Verified in the game on a real Act III save: the Crucible Knight dismissed and
+Kestorik released gave Prestige 35 and Security 33 (the knight's +4/+2 gone),
+the hirelings badge 3/8 with the knight offered for hire again, and nobody in
+the Actions page, which is where the game lists prisoners.
+
+**Not offered: taking someone on.** Hirelings and prisoners arrive through
+conversations and visitors that also change the world (a prisoner's own object
+is destroyed as they are locked up), so minting the list entry alone would be a
+keep the game could not have produced.
 
 **2.3 Grimoire editor** — *done*
 
@@ -699,8 +715,8 @@ Features first, per the project owner's direction; compatibility afterwards.
 2. ~~Skills editor (1.1)~~ done
 3. ~~Talents and abilities (1.2)~~ done
 4. ~~Bulk tidy-up and sell (2.1b)~~ done
-5. ~~Stronghold editor (2.2)~~ upgrades and scalars done; hirelings and
-   prisoners still read-only
+5. ~~Stronghold editor (2.2)~~ done; hirelings can be dismissed and
+   prisoners released
 5b. Vendor cleanup (2.1) — deferred: needs `.lvl` read/write first, and has to
     be a reviewable list rather than a purge (see above)
 6. ~~Culture / race / class (1.3)~~ done, with what each choice is

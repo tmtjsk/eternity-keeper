@@ -45,7 +45,8 @@ edited save in the game.
   talent grants.
 - **Grimoires**, four spells to a level, laid out like the game's spellbook.
 - **The stronghold**: build and demolish upgrades with the game's own Prestige
-  and Security arithmetic; turns, debt and taxes.
+  and Security arithmetic; dismiss hirelings and release prisoners; turns, debt
+  and taxes.
 - **The party**: swap companions with the stronghold roster from anywhere, and
   resurrect dead companions, including their failed quest.
 - **Console**: re-enable achievements, and run the console commands a save can

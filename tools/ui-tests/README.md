@@ -73,6 +73,7 @@ running it.
 | `look_variants.py` | The overflow checks at 1440px and in light mode |
 | `catalog_offer.py` | The browsers offer only shipped content |
 | `backups_ui.py` | A save deleted from the list is copied first; File → Backups restores it, refuses to restore over it, and a rename is copied too (works on a throwaway copy of one test save) |
+| `stronghold_people.py` | Hirelings and prisoners by the game's own names; a staged dismissal projects the gauges, Keep and Revert undo it, Apply dismisses; a prisoner released and read back from the written file (borrows a save with a prisoner from the real saves folder's `2.0 Save Games Backup`, and deletes it afterwards) |
 | `gamedata_ui.py` | The game-data banner and Settings row on a first launch; `full` also runs a real extraction (a few minutes) |
 
 `gamedata_ui.py` starts its own editor with an empty data folder, so run it
@@ -81,7 +82,8 @@ directly rather than through `run_suites.py`.
 `ingame_save.py` and `ingame_save_b.py` build two saves that exercise every
 editor feature, for loading in the game itself; `ingame_portraits.py` builds
 one whose load-list thumbnails have changed (the Watcher's face, a smaller
-party) and checks them in the file; `filedialog.py` answers the
+party) and checks them in the file; `ingame_keep.py` builds one with the
+Crucible Knight dismissed and Kestorik released; `filedialog.py` answers the
 native file dialogs the editor opens. They are not pass/fail suites.
 
 A caution: many page reloads in one session can leave queries unanswered, which
