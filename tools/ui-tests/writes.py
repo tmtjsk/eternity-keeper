@@ -120,16 +120,21 @@ print("   added %s -> %s" % (added, new_talents))
 check("adding a talent puts it on the character", len(new_talents) == 1, new_talents)
 expect["talents"] = new_talents
 
-# ---- stronghold: demolish one, Apply ----------------------------------------
+# ---- stronghold: demolish one and dismiss a hireling, Apply ------------------
 view("STRONGHOLD", 2.2)
 E("""(function(){ var b = $('#shUpgrades .sh-upgrade-btn').filter(function(){
   return !$(this).prop('disabled'); }).first(); b.click(); })()""")
 time.sleep(1.0)
+E("$('#shHirelings .sh-person-btn').first().click()")
+time.sleep(0.5)
 E("$('#shApply').click()")
 wait_status("shStatus", "the stronghold Apply")
 expect["prestige"] = E("String(%s.globals.InGameGlobal.Stronghold.Prestige.value)" % D)
 expect["upgrades"] = E("%s.stronghold.built.length" % D) if E(
     "!!(%s.stronghold && %s.stronghold.built)" % (D, D)) else None
+expect["hirelings"] = sorted(E("%s.stronghold.hirelings.map(function(h){ return h.key; })" % D))
+check("the dismissal went through with the demolition", len(expect["hirelings"]) == 2,
+      expect["hirelings"])
 print("   Prestige now %s" % expect["prestige"])
 
 # ---- grimoire: remove a spell, Apply ----------------------------------------
@@ -190,6 +195,8 @@ if written:
     check("written: the new talent", set(expect["talents"]) <= set(talents_now), talents_now[-3:])
     check("written: Prestige", E("String(%s.globals.InGameGlobal.Stronghold.Prestige.value)" % D)
           == expect["prestige"])
+    check("written: the dismissed hireling is gone", sorted(E(
+        "%s.stronghold.hirelings.map(function(h){ return h.key; })" % D)) == expect["hirelings"])
     check("written: grimoire contents", sorted(E(
         "%s.grimoires.map(function(g){ return g.guid + '=' + g.spells.length; })" % D))
           == expect["grimoires"])

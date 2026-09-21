@@ -1103,6 +1103,8 @@ public class SavedGameOpener implements Runnable {
 		json.put("upgrades", upgrades);
 		json.put("activated", false);
 		json.put("maxHirelings", catalog.maxHirelings());
+		json.put("hirelings", new JSONArray());
+		json.put("prisoners", new JSONArray());
 
 		for (final String scalar : STRONGHOLD_SCALARS) {
 			json.put(scalar.toLowerCase(), 0);
@@ -1176,11 +1178,110 @@ public class SavedGameOpener implements Runnable {
 			}
 		}
 
-		json.put("hirelings", countOf(variables.get("m_hirelingsHired")));
-		json.put("prisoners", countOf(variables.get("m_prisoners")));
+		json.put("hirelings", hirelings(variables.get("m_hirelingsHired")));
+		json.put("prisoners", prisoners(variables.get("m_prisoners")));
 		json.put("companionsStored", countOf(variables.get("SerializedStoredGuids")));
 
 		return json;
+	}
+
+	// Who is on the payroll, as the stronghold screen lists them. A save names
+	// a hireling only by SerializedNameId -- the StringID of the hireling
+	// prefab's DisplayName in the characters table -- so the words come off the
+	// install. The key is HiredGlobalVariableName, which is how Restored()
+	// matches the entry back to its configured hireling, and how the editor
+	// asks for one to be dismissed.
+	private static JSONArray hirelings (final Object collection) {
+		final JSONArray list = new JSONArray();
+		for (final Object entry : itemsOf(collection)) {
+			if (!(entry instanceof StrongholdHireling)) {
+				continue;
+			}
+
+			final StrongholdHireling hireling = (StrongholdHireling) entry;
+			final String key = orEmpty(hireling.HiredGlobalVariableName);
+			final JSONObject json = new JSONObject();
+			json.put("key", key);
+			json.put("name", GameText.getInstance()
+				.lookup(DatabaseString.StringTableType.Characters, hireling.SerializedNameId)
+				.orElse(nameFromGlobal(key)));
+			json.put("costPerDay", hireling.CostPerDay);
+			json.put("prestige", hireling.PrestigeAdjustment);
+			json.put("security", hireling.SecurityAdjustment);
+			json.put("paid", hireling.Paid);
+			json.put("leaving", hireling.IsLeaving);
+			json.put("guest", hireling instanceof StrongholdGuestHireling);
+			list.put(json);
+		}
+
+		return list;
+	}
+
+	// Who is in the dungeon. Name and description are DatabaseStrings copied
+	// off the prisoner's StrongholdPrisoner component when they were locked up;
+	// the key is the global the same conversation set to 1.
+	private static JSONArray prisoners (final Object collection) {
+		final JSONArray list = new JSONArray();
+		for (final Object entry : itemsOf(collection)) {
+			if (!(entry instanceof StrongholdPrisonerData)) {
+				continue;
+			}
+
+			final StrongholdPrisonerData prisoner = (StrongholdPrisonerData) entry;
+			final String key = orEmpty(prisoner.GlobalVariableName);
+			final JSONObject json = new JSONObject();
+			json.put("key", key);
+			json.put("name", text(prisoner.PrisonerName).orElse(nameFromGlobal(key)));
+			json.put("description", text(prisoner.PrisonerDescription).orElse(""));
+			list.put(json);
+		}
+
+		return list;
+	}
+
+	private static Optional<String> text (final DatabaseString string) {
+		return string == null
+			? Optional.empty()
+			: GameText.getInstance().lookup(
+				string.StringTableSerialized, string.StringIDSerialized);
+	}
+
+	// Without the game's own text, the global is the one name the save itself
+	// carries: b_warden_wilds_hireling reads "Warden Wilds", and that beats an
+	// empty row.
+	private static String nameFromGlobal (final String global) {
+		String name = global.replaceFirst("(?i)^b_", "")
+			.replaceFirst("(?i)_(hireling|prisoner)$", "");
+
+		final StringBuilder words = new StringBuilder();
+		for (final String word : name.split("_")) {
+			if (word.isEmpty()) {
+				continue;
+			}
+
+			if (words.length() > 0) {
+				words.append(' ');
+			}
+
+			words.append(Character.toUpperCase(word.charAt(0))).append(word.substring(1));
+		}
+
+		return words.length() > 0 ? words.toString() : "(unnamed)";
+	}
+
+	private static String orEmpty (final String value) {
+		return value == null ? "" : value;
+	}
+
+	private static List<Object> itemsOf (final Object collection) {
+		final List<Object> items = new ArrayList<>();
+		if (collection instanceof CSharpCollection) {
+			for (final Iterator it = ((CSharpCollection) collection).iterator(); it.hasNext();) {
+				items.add(it.next());
+			}
+		}
+
+		return items;
 	}
 
 	private static int countOf (final Object collection) {

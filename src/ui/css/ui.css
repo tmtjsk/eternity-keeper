@@ -3303,6 +3303,7 @@ body.theme-light .inv-sell-summary {
 }
 
 .sh-numbers-panel,
+.sh-people-panel,
 .sh-residents-panel {
 	background: rgba(0, 0, 0, .22);
 	border: 1px solid rgba(201, 180, 126, .28);
@@ -3607,6 +3608,84 @@ body.theme-light .inv-sell-summary {
 	white-space: normal;
 }
 
+/* A hireling or a prisoner: name and button on one line, what they are worth
+   or who they are underneath. The button comes first in the DOM, so the name
+   (its own block formatting context) sits beside the float rather than
+   pushing it down a line. */
+.sh-person {
+	padding: 6px 4px 7px 6px;
+	border-bottom: 1px solid rgba(201, 180, 126, .12);
+}
+
+.sh-person-head {
+	line-height: 24px;
+}
+
+.sh-person-btn {
+	float: right;
+	min-width: 64px;
+	padding: 1px 8px;
+	margin-left: 8px;
+	font-size: 12px;
+}
+
+.sh-person-name {
+	display: block;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-size: 13px;
+	color: #e8d5a3;
+}
+
+.sh-person-detail {
+	font-size: 12px;
+	color: #9c8c6a;
+	margin-top: 2px;
+}
+
+.sh-person-detail .sh-adj {
+	width: auto;
+	margin: 0 10px 0 0;
+	font-size: 12px;
+}
+
+.sh-person-desc {
+	line-height: 1.45;
+	white-space: normal;
+}
+
+.sh-person-tag {
+	display: inline-block;
+	margin-left: 8px;
+	padding: 0 5px;
+	border: 1px solid rgba(201, 180, 126, .3);
+	border-radius: 2px;
+	font-size: 11px;
+	line-height: 16px;
+	color: #d9b46a;
+}
+
+.sh-person-staged {
+	background: rgba(201, 180, 126, .07);
+	box-shadow: inset 2px 0 0 #c9b47e;
+}
+
+.sh-person-staged .sh-person-name {
+	text-decoration: line-through;
+	opacity: .6;
+}
+
+.sh-person-staged .sh-person-detail {
+	opacity: .5;
+}
+
+.sh-person-empty {
+	font-size: 12px;
+	color: #8a7a5c;
+	padding: 2px 0 4px;
+}
+
 .sh-status {
 	font-size: 12px;
 	color: #9c8c6a;
@@ -3661,6 +3740,7 @@ body.theme-light .inv-sell-summary {
 
 body.theme-light .sh-upgrades-panel,
 body.theme-light .sh-numbers-panel,
+body.theme-light .sh-people-panel,
 body.theme-light .sh-residents-panel,
 body.theme-light .sh-unavailable {
 	background: rgba(0, 0, 0, .04);
@@ -3674,12 +3754,19 @@ body.theme-light .sh-unavailable h3 {
 	border-bottom-color: rgba(107, 56, 18, .2);
 }
 
-body.theme-light .sh-upgrade {
+body.theme-light .sh-upgrade,
+body.theme-light .sh-person {
 	border-bottom-color: rgba(107, 56, 18, .12);
+}
+
+body.theme-light .sh-person-tag {
+	color: #8a4b12;
+	border-color: rgba(107, 56, 18, .35);
 }
 
 body.theme-light .sh-upgrade-name,
 body.theme-light .sh-gauge-value,
+body.theme-light .sh-person-name,
 body.theme-light .sh-resident-value {
 	color: #4a2f14;
 }
@@ -3694,6 +3781,8 @@ body.theme-light .sh-resident-label,
 body.theme-light .sh-gauge-label,
 body.theme-light .sh-gauge-delta,
 body.theme-light .sh-resident-note,
+body.theme-light .sh-person-detail,
+body.theme-light .sh-person-empty,
 body.theme-light .sh-status,
 body.theme-light .sh-unavailable p {
 	color: #6b5030;

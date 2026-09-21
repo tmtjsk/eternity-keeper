@@ -139,6 +139,19 @@ row = rect("#shUpgrades .sh-upgrade")
 check("stronghold: an upgrade row is no wider than 1200px", row and row["w"] <= 1200,
       row and "%spx" % row["w"])
 
+# A hireling's Dismiss button sits on the same line as their name, inside the
+# rail -- a float placed after the name would drop to a line of its own.
+people = E("""$('#shHirelings .sh-person').toArray().map(function(e){
+  var n = $(e).find('.sh-person-name')[0].getBoundingClientRect(),
+      b = $(e).find('.sh-person-btn')[0].getBoundingClientRect(),
+      p = $(e).closest('.sh-people-panel')[0].getBoundingClientRect();
+  return {dy: Math.round(Math.abs((n.top + n.bottom) - (b.top + b.bottom)) / 2),
+          inside: b.right <= p.right + 1 && n.left >= p.left - 1, gap: Math.round(b.left - n.right)}; })""")
+check("stronghold: each hireling's button on their name's line",
+      people and all(p["dy"] <= 3 for p in people), people)
+check("stronghold: the hireling rows stay inside the rail",
+      people and all(p["inside"] and p["gap"] >= 0 for p in people), people)
+
 # ---- every tab: the panel bar in the same place ----------------------------
 bars = {}
 for name in ("ATTR", "RAW", "GLOBALS", "INVENTORY", "ABILITIES", "STRONGHOLD", "GRIMOIRE", "CONSOLE"):

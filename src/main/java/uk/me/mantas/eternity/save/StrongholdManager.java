@@ -57,6 +57,14 @@ import java.util.Optional;
  * never have reached. The same goes for
  * {@code UpgradeCompletedGlobalVariableName}, which area content keys off.
  *
+ * <p>Hirelings and prisoners go the same way, in one direction only.
+ * Dismissing a hireling takes back the Prestige and Security they were paid
+ * for, and releasing a prisoner clears the global a conversation set when they
+ * were locked up. Taking someone <em>on</em> is not offered: a hireling or a
+ * prisoner arrives through a conversation or a visitor that also changes the
+ * world, and minting the list entry alone would be a keep the game could not
+ * have produced.
+ *
  * <p>Everything here is refused outright unless the player actually owns Caed
  * Nua ({@code SerializedIsActivated}), because until then the stronghold does
  * not exist as far as the game is concerned.
@@ -75,7 +83,10 @@ public class StrongholdManager {
 
 	/** One edit. Order is preserved: the arithmetic runs as the game's would. */
 	public static final class Change {
-		public enum Kind { ACTIVATE, ADD_UPGRADE, REMOVE_UPGRADE, SET_NUMBER, SET_FLAG }
+		public enum Kind {
+			ACTIVATE, ADD_UPGRADE, REMOVE_UPGRADE, SET_NUMBER, SET_FLAG
+			, DISMISS_HIRELING, RELEASE_PRISONER
+		}
 
 		public final Kind kind;
 		public final String name;
@@ -109,6 +120,14 @@ public class StrongholdManager {
 
 		public static Change setFlag (final String variable, final boolean value) {
 			return new Change(Kind.SET_FLAG, variable, 0, value);
+		}
+
+		public static Change dismissHireling (final String hiredGlobal) {
+			return new Change(Kind.DISMISS_HIRELING, hiredGlobal, 0, false);
+		}
+
+		public static Change releasePrisoner (final String global) {
+			return new Change(Kind.RELEASE_PRISONER, global, 0, false);
 		}
 	}
 
@@ -188,6 +207,14 @@ public class StrongholdManager {
 
 				case SET_FLAG:
 					changed |= setEntry(stronghold.get(), change.name, change.flag);
+					break;
+
+				case DISMISS_HIRELING:
+					changed |= dismissHireling(deserialized.get(), stronghold.get(), change.name);
+					break;
+
+				case RELEASE_PRISONER:
+					changed |= releasePrisoner(deserialized.get(), stronghold.get(), change.name);
 					break;
 
 				default:
@@ -276,6 +303,101 @@ public class StrongholdManager {
 		return true;
 	}
 
+	// Mirrors Stronghold.DismissHireling: out of m_hirelingsHired, the hired
+	// global back to 0, and -- only for one who is Paid -- their Prestige and
+	// Security taken off again. An unpaid hireling's adjustments already came
+	// off when the pay cycle could not pay them.
+	//
+	// A hireling is named by HiredGlobalVariableName, which is one of the two
+	// things Restored() matches an entry back to its configured hireling by.
+	// The numbers are the entry's own: the game serialized them from that same
+	// configured hireling.
+	private boolean dismissHireling (
+		final DeserializedPackets packets
+		, final DictionaryProperty stronghold
+		, final String hiredGlobal) {
+
+		final Optional<Property> hireling =
+			removeEntry(stronghold, "m_hirelingsHired", "HiredGlobalVariableName", hiredGlobal);
+
+		if (!hireling.isPresent()) {
+			logger.error("No hireling '%s' to dismiss.%n", hiredGlobal);
+			return false;
+		}
+
+		if (Boolean.TRUE.equals(field(hireling.get(), "Paid"))) {
+			adjust(stronghold, "Prestige", -number(hireling.get(), "PrestigeAdjustment"));
+			adjust(stronghold, "Security", -number(hireling.get(), "SecurityAdjustment"));
+		}
+
+		setGlobal(packets, hiredGlobal, 0);
+		return true;
+	}
+
+	// Mirrors Stronghold.RemovePrisoner, which is what the game's own Release
+	// button calls: the prisoner's global back to 0 and the entry gone. A
+	// PrisonerRequest visitor asking after them is left alone, as the game
+	// leaves it; ConfirmPrisoner() simply finds nobody to hand over.
+	private boolean releasePrisoner (
+		final DeserializedPackets packets
+		, final DictionaryProperty stronghold
+		, final String global) {
+
+		final Optional<Property> prisoner =
+			removeEntry(stronghold, "m_prisoners", "GlobalVariableName", global);
+
+		if (!prisoner.isPresent()) {
+			logger.error("No prisoner '%s' to release.%n", global);
+			return false;
+		}
+
+		setGlobal(packets, global, 0);
+		return true;
+	}
+
+	// Takes the first entry of a list of objects whose field has that value
+	// out of the list, as List.Remove does in the game.
+	private static Optional<Property> removeEntry (
+		final DictionaryProperty stronghold
+		, final String list
+		, final String key
+		, final String value) {
+
+		if (value == null || value.isEmpty()) {
+			return Optional.empty();
+		}
+
+		final Optional<Property> entry = stronghold.findEntry(list);
+		if (!entry.isPresent() || !(entry.get() instanceof CollectionProperty)) {
+			logger.error("Stronghold has no %s list.%n", list);
+			return Optional.empty();
+		}
+
+		final List<Property> items = ((CollectionProperty) entry.get()).items;
+		for (int i = 0; i < items.size(); i++) {
+			if (value.equals(field(items.get(i), key))) {
+				return Optional.of(items.remove(i));
+			}
+		}
+
+		return Optional.empty();
+	}
+
+	private static Object field (final Property item, final String name) {
+		if (!(item instanceof ComplexProperty)) {
+			return null;
+		}
+
+		return ((ComplexProperty) item).<Property>findProperty(name)
+			.map(p -> p.obj)
+			.orElse(null);
+	}
+
+	private static int number (final Property item, final String name) {
+		final Object value = field(item, name);
+		return value instanceof Integer ? (Integer) value : 0;
+	}
+
 	// A list entry the serializer will write back as the enum's ordinal. Both
 	// value and obj have to carry it: the write path reads one and the property
 	// tree the other.
@@ -343,7 +465,17 @@ public class StrongholdManager {
 		, final StrongholdCatalog.Upgrade upgrade
 		, final int value) {
 
-		if (upgrade.global == null || upgrade.global.isEmpty()) {
+		setGlobal(packets, upgrade.global, value);
+	}
+
+	// A global that is not in the save at all reads as 0 in the game, so one
+	// missing is left missing rather than added.
+	private static void setGlobal (
+		final DeserializedPackets packets
+		, final String name
+		, final int value) {
+
+		if (name == null || name.isEmpty()) {
 			return;
 		}
 
@@ -353,11 +485,9 @@ public class StrongholdManager {
 			return;
 		}
 
-		final Optional<Property> entry = globals.get().findEntry(upgrade.global);
+		final Optional<Property> entry = globals.get().findEntry(name);
 		if (!entry.isPresent()) {
-			logger.error(
-				"Global '%s' is not in this save; leaving it alone.%n", upgrade.global);
-
+			logger.error("Global '%s' is not in this save; leaving it alone.%n", name);
 			return;
 		}
 

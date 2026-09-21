@@ -31,6 +31,12 @@
 //     again when it is destroyed; nothing recalculates them from the list. So
 //     ticking an upgrade here has to move those numbers too, which is why the
 //     rail shows what a pending change will do to them before it is applied.
+//
+// Hirelings and prisoners can be let go, the way the game's own Dismiss and
+// Release buttons do it: a dismissed hireling who was paid takes their
+// Prestige and Security with them, and both clear the global that says they
+// are there. Nobody can be taken on here -- they arrive through conversations
+// and visitors that change the world too.
 var StrongholdEditor = function () {
 	var self = this;
 
@@ -46,12 +52,16 @@ var StrongholdEditor = function () {
 	// tick and an untick of the same thing cancel out rather than stacking.
 	var pending = {};       // upgrade key -> true to build, false to demolish
 	var numbers = {};       // stronghold variable -> new value
+	var dismissed = {};     // hireling key -> true
+	var released = {};      // prisoner key -> true
 	var filter = 'all';
 	var status = '';
 
 	var saveData = () => Eternity.SavedGame.state.saveData || {};
 	var stronghold = () => saveData().stronghold || {};
 	var catalog = () => stronghold().catalog || [];
+	var hirelings = () => stronghold().hirelings || [];
+	var prisoners = () => stronghold().prisoners || [];
 
 	var markDirty = () =>
 		Eternity.Modifications.transition({modifications: true});
@@ -111,21 +121,29 @@ var StrongholdEditor = function () {
 		return total;
 	};
 
+	// What the staged dismissals take off. Stronghold.DismissHireling only
+	// subtracts for a hireling who is Paid: an unpaid one's share already came
+	// off when the pay cycle could not pay them.
+	var dismissedWorth = which => hirelings()
+		.filter(hireling => dismissed[hireling.key] && hireling.paid)
+		.reduce((total, hireling) => total + (hireling[which] || 0), 0);
+
 	var projected = variable => {
 		var base = numberAfter(variable);
 		if (variable === 'Prestige') {
-			return base + adjustedBy('prestige');
+			return base + adjustedBy('prestige') - dismissedWorth('prestige');
 		}
 
 		if (variable === 'Security') {
-			return base + adjustedBy('security');
+			return base + adjustedBy('security') - dismissedWorth('security');
 		}
 
 		return base;
 	};
 
 	var dirty = () =>
-		Object.keys(pending).length > 0 || Object.keys(numbers).length > 0;
+		Object.keys(pending).length > 0 || Object.keys(numbers).length > 0
+		|| Object.keys(dismissed).length > 0 || Object.keys(released).length > 0;
 
 	// ---- the upgrade list ---------------------------------------------------
 
@@ -424,7 +442,7 @@ var StrongholdEditor = function () {
 				row.append($('<span>')
 					.addClass('sh-number-total')
 					.attr('title', 'What this becomes once the staged upgrades '
-						+ 'are paid for')
+						+ 'and dismissals are applied')
 					.text('→ ' + total));
 			}
 
@@ -432,15 +450,120 @@ var StrongholdEditor = function () {
 		});
 	};
 
+	// ---- hirelings and prisoners -------------------------------------------
+
+	// One row per person: the name and the button on one line, what they are
+	// worth or who they are underneath. A staged row keeps its place and says
+	// so, and the same button takes it back.
+	var personRow = (name, staged, verb, undo, onToggle) => {
+		var row = $('<div>')
+			.addClass('sh-person')
+			.toggleClass('sh-person-staged', staged);
+
+		var head = $('<div>').addClass('sh-person-head');
+		head.append($('<button>')
+			.addClass('pm-btn sh-person-btn')
+			.toggleClass('sh-upgrade-btn-on', staged)
+			.attr('type', 'button')
+			.text(staged ? undo : verb)
+			.on('click', onToggle));
+
+		head.append($('<span>').addClass('sh-person-name').text(name).attr('title', name));
+		row.append(head);
+		return row;
+	};
+
+	var toggleIn = (set, key) => {
+		if (set[key]) {
+			delete set[key];
+		} else {
+			set[key] = true;
+		}
+
+		redraw();
+	};
+
+	var renderHirelings = () => {
+		self.html.shHirelings.empty();
+
+		var staying = hirelings().filter(hireling => !dismissed[hireling.key]).length;
+		self.html.shHirelingCount.text(
+			staying + ' of ' + (stronghold().maxHirelings || 8));
+
+		if (hirelings().length < 1) {
+			self.html.shHirelings.append($('<div>')
+				.addClass('sh-person-empty')
+				.text('Nobody is on the payroll.'));
+
+			return;
+		}
+
+		hirelings().forEach(hireling => {
+			var staged = !!dismissed[hireling.key];
+			var row = personRow(hireling.name, staged, 'Dismiss', 'Keep'
+				, () => toggleIn(dismissed, hireling.key));
+
+			var worth = $('<div>').addClass('sh-person-detail')
+				.append(adjustment('prestige', 'fa-star', hireling.prestige, 'Prestige'))
+				.append(adjustment('security', 'fa-lock', hireling.security, 'Security'))
+				.append($('<span>').addClass('sh-person-pay')
+					.text((hireling.costPerDay || 0) + 'cp a day'));
+
+			if (!hireling.paid) {
+				worth.append($('<span>')
+					.addClass('sh-person-tag')
+					.attr('title', 'The keep could not pay them, so their Prestige '
+						+ 'and Security are not counted until it does. '
+						+ 'Dismissing them takes nothing more off.')
+					.text('unpaid'));
+			}
+
+			if (hireling.leaving) {
+				worth.append($('<span>')
+					.addClass('sh-person-tag')
+					.attr('title', 'Leaves at the next pay day.')
+					.text('leaving'));
+			}
+
+			row.append(worth);
+			self.html.shHirelings.append(row);
+		});
+	};
+
+	var renderPrisoners = () => {
+		self.html.shPrisoners.empty();
+
+		if (prisoners().length < 1) {
+			self.html.shPrisoners.append($('<div>')
+				.addClass('sh-person-empty')
+				.text('The dungeon is empty.'));
+		}
+
+		prisoners().forEach(prisoner => {
+			var row = personRow(prisoner.name, !!released[prisoner.key], 'Release'
+				, 'Keep', () => toggleIn(released, prisoner.key));
+
+			if (prisoner.description) {
+				row.append($('<div>')
+					.addClass('sh-person-detail sh-person-desc')
+					.text(prisoner.description));
+			}
+
+			self.html.shPrisoners.append(row);
+		});
+
+		self.html.shPrisoners.append($('<div>')
+			.addClass('sh-resident-note')
+			.text('New hirelings and prisoners arrive in the game itself; the '
+				+ 'editor can only let them go.'));
+	};
+
 	var renderResidents = () => {
 		self.html.shResidents.empty();
 
 		var current = stronghold();
 		var rows = [
-			{label: 'Hirelings', value: (current.hirelings || 0)
-				+ ' of ' + (current.maxHirelings || 8)}
-			, {label: 'Prisoners', value: current.prisoners || 0}
-			, {label: 'Companions waiting', value: current.companionsStored || 0}
+			{label: 'Companions waiting', value: current.companionsStored || 0}
 			, {label: 'Erl takes a cut', value: current.erlTax ? 'Yes' : 'No'}
 		];
 
@@ -450,11 +573,6 @@ var StrongholdEditor = function () {
 				.append($('<span>').addClass('sh-resident-label').text(entry.label))
 				.append($('<span>').addClass('sh-resident-value').text(entry.value)));
 		});
-
-		self.html.shResidents.append($('<div>')
-			.addClass('sh-resident-note')
-			.text('Hirelings and prisoners are shown for reference; they are '
-				+ 'not editable yet.'));
 	};
 
 	var renderHead = () => {
@@ -497,6 +615,8 @@ var StrongholdEditor = function () {
 		renderUpgrades();
 		renderGauges();
 		renderNumbers();
+		renderHirelings();
+		renderPrisoners();
 		renderResidents();
 		renderStatus();
 
@@ -507,8 +627,9 @@ var StrongholdEditor = function () {
 
 	// ---- applying -----------------------------------------------------------
 
-	// The order matters: the numbers go in first so the upgrades add on top of
-	// them, exactly as the game's own arithmetic would have.
+	// The order matters: the numbers go in first so the upgrades and the
+	// dismissals add and subtract on top of them, exactly as the game's own
+	// arithmetic would have.
 	var changeList = () => {
 		var changes = [];
 
@@ -527,6 +648,12 @@ var StrongholdEditor = function () {
 				changes.push({kind: 'removeUpgrade', name: upgrade.key});
 			}
 		});
+
+		hirelings().filter(hireling => dismissed[hireling.key]).forEach(hireling =>
+			changes.push({kind: 'dismissHireling', name: hireling.key}));
+
+		prisoners().filter(prisoner => released[prisoner.key]).forEach(prisoner =>
+			changes.push({kind: 'releasePrisoner', name: prisoner.key}));
 
 		return changes;
 	};
@@ -551,6 +678,8 @@ var StrongholdEditor = function () {
 				self.state.working = false;
 				pending = {};
 				numbers = {};
+				dismissed = {};
+				released = {};
 
 				// The new Prestige and Security arrive; unsaved edits made
 				// elsewhere in the editor are kept.
@@ -569,12 +698,16 @@ var StrongholdEditor = function () {
 	self.revert = () => {
 		pending = {};
 		numbers = {};
+		dismissed = {};
+		released = {};
 		redraw('Reverted.');
 	};
 
 	self.reset = () => {
 		pending = {};
 		numbers = {};
+		dismissed = {};
+		released = {};
 		filter = 'all';
 		status = '';
 	};

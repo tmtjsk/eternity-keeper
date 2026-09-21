@@ -31,7 +31,9 @@ import java.util.List;
 
 // Edits Caed Nua. The request carries {oldSave, savedYet, changes: [{kind,
 // name, number, flag}]} where kind is one of activate / addUpgrade /
-// removeUpgrade / setNumber / setFlag.
+// removeUpgrade / setNumber / setFlag / dismissHireling / releasePrisoner. A
+// hireling is named by their HiredGlobalVariableName and a prisoner by their
+// GlobalVariableName, the keys the opener hands out.
 //
 // Order within the list is preserved and meaningful: building an upgrade adds
 // its own Prestige and Security on top of whatever the numbers are at that
@@ -68,6 +70,14 @@ public class UpdateStronghold extends SaveMutationHandler {
 
 				case "setFlag":
 					changes.add(Change.setFlag(name, change.optBoolean("flag", false)));
+					break;
+
+				case "dismissHireling":
+					changes.add(Change.dismissHireling(name));
+					break;
+
+				case "releasePrisoner":
+					changes.add(Change.releasePrisoner(name));
 					break;
 
 				default:

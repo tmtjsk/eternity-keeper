@@ -36,6 +36,7 @@ import uk.me.mantas.eternity.Settings;
 import uk.me.mantas.eternity.environment.Environment;
 import uk.me.mantas.eternity.factory.PacketDeserializerFactory;
 import uk.me.mantas.eternity.game.*;
+import uk.me.mantas.eternity.save.GameText;
 import uk.me.mantas.eternity.save.ItemCatalog;
 import uk.me.mantas.eternity.save.StrongholdCatalog;
 import uk.me.mantas.eternity.save.SavedGameOpener;
@@ -485,6 +486,103 @@ public class SavedGameOpenerTest extends TestHarness {
 		} finally {
 			StrongholdCatalog.useNoCatalog();
 		}
+	}
+
+	// The keep spliced into StrongholdManagerTest's fixture: four hirelings,
+	// the archer unpaid, and Kestorik in the dungeon.
+	private JSONObject openKeep () throws URISyntaxException {
+		final File resources = new File(getClass().getResource("/").toURI());
+		final CefQueryCallback mockCallback = mock(CefQueryCallback.class);
+		final Settings mockSettings = mockSettings();
+		mockSettings.json = new JSONObject();
+
+		new SavedGameOpener(
+			new File(resources, "StrongholdManagerTest").getAbsolutePath()
+			, mockCallback).run();
+
+		final ArgumentCaptor<String> response = ArgumentCaptor.forClass(String.class);
+		verify(mockCallback).success(response.capture());
+		return new JSONObject(response.getValue()).getJSONObject("stronghold");
+	}
+
+	@Test
+	public void theOpenerListsTheHirelingsAndPrisonersByTheGamesOwnNames ()
+		throws URISyntaxException, IOException {
+
+		// A save stores a hireling's name as an id into the characters table
+		// (SerializedNameId, the prefab's DisplayName.StringID) and a
+		// prisoner's as a DatabaseString, so the words come off the install.
+		final Optional<File> game = EKUtils.createTempDir(PREFIX);
+		assertTrue(game.isPresent());
+		final File tables = new File(game.get()
+			, "PillarsOfEternity_Data/data/localized/en/text/game");
+
+		FileUtils.write(new File(tables, "characters.stringtable")
+			, "<StringTableFile><Entries>"
+			+ "<Entry><ID>318</ID><DefaultText>Skirmish Archer</DefaultText></Entry>"
+			+ "<Entry><ID>321</ID><DefaultText>Goldpact Knight</DefaultText></Entry>"
+			+ "<Entry><ID>322</ID><DefaultText>Warden of the Wilds</DefaultText></Entry>"
+			+ "<Entry><ID>329</ID><DefaultText>Crucible Knight</DefaultText></Entry>"
+			+ "<Entry><ID>1171</ID><DefaultText>Kestorik</DefaultText></Entry>"
+			+ "</Entries></StringTableFile>", "UTF-8");
+
+		FileUtils.write(new File(tables, "stronghold.stringtable")
+			, "<StringTableFile><Entries>"
+			+ "<Entry><ID>79</ID><DefaultText>A vithrack scout.</DefaultText></Entry>"
+			+ "</Entries></StringTableFile>", "UTF-8");
+
+		GameText.useTextAt(game.get());
+		try {
+			final JSONObject stronghold = openKeep();
+
+			final JSONArray hirelings = stronghold.getJSONArray("hirelings");
+			assertEquals(4, hirelings.length());
+
+			final JSONObject knight = hirelings.getJSONObject(0);
+			assertEquals("b_crucible_hireling", knight.getString("key"));
+			assertEquals("Crucible Knight", knight.getString("name"));
+			assertEquals(20, knight.getInt("costPerDay"));
+			assertEquals(4, knight.getInt("prestige"));
+			assertEquals(2, knight.getInt("security"));
+			assertTrue(knight.getBoolean("paid"));
+			assertFalse(knight.getBoolean("leaving"));
+
+			final JSONObject archer = hirelings.getJSONObject(2);
+			assertEquals("Skirmish Archer", archer.getString("name"));
+			assertFalse(archer.getBoolean("paid"));
+
+			assertEquals("Warden of the Wilds"
+				, hirelings.getJSONObject(3).getString("name"));
+
+			final JSONArray prisoners = stronghold.getJSONArray("prisoners");
+			assertEquals(1, prisoners.length());
+			assertEquals("b_kestorik_prisoner", prisoners.getJSONObject(0).getString("key"));
+			assertEquals("Kestorik", prisoners.getJSONObject(0).getString("name"));
+			assertEquals("A vithrack scout."
+				, prisoners.getJSONObject(0).getString("description"));
+
+			assertTrue(stronghold.getBoolean("activated"));
+			assertEquals(38, stronghold.getInt("prestige"));
+		} finally {
+			GameText.useNoText();
+		}
+	}
+
+	@Test
+	public void withoutTheGameAHirelingIsNamedAfterTheirGlobal ()
+		throws URISyntaxException {
+
+		// No install, no string tables: the global is the one name the save
+		// itself carries, and "Crucible" beats an empty row.
+		final JSONObject stronghold = openKeep();
+
+		final JSONArray hirelings = stronghold.getJSONArray("hirelings");
+		assertEquals("Crucible", hirelings.getJSONObject(0).getString("name"));
+		assertEquals("Warden Wilds", hirelings.getJSONObject(3).getString("name"));
+
+		final JSONObject kestorik = stronghold.getJSONArray("prisoners").getJSONObject(0);
+		assertEquals("Kestorik", kestorik.getString("name"));
+		assertEquals("", kestorik.getString("description"));
 	}
 
 	private class EquivalentJSON implements ArgumentMatcher<String> {

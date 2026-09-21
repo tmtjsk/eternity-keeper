@@ -26,6 +26,8 @@ import se.softhouse.jargo.ParsedArguments;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
 
 import static com.google.common.collect.Range.atLeast;
@@ -138,9 +140,20 @@ public class TestEnvironment {
 			System.exit(1);
 		}
 
+		// The game's own words: hireling and prisoner names are only ids into
+		// these tables (save/GameText), so without them the stronghold tab
+		// falls back to naming people after their globals.
+		final Path text = Paths.get(
+			"PillarsOfEternity_Data", "data", "localized", "en", "text", "game");
+
 		try {
 			System.out.printf("Copying portraits...%n");
 			FileUtils.copyDirectory(portraitsLocation, portraitsWorkspace);
+
+			System.out.printf("Copying the game's text...%n");
+			FileUtils.copyDirectory(
+				gameLocation.toPath().resolve(text).toFile()
+				, gameWorkspace.toPath().resolve(text).toFile());
 		} catch (final IOException e) {
 			System.err.printf("Failed: %s%n", e.getMessage());
 			System.exit(1);
