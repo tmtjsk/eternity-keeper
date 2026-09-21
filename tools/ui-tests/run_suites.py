@@ -11,7 +11,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 SUITES = sys.argv[1:] or ["smoke.py", "functional.py", "panels.py", "audit.py", "audit2.py",
                           "paging.py", "format_ui.py", "consistency.py", "merge_bugs.py",
                           "writes.py", "mint.py", "layout_rules.py", "look_variants.py",
-                          "catalog_offer.py", "backups_ui.py"]
+                          "catalog_offer.py", "backups_ui.py", "stronghold_people.py"]
 
 
 def settings():
@@ -60,7 +60,9 @@ for suite in SUITES:
     proc = subprocess.run([sys.executable, os.path.join(HERE, suite)], cwd=HERE, env=env,
                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=3600)
     out = proc.stdout.decode("utf-8", "replace")
-    with open(os.path.join(config.OUT, "suite-" + suite.replace(".py", ".log")), "w",
+    # A script outside this folder is named by its path; the log only wants the name.
+    name = os.path.basename(suite).replace(".py", ".log")
+    with open(os.path.join(config.OUT, "suite-" + name), "w",
               encoding="utf-8") as log:
         log.write(out)
     tail = [l for l in out.splitlines() if l.startswith("====") or l.startswith("FAIL")
