@@ -20,6 +20,7 @@
 package uk.me.mantas.eternity.tests.save;
 
 import com.google.common.primitives.UnsignedInteger;
+import net.lingala.zip4j.ZipFile;
 import org.apache.commons.io.FileUtils;
 import org.cef.callback.CefQueryCallback;
 import org.joox.Match;
@@ -40,6 +41,10 @@ import uk.me.mantas.eternity.serializer.properties.*;
 import uk.me.mantas.eternity.tests.ExposedClass;
 import uk.me.mantas.eternity.tests.TestHarness;
 
+import javax.imageio.ImageIO;
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -336,6 +341,85 @@ public class ChangesSaverTest extends TestHarness {
 		}
 
 		assertTrue("the portrait component was never reached", written);
+	}
+
+	/**
+	 * The game's load list draws a save's party from 0.png, 1.png… inside it,
+	 * so a Save that changes a portrait redraws them in slot order: Elenor
+	 * (slot 0) with her own, Calisca (slot 1, the character this request edits)
+	 * with the portrait just picked for her.
+	 */
+	@Test
+	public void theLoadListThumbnailsShowTheSavedParty () throws Exception {
+		final Environment mockEnvironment = mockEnvironment();
+		final File workingDirectory = EKUtils.createTempDir(PREFIX).get();
+		final File settingsFile = new File(workingDirectory, "settings.json");
+
+		FileUtils.writeStringToFile(settingsFile, "{}");
+		when(mockEnvironment.directory().settingsFile()).thenReturn(settingsFile);
+		when(mockEnvironment.directory().working()).thenReturn(workingDirectory);
+		when(mockEnvironment.factory().packetDeserializer())
+			.thenReturn(new PacketDeserializerFactory());
+		when(mockEnvironment.factory().sharpSerializer()).thenReturn(new SharpSerializerFactory());
+		when(mockEnvironment.config().pillarsDataDirectory()).thenReturn("PillarsOfEternity_Data");
+
+		final String small = "data/art/gui/portraits/player/male/male_elf_01_sm.png";
+		final File install = EKUtils.createTempDir(PREFIX).get();
+		final File data = new File(install, "PillarsOfEternity_Data");
+		solidPortrait(new File(data, small), Color.GREEN);
+		solidPortrait(new File(data, "data/art/gui/portraits/player/female/female_human_03_sm.png"), Color.RED);
+		solidPortrait(new File(data, "data/art/gui/portraits/companion/portrait_calisca_sm.png"), Color.BLUE);
+
+		final Settings mockSettings = mockSettings();
+		final JSONObject mockJSON = mock(JSONObject.class);
+		mockSettings.json = mockJSON;
+		doThrow(new JSONException("")).when(mockJSON).getString(anyString());
+		final File savesLocation = EKUtils.createTempDir(PREFIX).get();
+		when(mockJSON.optString(eq("savesLocation"), anyString()))
+			.thenReturn(savesLocation.getAbsolutePath());
+		when(mockJSON.optString(eq("gameLocation"), anyString()))
+			.thenReturn(install.getAbsolutePath());
+
+		final String absolutePath = new File(
+			getClass().getResource("/ChangesSaverTest/id 0 Encampment.savegame").toURI())
+			.getAbsolutePath();
+
+		final String request = String.format("{"
+			+ "\"savedYet\":false, \"saveName\":\"THUMBNAILS\", \"absolutePath\":\"%s\""
+			+ ", \"saveData\":{\"characters\":[{"
+				+ "\"GUID\":\"b1a7e809-0000-0000-0000-000000000000\", \"stats\":{}"
+				+ ", \"portraitPaths\":{\"m_textureSmallPath\":{"
+					+ "\"type\":\"java.lang.String\",\"value\":\"" + small + "\"}}}]"
+			+ ", \"currency\":1.0, \"globals\":{\"Global\":{},\"InGameGlobal\":{}}}}"
+			, absolutePath.replace("\\", "\\\\"));
+
+		final CefQueryCallback mockCallback = mock(CefQueryCallback.class);
+		new ChangesSaver(request, mockCallback).run();
+		verify(mockCallback).success("{\"success\":true}");
+
+		final File written = new File(savesLocation, "id 0 Encampment.savegame");
+		final File unpacked = EKUtils.createTempDir(PREFIX).get();
+		new ZipFile(written).extractAll(unpacked.getAbsolutePath());
+
+		assertEquals(Color.RED, centreOf(new File(unpacked, "0.png")));
+		assertEquals("the portrait just picked, not her old one"
+			, Color.GREEN, centreOf(new File(unpacked, "1.png")));
+		assertFalse(new File(unpacked, "2.png").exists());
+	}
+
+	private static void solidPortrait (final File file, final Color colour) throws IOException {
+		final BufferedImage image = new BufferedImage(76, 96, BufferedImage.TYPE_INT_ARGB);
+		final Graphics2D g = image.createGraphics();
+		g.setColor(colour);
+		g.fillRect(0, 0, 76, 96);
+		g.dispose();
+		assertTrue(file.getParentFile().mkdirs() || file.getParentFile().isDirectory());
+		ImageIO.write(image, "png", file);
+	}
+
+	private static Color centreOf (final File png) throws IOException {
+		final BufferedImage image = ImageIO.read(png);
+		return new Color(image.getRGB(image.getWidth() / 2, image.getHeight() / 2), true);
 	}
 
 	/**

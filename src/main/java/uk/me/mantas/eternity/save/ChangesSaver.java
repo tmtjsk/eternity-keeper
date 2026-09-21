@@ -132,7 +132,8 @@ public class ChangesSaver implements Runnable {
 
 			SaveGameInfo.updateSaveInfo(
 					saveDirectory, saveName, summaryFields(saveData));
-			updateMobileObjects(saveDirectory, saveData);
+			final List<Property> written = updateMobileObjects(saveDirectory, saveData);
+			redrawPartyThumbnails(saveDirectory, written);
 			packageSaveGame(saveDirectory);
 			callback.success("{\"success\":true}");
 		} catch (final JSONException e) {
@@ -196,13 +197,31 @@ public class ChangesSaver implements Runnable {
 		logger.info("Successfully packaged save game: %s%n", saveFile.getAbsolutePath());
 	}
 
-	private void updateMobileObjects(final File saveDirectory, final JSONObject saveData)
-			throws IOException, DeserializationException {
+	// The game's load list draws a save's party from 0.png, 1.png… inside it:
+	// its own snapshot from when it last saved, so after a party or portrait
+	// edit it showed the old faces. They are redrawn from what is being
+	// written. A thumbnail is never worth failing a Save over.
+	private static void redrawPartyThumbnails(final File saveDirectory, final List<Property> packets) {
+		try {
+			final String game = Settings.getInstance().json.optString("gameLocation", "");
+			final File gameData = game == null || game.isEmpty()
+					? null
+					: new File(game, Environment.getInstance().config().pillarsDataDirectory());
 
-		updateMobileObjects(saveDirectory, saveData, this.packetDeserializer);
+			PartyPortraits.refresh(saveDirectory, packets, gameData);
+		} catch (final IOException | RuntimeException e) {
+			logger.error(e, "Could not redraw the party thumbnails: %s%n", e.getMessage());
+		}
 	}
 
-	private static void updateMobileObjects(final File saveDirectory, final JSONObject saveData,
+	private List<Property> updateMobileObjects(final File saveDirectory, final JSONObject saveData)
+			throws IOException, DeserializationException {
+
+		return updateMobileObjects(saveDirectory, saveData, this.packetDeserializer);
+	}
+
+	/** @return the packets as written, for anything else Save derives from them */
+	private static List<Property> updateMobileObjects(final File saveDirectory, final JSONObject saveData,
 			PacketDeserializerFactory packetDeserializer)
 			throws IOException, DeserializationException {
 
@@ -210,7 +229,7 @@ public class ChangesSaver implements Runnable {
 		if (!mobileObjectsFile.exists()) {
 			logger.warn("MobileObjects.save not found in %s, skipping mobile objects update.%n",
 					saveDirectory.getAbsolutePath());
-			return;
+			return Collections.emptyList();
 		}
 
 		logger.info("Updating mobile objects in: %s%n", mobileObjectsFile.getAbsolutePath());
@@ -228,6 +247,7 @@ public class ChangesSaver implements Runnable {
 		deserialized.get().setPackets(updatedMobileObjects);
 
 		deserialized.get().replace(mobileObjectsFile);
+		return updatedMobileObjects;
 	}
 
 	private static Property updateMobileObject(
