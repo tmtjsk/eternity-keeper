@@ -37,9 +37,10 @@ edited save in the game.
 - **Characters**: attributes, skills (as the ranks the game shows), experience,
   race, subrace, class, culture, background, deity and paladin order, with what
   each does to the character sheet; portraits from your install; names.
-- **Inventory**: every party member's pack, equipment and the shared stash,
-  with real names and icons. Move, equip and unequip items under the game's own
-  slot, class and race rules; change stack sizes; add any item in the game;
+- **Inventory**: every party member's pack, equipment, quick slots, weapon
+  sets and the shared stash, with real names and icons. Move, equip and unequip
+  items under the game's own rules (slots, class, race, two-handed weapons,
+  soulbound items, stack sizes); change stack sizes; add any item in the game;
   sell junk in bulk.
 - **Abilities and talents** a character could learn, including the abilities a
   talent grants.

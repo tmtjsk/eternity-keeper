@@ -74,6 +74,7 @@ running it.
 | `catalog_offer.py` | The browsers offer only shipped content |
 | `backups_ui.py` | A save deleted from the list is copied first; File → Backups restores it, refuses to restore over it, and a rename is copied too (works on a throwaway copy of one test save) |
 | `stronghold_people.py` | Hirelings and prisoners by the game's own names; a staged dismissal projects the gauges, Keep and Revert undo it, Apply dismisses; a prisoner released and read back from the written file (borrows a save with a prisoner from the real saves folder's `2.0 Save Games Backup`, and deletes it afterwards) |
+| `quick_and_weapons.py` | The game's weapon-set rules refused in the Inventory tab (two-handers, soulbound items, a swap that would hand one over) and by the server itself; a set's halves swapped, a stash stack split into a quick slot, a quick item traded for a pack item; saved and read back |
 | `gamedata_ui.py` | The game-data banner and Settings row on a first launch; `full` also runs a real extraction (a few minutes) |
 
 `gamedata_ui.py` starts its own editor with an empty data folder, so run it
@@ -83,7 +84,8 @@ directly rather than through `run_suites.py`.
 editor feature, for loading in the game itself; `ingame_portraits.py` builds
 one whose load-list thumbnails have changed (the Watcher's face, a smaller
 party) and checks them in the file; `ingame_keep.py` builds one with the
-Crucible Knight dismissed and Kestorik released; `filedialog.py` answers the
+Crucible Knight dismissed and Kestorik released; `ingame_quick.py` one with
+Aloth's weapon sets traded and lockpicks split into the Watcher's quick slot; `filedialog.py` answers the
 native file dialogs the editor opens. They are not pass/fail suites.
 
 A caution: many page reloads in one session can leave queries unanswered, which

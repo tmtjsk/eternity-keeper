@@ -688,6 +688,12 @@ Not requested, offered for the record.
 - ~~**Load-list party portraits.**~~ Done (2026-09-21): `save/PartyPortraits`
   redraws `0.png`…`5.png` on Save from each member's small portrait, in party
   slot order; verified in the game's load list.
+- ~~**Quick slots and weapon sets.**~~ Done (2026-09-24): editable before,
+  untested; now held to the game's rules (`Equippable.CanUseSlot`, the
+  two-hander check, soulbinding, `MaxWeaponSets`, stack caps), judged on the end
+  state so swaps work with full packs, with stash stacks split the way the game
+  splits them. Verified in the game on Aloth's sets and the Watcher's quick
+  slots.
 - ~~**Backup-before-save.**~~ Done (2026-09-21): `save/SaveBackups` copies a
   save into `<data>\backups` before Delete, Rename, or a Save that replaces a
   file of the same name; File → Backups restores, never over a save that is

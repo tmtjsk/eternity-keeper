@@ -31,6 +31,10 @@ Compared with upstream Eternity Keeper 0.21a, from 2016:
   character the way the game's own inventory screen has it. Move items between characters, equip and
   unequip them (the game's slot, class and race rules are enforced), change
   stack sizes, add any of the game's items, sell junk in bulk, tidy stacks.
+- **Quick slots and weapon sets** follow the game's own rules: a two-handed
+  weapon only goes in the main hand and shares its set with nothing, a
+  soulbound item stays with its owner, a big stash stack splits at the item's
+  stack size, and swaps work even with full packs. A refused edit says why.
 - **Abilities and talents**: see what a character knows and add anything their
   class, race or companion could learn, including the abilities a talent grants.
 - **Grimoires**: edit a wizard's spellbook four spells to a level, the way the
