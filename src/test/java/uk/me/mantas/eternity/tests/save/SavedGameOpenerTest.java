@@ -569,6 +569,45 @@ public class SavedGameOpenerTest extends TestHarness {
 	}
 
 	@Test
+	public void theOpenerSaysWhoAnItemIsSoulboundTo () throws URISyntaxException {
+		// Equippable.WhyCantEquip refuses an item soulbound to someone else, and
+		// the binding is on the item's own packet (EquipmentSoulbind.BoundGuid),
+		// so the editor has to be told before it can refuse the same way. The
+		// fixture's Calisca holds a sceptre bound to her in weapon set II.
+		final File resources = new File(getClass().getResource("/").toURI());
+		final CefQueryCallback mockCallback = mock(CefQueryCallback.class);
+		final Settings mockSettings = mockSettings();
+		mockSettings.json = new JSONObject();
+
+		new SavedGameOpener(
+			new File(resources, "InventoryManagerTest").getAbsolutePath()
+			, mockCallback).run();
+
+		final ArgumentCaptor<String> response = ArgumentCaptor.forClass(String.class);
+		verify(mockCallback).success(response.capture());
+
+		final JSONArray characters = new JSONObject(response.getValue())
+			.getJSONObject("inventory").getJSONArray("characters");
+
+		JSONObject calisca = null;
+		for (int i = 0; i < characters.length(); i++) {
+			if (characters.getJSONObject(i).getString("guid")
+				.equalsIgnoreCase("b1a7e809-0000-0000-0000-000000000000")) {
+
+				calisca = characters.getJSONObject(i);
+			}
+		}
+
+		assertNotNull(calisca);
+		final JSONArray sets = calisca.getJSONObject("equipment").getJSONArray("weaponSets");
+		assertEquals("b1a7e809-0000-0000-0000-000000000000"
+			, sets.getJSONObject(1).getJSONObject("primary").getString("boundTo").toLowerCase());
+
+		// Her battle axe is bound to nobody.
+		assertFalse(sets.getJSONObject(0).getJSONObject("primary").has("boundTo"));
+	}
+
+	@Test
 	public void withoutTheGameAHirelingIsNamedAfterTheirGlobal ()
 		throws URISyntaxException {
 

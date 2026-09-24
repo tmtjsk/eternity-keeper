@@ -23,12 +23,14 @@
 //
 // Items move the way they do in the game — click once to pick up, click again
 // to drop — and double-clicking a stackable opens a quantity panel. Packs, the
-// stash and the eleven equipment slots are editable. An item only goes into a
-// slot the game itself would allow — the item's own slot flags, its class
-// restriction, and whether the wearer has that slot at all (grimoire for
-// wizards, head for non-godlike, pet for the player) — because a sword on
-// someone's feet is exactly the sort of thing that corrupts a save. Quick items
-// and weapon sets are shown but not yet editable.
+// stash, the eleven equipment slots, the quick slots and the weapon sets are
+// all editable. An item only goes where the game itself would put it — the
+// item's own slot flags, its class restriction, whether the wearer has that
+// slot at all (grimoire for wizards, head for non-godlike, pet for the
+// player), two-handed weapons alone in their set, soulbound items with their
+// owner, and no stack bigger than the item's own outside the stash — because a
+// sword on someone's feet is exactly the sort of thing that corrupts a save.
+// The server checks the same rules again before it writes anything.
 var InventoryEditor = function () {
 	var self = this;
 
@@ -495,26 +497,77 @@ var InventoryEditor = function () {
 		}
 	};
 
-	/** Why this item can't go into a weapon set slot, or null when it can. */
-	var weaponRejection = (characterGuid, slotIndex, item) => {
+	var SET_NAMES = ['I', 'II', 'III', 'IV'];
+
+	// BothPrimaryAndSecondarySlot is what makes a weapon two-handed.
+	var isTwoHanded = item =>
+		!!item && (item.slots || []).indexOf('BothPrimaryAndSecondarySlot') >= 0;
+
+	// Equippable.WhyCantEquip: nobody but its owner can equip an item that is
+	// soulbound. Carrying one is fine, which is why only slots ask.
+	var soulboundRejection = (characterGuid, item) => {
+		if (!item || !item.boundTo
+			|| item.boundTo.toLowerCase() === characterGuid.toLowerCase()) {
+
+			return null;
+		}
+
+		var owner = (saveData().characters || []).filter(
+			c => (c.GUID || '').toLowerCase() === item.boundTo.toLowerCase())[0];
+
+		return item.displayName + ' is soulbound to '
+			+ (owner ? owner.name : 'someone else') + '.';
+	};
+
+	/**
+	 * Why this item can't go into a weapon set slot beside this partner, or
+	 * null when it can. The game's own rules: Equippable.CanUseSlot (the off
+	 * hand takes SecondaryWeaponSlot and never a two-hander), the check in
+	 * UIInventoryGridItem.ItemTransferValid that a two-hander shares its set
+	 * with nothing, CharacterStats.MaxWeaponSets, class and soulbinding.
+	 * Without the game data an item has no slot list, and those checks are
+	 * left to the game rather than guessed.
+	 */
+	var weaponRejection = (characterGuid, slotIndex, item, partner) => {
 		var character = characterInfo(characterGuid);
 		if (!character) {
 			return 'That character has no equipment.';
 		}
 
-		var secondary = slotIndex % 2 === 1;
-		var flag = secondary ? 'SecondaryWeaponSlot' : 'PrimaryWeaponSlot';
-		var slots = item.slots || [];
+		var set = Math.floor(slotIndex / 2);
+		if (set >= weaponSetLimit(characterGuid)) {
+			return characterName(characterGuid) + ' has not unlocked weapon set '
+				+ SET_NAMES[set] + '.';
+		}
 
-		if (slots.indexOf(flag) < 0 && slots.indexOf('BothPrimaryAndSecondarySlot') < 0) {
-			return item.displayName + ' cannot go in the '
-				+ (secondary ? 'off-hand' : 'main hand') + '.';
+		var bound = soulboundRejection(characterGuid, item);
+		if (bound) {
+			return bound;
+		}
+
+		var offHand = slotIndex % 2 === 1;
+		if (item.slots) {
+			if (offHand && isTwoHanded(item)) {
+				return item.displayName + ' takes both hands, so it only goes in the main hand.';
+			}
+
+			var flag = offHand ? 'SecondaryWeaponSlot' : 'PrimaryWeaponSlot';
+			if (item.slots.indexOf(flag) < 0) {
+				return item.displayName + ' cannot go in the '
+					+ (offHand ? 'off-hand' : 'main hand') + '.';
+			}
 		}
 
 		if (item.classes && item.classes.length > 0
 			&& item.classes.indexOf(character.characterClass) < 0) {
 
 			return item.displayName + ' can only be used by: ' + item.classes.join(', ') + '.';
+		}
+
+		if (partner && (isTwoHanded(item) || isTwoHanded(partner))) {
+			return 'Two-handed weapon requires two slots: '
+				+ (isTwoHanded(item) ? item : partner).displayName
+				+ ' has to be alone in its weapon set.';
 		}
 
 		return null;
@@ -592,6 +645,11 @@ var InventoryEditor = function () {
 			}
 
 			return 'That slot does not exist for this character.';
+		}
+
+		var bound = soulboundRejection(characterGuid, item);
+		if (bound) {
+			return bound;
 		}
 
 		var flag = SLOT_FLAG[slotName];
@@ -1298,7 +1356,7 @@ var InventoryEditor = function () {
 		if (held.equipmentSlot !== undefined || held.weaponSlot !== undefined) {
 			var pack = containers[key];
 			if (pack.items.length >= pack.maxItems) {
-				redraw('That container is full — free a slot first.');
+				redraw(fullMessage(key));
 				return;
 			}
 
@@ -1317,7 +1375,27 @@ var InventoryEditor = function () {
 
 		if (held.key !== key) {
 			if (destination.items.length >= destination.maxItems) {
-				redraw('That pack is full — free a slot first.');
+				redraw(fullMessage(key));
+				return;
+			}
+
+			// Only the stash stacks without limit (BaseInventory.
+			// InfiniteStacking). Anywhere else the game takes MaxStackSize and
+			// leaves the rest where it was (UIInventoryGridItem.TryMergeInto),
+			// and the part that moves is a new object -- minted on Apply like
+			// an item from the catalog.
+			var cap = held.item.maxStack || 1;
+			if (target.component !== STASH && held.item.stackSize > cap) {
+				var part = $.extend({}, held.item
+					, {guid: newGuid(), stackSize: cap, isNew: true});
+
+				part.uiSlot = slotOrFirstFree(destination, part, slot);
+				destination.items.push(part);
+				held.item.stackSize -= cap;
+
+				selected = null;
+				redraw(held.item.displayName + ' stacks to ' + cap + ' outside the stash, so '
+					+ cap + ' moved and ' + held.item.stackSize + ' stayed where they were.');
 				return;
 			}
 
@@ -1336,6 +1414,17 @@ var InventoryEditor = function () {
 		return {character: parts[0], component: parts[1]};
 	};
 
+	var fullMessage = key => {
+		var where = parseKey(key);
+		if (where.component === STASH) {
+			return 'The stash is full.';
+		}
+
+		return characterName(where.character)
+			+ (where.component === QUICKBAR ? '’s quick slots are full' : '’s pack is full')
+			+ ' — free a slot first.';
+	};
+
 	// Land on the clicked tile when it's free, otherwise take the lowest free
 	// one, mirroring the game's own placement.
 	var slotOrFirstFree = (container, item, slot) => {
@@ -1345,12 +1434,48 @@ var InventoryEditor = function () {
 		return (slot >= 0 && !occupied) ? slot : firstFreeSlot(container);
 	};
 
+	var slotNameOf = index => Object.keys(SLOT_INDEX)
+		.filter(name => SLOT_INDEX[name] === index)[0];
+
+	/**
+	 * A swap sends whatever was in the target back to where the held item came
+	 * from, so that item has to be allowed there too: a soulbound sceptre
+	 * knocked out of its owner's hands must not land in someone else's.
+	 * Anything going back into a pack is fine -- a swap never changes a
+	 * pack's count.
+	 */
+	var displacedRejection = (held, displaced, target) => {
+		if (!displaced) {
+			return null;
+		}
+
+		var origin = parseKey(held.key).character;
+
+		if (held.weaponSlot !== undefined) {
+			// Once the swap is done, the origin's partner is whatever sits
+			// there then -- the held item itself, if both are in one set.
+			var partnerIndex = held.weaponSlot ^ 1;
+			var partner = target.weaponSet && target.character === origin
+				&& target.index === partnerIndex
+				? held.item
+				: weapons[origin][partnerIndex];
+
+			return weaponRejection(origin, held.weaponSlot, displaced, partner);
+		}
+
+		if (held.equipmentSlot !== undefined) {
+			return rejection(origin, slotNameOf(held.equipmentSlot), displaced);
+		}
+
+		return null;
+	};
+
 	/** Put the held item on a character, swapping out whatever is there. */
 	var dropOnEquipment = (held, characterGuid, slotIndex) => {
-		var slotName = Object.keys(SLOT_INDEX)
-			.filter(name => SLOT_INDEX[name] === slotIndex)[0];
+		var why = rejection(characterGuid, slotNameOf(slotIndex), held.item)
+			|| displacedRejection(held, equipment[characterGuid][slotIndex]
+				, {weaponSet: false, character: characterGuid, index: slotIndex});
 
-		var why = rejection(characterGuid, slotName, held.item);
 		if (why) {
 			redraw(why);
 			return;
@@ -1359,15 +1484,28 @@ var InventoryEditor = function () {
 		swapInto(equipment[characterGuid], slotIndex, held);
 	};
 
-	/** Same idea for the four weapon sets. */
+	/** Same idea for the four weapon sets, whose two halves depend on each other. */
 	var dropOnWeaponSet = (held, characterGuid, slotIndex) => {
-		var why = weaponRejection(characterGuid, slotIndex, held.item);
+		var sets = weapons[characterGuid];
+		var displaced = sets[slotIndex];
+
+		// The partner once the swap is done: moving within one set sends the
+		// displaced item into the slot the held one left.
+		var partner = sets[slotIndex ^ 1];
+		if (partner && partner.guid === held.item.guid) {
+			partner = displaced;
+		}
+
+		var why = weaponRejection(characterGuid, slotIndex, held.item, partner)
+			|| displacedRejection(held, displaced
+				, {weaponSet: true, character: characterGuid, index: slotIndex});
+
 		if (why) {
 			redraw(why);
 			return;
 		}
 
-		swapInto(weapons[characterGuid], slotIndex, held);
+		swapInto(sets, slotIndex, held);
 	};
 
 	// Put the held item into slot N of a fixed-size array, sending whatever was
@@ -1398,6 +1536,16 @@ var InventoryEditor = function () {
 		redraw();
 	};
 
+	// The stash stacks without limit (BaseInventory.InfiniteStacking);
+	// everywhere else an item holds its MaxStackSize at most. Clamping a stash
+	// stack to the item's cap turned "open the panel, press OK" into deleting
+	// all but five of 155 lockpicks.
+	var stackCapFor = item => {
+		var located = findItem(item.guid);
+		return located && parseKey(located.key).component === STASH
+			? Infinity : (item.maxStack || 1);
+	};
+
 	var onTileDoubleClick = item => {
 		if (!item) {
 			return;
@@ -1422,10 +1570,17 @@ var InventoryEditor = function () {
 
 		selected = null;
 		stackTarget = item;
+		var cap = stackCapFor(item);
 		self.html.stackDialogTitle.text(item.displayName);
-		self.html.stackAmount.val(item.stackSize).attr('max', item.maxStack);
-		self.html.stackHint.text(
-			'1 to ' + item.maxStack + ' — set 0 to remove the item entirely.');
+		self.html.stackAmount.val(item.stackSize);
+
+		if (cap === Infinity) {
+			self.html.stackAmount.removeAttr('max');
+			self.html.stackHint.text('The stash holds any number — set 0 to remove the item entirely.');
+		} else {
+			self.html.stackAmount.attr('max', cap);
+			self.html.stackHint.text('1 to ' + cap + ' — set 0 to remove the item entirely.');
+		}
 
 		self.html.stackIcon.empty();
 		var source = iconFor(item);
@@ -1446,7 +1601,7 @@ var InventoryEditor = function () {
 			return;
 		}
 
-		amount = Math.min(amount, stackTarget.maxStack || 1);
+		amount = Math.min(amount, stackCapFor(stackTarget));
 
 		if (amount === 0) {
 			var located = findItem(stackTarget.guid);
@@ -1860,6 +2015,10 @@ InventoryEditor.prototype.apply = function () {
 				, activeCharacter: Eternity.SavedGame.state.activeCharacter
 				, view: Eternity.SavedGame.views.INVENTORY
 			});
+
+			// Said the way every other tab says it; the redraw above would
+			// otherwise leave a successful Apply looking like nothing happened.
+			self.setStatus('Inventory updated. Save to write it to a file.');
 		}
 		, onFailure: (code, message) => {
 			self.transition({working: false, character: self.state.character});

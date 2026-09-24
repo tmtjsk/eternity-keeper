@@ -11,7 +11,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 SUITES = sys.argv[1:] or ["smoke.py", "functional.py", "panels.py", "audit.py", "audit2.py",
                           "paging.py", "format_ui.py", "consistency.py", "merge_bugs.py",
                           "writes.py", "mint.py", "layout_rules.py", "look_variants.py",
-                          "catalog_offer.py", "backups_ui.py", "stronghold_people.py"]
+                          "catalog_offer.py", "backups_ui.py", "stronghold_people.py",
+                          "quick_and_weapons.py"]
 
 
 def settings():

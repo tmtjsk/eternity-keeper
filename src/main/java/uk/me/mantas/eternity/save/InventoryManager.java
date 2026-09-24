@@ -30,6 +30,8 @@ import uk.me.mantas.eternity.serializer.properties.*;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.HashSet;
 import java.util.List;
@@ -58,9 +60,54 @@ public class InventoryManager {
 	private static final Logger logger = Logger.getLogger(InventoryManager.class);
 
 	private final File saveDirectory;
+	private String problem = null;
+
+	// What one apply() touched, so the rules can be checked against where
+	// everything ends up rather than at each step on the way: the editor parks
+	// an item in its owner's pack between two slots, and two full packs trade
+	// items one move at a time.
+	private final Set<String> touchedContainers = new LinkedHashSet<>();
+	private final Map<String, Set<String>> touchedItems = new HashMap<>();
+	private final List<Placed> placed = new ArrayList<>();
+	private final List<Requested> requested = new ArrayList<>();
+
+	/** The tile an item asked to land on, honoured once everything has moved. */
+	private static final class Requested {
+		final String character;
+		final String component;
+		final String item;
+		final int slot;
+
+		Requested (final String character, final String component, final String item, final int slot) {
+			this.character = character;
+			this.component = component;
+			this.item = item;
+			this.slot = slot;
+		}
+	}
+
+	/** An item put into a character's equipment slot or weapon set. */
+	private static final class Placed {
+		final String wearer;
+		final boolean weaponSet;
+		final int index;
+		final String item;
+
+		Placed (final String wearer, final boolean weaponSet, final int index, final String item) {
+			this.wearer = wearer;
+			this.weaponSet = weaponSet;
+			this.index = index;
+			this.item = item;
+		}
+	}
 
 	public InventoryManager (final File saveDirectory) {
 		this.saveDirectory = saveDirectory;
+	}
+
+	/** Why the last {@link #apply} refused, in words the user can act on. */
+	public Optional<String> problem () {
+		return Optional.ofNullable(problem);
 	}
 
 	/** The equipment component's fixed slot array, addressed by index. */
@@ -193,6 +240,12 @@ public class InventoryManager {
 	}
 
 	public boolean apply (final List<Change> changes) throws IOException {
+		problem = null;
+		touchedContainers.clear();
+		touchedItems.clear();
+		placed.clear();
+		requested.clear();
+
 		final File mobileObjects = new File(saveDirectory, "MobileObjects.save");
 		final Optional<DeserializedPackets> deserializedOpt =
 			new PacketDeserializer(mobileObjects).deserialize();
@@ -277,6 +330,9 @@ public class InventoryManager {
 					return false;
 				}
 
+				touch(change.character, change.component, change.itemGuid);
+				request(change.character, change.component, change.itemGuid, change.destSlot);
+
 				if (change.destSlot >= 0
 					&& !setSlot(item, freeSlot(itemList.get(), change.destSlot, index))) {
 
@@ -296,24 +352,18 @@ public class InventoryManager {
 				findList(destOwner.get(), change.destComponent, "ItemList");
 			final Optional<CollectionProperty> destSerializedList =
 				findList(destOwner.get(), change.destComponent, "SerializedItemList");
-			final Optional<Integer> maxItems =
-				findMaxItems(destOwner.get(), change.destComponent);
 
 			if (!destItemList.isPresent() || !destSerializedList.isPresent()
-				|| !maxItems.isPresent()) {
+				|| !findMaxItems(destOwner.get(), change.destComponent).isPresent()) {
 
 				logger.error("Destination component '%s' not found.%n", change.destComponent);
 				return false;
 			}
 
-			if (destItemList.get().items.size() >= maxItems.get()) {
-				logger.error(
-					"'%s' is full (%d/%d); refusing to move '%s' into it.%n"
-					, change.destComponent, destItemList.get().items.size(), maxItems.get()
-					, change.itemGuid);
-
-				return false;
-			}
+			// Whether it fits, and which tile it gets, is decided once
+			// everything has moved.
+			touch(change.destCharacter, change.destComponent, change.itemGuid);
+			request(change.destCharacter, change.destComponent, change.itemGuid, change.destSlot);
 
 			final Property item = itemList.get().items.remove(index);
 			final Property guid = serializedList.get().items.remove(index);
@@ -335,6 +385,15 @@ public class InventoryManager {
 			}
 		}
 
+		settleSlots(packets);
+
+		final Optional<String> refusal = refusal(packets);
+		if (refusal.isPresent()) {
+			problem = refusal.get();
+			logger.error("Refused: %s%n", problem);
+			return false;
+		}
+
 		if (packetsChanged) {
 			deserialized.setPackets(packets);
 			if (!Property.update(deserialized.getCount(), packets.size())) {
@@ -345,6 +404,352 @@ public class InventoryManager {
 
 		deserialized.replace(mobileObjects);
 		return true;
+	}
+
+	private void touch (final String character, final String component, final String item) {
+		final String key = character.toLowerCase() + "|" + component;
+		touchedContainers.add(key);
+		touchedItems.computeIfAbsent(key, k -> new HashSet<>()).add(item.toLowerCase());
+	}
+
+	private void request (
+		final String character, final String component, final String item, final int slot) {
+
+		if (slot >= 0) {
+			requested.add(new Requested(character, component, item, slot));
+		}
+	}
+
+	/**
+	 * Where each item asked to land, settled once everything has moved. The
+	 * first pass had to put an item somewhere while its tile might still be
+	 * taken -- trading two items' places puts the first one down while the
+	 * second is still on its tile -- so it took the lowest free one, which on
+	 * a full quick bar is a fifth slot the bar does not have. Now that every
+	 * item is where it is going, the tile it asked for is free if the editor
+	 * said it would be, and anything still beyond the container's last tile
+	 * comes back inside it.
+	 */
+	private void settleSlots (final List<Property> packets) {
+		for (final Requested want : requested) {
+			final Optional<Property> owner = EKUtils.findPacketById(packets, want.character);
+			if (!owner.isPresent()) {
+				continue;
+			}
+
+			final Optional<CollectionProperty> items = findList(owner.get(), want.component, "ItemList");
+			final Optional<CollectionProperty> guids =
+				findList(owner.get(), want.component, "SerializedItemList");
+
+			if (!items.isPresent() || !guids.isPresent()) {
+				continue;
+			}
+
+			// Moved on again later in the same batch: that move settles it.
+			final int index = indexOfGuid(guids.get(), want.item);
+			if (index < 0) {
+				continue;
+			}
+
+			if (freeSlot(items.get(), want.slot, index) == want.slot) {
+				setSlot(items.get().items.get(index), want.slot);
+			}
+		}
+
+		for (final String key : touchedContainers) {
+			final String[] parts = key.split("\\|", 2);
+			final Optional<Property> owner = EKUtils.findPacketById(packets, parts[0]);
+			if (!owner.isPresent()) {
+				continue;
+			}
+
+			final Optional<CollectionProperty> items = findList(owner.get(), parts[1], "ItemList");
+			final Optional<Integer> maxItems = findMaxItems(owner.get(), parts[1]);
+			if (!items.isPresent() || !maxItems.isPresent()) {
+				continue;
+			}
+
+			for (int i = 0; i < items.get().items.size(); i++) {
+				final Property item = items.get().items.get(i);
+				if (slotOf(item).orElse(0) >= maxItems.get()) {
+					setSlot(item, freeSlot(items.get(), -1, i));
+				}
+			}
+		}
+	}
+
+	// The containers that stack without limit (BaseInventory.InfiniteStacking);
+	// everything else holds an item's MaxStackSize at most.
+	private static final Set<String> INFINITE_STACKING =
+		new HashSet<>(java.util.Arrays.asList("StashInventory", "CraftingInventory"));
+
+	private static final String[] ROMAN = {"I", "II", "III", "IV", "V", "VI"};
+
+	/**
+	 * The first of the game's rules the edited save would break, judged on
+	 * where everything has ended up. Each is one the game itself enforces
+	 * before it lets an item go somewhere, so a save that broke one is a save
+	 * the game could not have written:
+	 *
+	 * <ul>
+	 * <li>{@code BaseInventory.CanPutItem}: a container holds {@code MaxItems}
+	 *   entries, and a stack no bigger than the item's {@code MaxStackSize}
+	 *   unless it stacks without limit (the stash, the crafting bag).</li>
+	 * <li>{@code Equippable.CanUseSlot}: the main hand wants
+	 *   {@code PrimaryWeaponSlot}; the off hand wants {@code SecondaryWeaponSlot}
+	 *   and not {@code BothPrimaryAndSecondarySlot}, which is what makes a
+	 *   weapon two-handed.</li>
+	 * <li>{@code UIInventoryGridItem.ItemTransferValid}: a two-hander shares its
+	 *   weapon set with nothing.</li>
+	 * <li>{@code CharacterStats.MaxWeaponSets} = 2 + {@code BonusWeaponSets}.</li>
+	 * <li>{@code Equippable.WhyCantEquip}: nobody but its owner can equip an
+	 *   item soulbound to them.</li>
+	 * </ul>
+	 *
+	 * <p>Slot flags and stack sizes come from the item catalog; without one
+	 * those checks are skipped rather than guessed. Capacity, weapon sets and
+	 * soulbinding are all in the save.
+	 */
+	private Optional<String> refusal (final List<Property> packets) {
+		final ItemCatalog catalog = ItemCatalog.getInstance();
+
+		for (final String key : touchedContainers) {
+			final String[] parts = key.split("\\|", 2);
+			final Optional<Property> owner = EKUtils.findPacketById(packets, parts[0]);
+			if (!owner.isPresent()) {
+				continue;
+			}
+
+			final Optional<CollectionProperty> items = findList(owner.get(), parts[1], "ItemList");
+			final Optional<CollectionProperty> guids =
+				findList(owner.get(), parts[1], "SerializedItemList");
+			final Optional<Integer> maxItems = findMaxItems(owner.get(), parts[1]);
+
+			if (!items.isPresent() || !guids.isPresent()) {
+				continue;
+			}
+
+			if (maxItems.isPresent() && items.get().items.size() > maxItems.get()) {
+				return Optional.of(String.format(
+					"%s would hold %d items, but there is room for %d."
+					, containerName(owner.get(), parts[1])
+					, items.get().items.size(), maxItems.get()));
+			}
+
+			if (INFINITE_STACKING.contains(parts[1])) {
+				continue;
+			}
+
+			for (final String item : touchedItems.getOrDefault(key, new HashSet<>())) {
+				final int index = indexOfGuid(guids.get(), item);
+				if (index < 0 || index >= items.get().items.size()) {
+					continue;
+				}
+
+				final int stack = stackSizeOf(items.get().items.get(index));
+				final Optional<ItemCatalog.Entry> entry = catalogEntryOf(packets, item);
+				if (entry.isPresent() && stack > entry.get().maxStack) {
+					return Optional.of(String.format(
+						"%s stacks to %d, so a stack of %d only fits in the stash."
+						, itemName(packets, item), entry.get().maxStack, stack));
+				}
+			}
+		}
+
+		for (final Placed put : placed) {
+			final Optional<Property> wearer = EKUtils.findPacketById(packets, put.wearer);
+			if (!wearer.isPresent()) {
+				continue;
+			}
+
+			final List<Property> slots = (put.weaponSet
+				? findEquipmentList(wearer.get(), "WeaponSetsSerialized")
+				: findEquipmentSlots(wearer.get()))
+				.map(list -> list.items)
+				.orElse(new ArrayList<>());
+
+			// Something later in the same batch may have taken it out again.
+			if (put.index >= slots.size() || !put.item.equalsIgnoreCase(guidOf(slots.get(put.index)))) {
+				continue;
+			}
+
+			final String name = itemName(packets, put.item);
+			final Optional<String> bound = boundTo(packets, put.item);
+			if (bound.isPresent() && !bound.get().equalsIgnoreCase(put.wearer)) {
+				return Optional.of(String.format("%s is soulbound to %s."
+					, name, EKUtils.findPacketById(packets, bound.get())
+						.map(InventoryManager::characterName).orElse("someone else")));
+			}
+
+			final Optional<ItemCatalog.Entry> entry = catalogEntryOf(packets, put.item);
+
+			if (!put.weaponSet) {
+				final String flag = put.index < EQUIPMENT_SLOT_FLAGS.length
+					? EQUIPMENT_SLOT_FLAGS[put.index] : "";
+
+				if (entry.isPresent() && !flag.isEmpty() && !entry.get().slots.contains(flag)) {
+					return Optional.of(name + " cannot be worn in that slot.");
+				}
+
+				continue;
+			}
+
+			final int set = put.index / 2;
+			final int usable = 2 + intStat(wearer.get(), "BonusWeaponSets");
+			if (set >= usable) {
+				return Optional.of(String.format("%s has not unlocked weapon set %s."
+					, characterName(wearer.get()), set < ROMAN.length ? ROMAN[set] : "" + (set + 1)));
+			}
+
+			final boolean offHand = put.index % 2 == 1;
+			if (entry.isPresent()) {
+				final List<String> flags = entry.get().slots;
+				if (offHand && flags.contains("BothPrimaryAndSecondarySlot")) {
+					return Optional.of(name + " takes both hands, so it only goes in the main hand.");
+				}
+
+				if (offHand && !flags.contains("SecondaryWeaponSlot")) {
+					return Optional.of(name + " cannot go in the off-hand.");
+				}
+
+				if (!offHand && !flags.contains("PrimaryWeaponSlot")) {
+					return Optional.of(name + " cannot go in the main hand.");
+				}
+			}
+
+			final int partnerIndex = put.index ^ 1;
+			final String partner = partnerIndex < slots.size() ? guidOf(slots.get(partnerIndex)) : "";
+			if (!partner.isEmpty()) {
+				final Optional<String> twoHander = isTwoHanded(entry)
+					? Optional.of(name)
+					: (isTwoHanded(catalogEntryOf(packets, partner))
+						? Optional.of(itemName(packets, partner)) : Optional.empty());
+
+				if (twoHander.isPresent()) {
+					return Optional.of(
+						"Two-handed weapon requires two slots: " + twoHander.get()
+						+ " has to be alone in its weapon set.");
+				}
+			}
+		}
+
+		return Optional.empty();
+	}
+
+	// EquipmentSet.SerializedEquipment order, the flag each slot asks for.
+	private static final String[] EQUIPMENT_SLOT_FLAGS = {
+		"HeadSlot", "NeckSlot", "ArmorSlot", "HandSlot", "RingRightHandSlot"
+		, "RingLeftHandSlot", "", "FeetSlot", "WaistSlot", "GrimoireSlot", "PetSlot"
+	};
+
+	private static boolean isTwoHanded (final Optional<ItemCatalog.Entry> entry) {
+		return entry.isPresent() && entry.get().slots.contains("BothPrimaryAndSecondarySlot");
+	}
+
+	private static Optional<ObjectPersistencePacket> itemPacket (
+		final List<Property> packets, final String item) {
+
+		return EKUtils.findPacketById(packets, item)
+			.filter(p -> p.obj instanceof ObjectPersistencePacket)
+			.map(p -> (ObjectPersistencePacket) p.obj);
+	}
+
+	private static String prefabName (final List<Property> packets, final String item) {
+		return itemPacket(packets, item)
+			.map(p -> p.ObjectName == null ? "" : p.ObjectName.replace("(Clone)", "").trim())
+			.orElse("");
+	}
+
+	private static Optional<ItemCatalog.Entry> catalogEntryOf (
+		final List<Property> packets, final String item) {
+
+		final String prefab = prefabName(packets, item);
+		return prefab.isEmpty() ? Optional.empty() : ItemCatalog.getInstance().lookup(prefab);
+	}
+
+	private static String itemName (final List<Property> packets, final String item) {
+		final Optional<ItemCatalog.Entry> entry = catalogEntryOf(packets, item);
+		if (entry.isPresent() && !entry.get().name.isEmpty()) {
+			return entry.get().name;
+		}
+
+		final String prefab = prefabName(packets, item);
+		return prefab.isEmpty() ? "That item" : prefab.replace('_', ' ');
+	}
+
+	/**
+	 * Who an item is soulbound to: {@code EquipmentSoulbind.BoundGuid} on the
+	 * item's own packet, which is the owner's ObjectID. Empty for an item that
+	 * is not soulbound, or not yet.
+	 */
+	private static Optional<String> boundTo (final List<Property> packets, final String item) {
+		return EKUtils.findPacketById(packets, item)
+			.flatMap(p -> PartyManager.findComponentProperty(p, "EquipmentSoulbind"))
+			.<DictionaryProperty>flatMap(c -> c.findProperty("Variables"))
+			.flatMap(v -> v.<Property>findEntry("BoundGuid"))
+			.map(p -> p.obj == null ? "" : p.obj.toString())
+			.filter(guid -> !guid.isEmpty() && !EMPTY_GUID.equals(guid));
+	}
+
+	private static int intStat (final Property character, final String stat) {
+		return PartyManager.findComponentProperty(character, "CharacterStats")
+			.<DictionaryProperty>flatMap(c -> c.findProperty("Variables"))
+			.flatMap(v -> v.<Property>findEntry(stat))
+			.map(p -> p.obj instanceof Integer ? (Integer) p.obj : 0)
+			.orElse(0);
+	}
+
+	/**
+	 * What the user calls a character: the name the save gives them (the
+	 * player's own, or a companion's in the save's language), then the
+	 * registry's, then the one inside the object name.
+	 */
+	private static String characterName (final Property character) {
+		final Optional<String> override = PartyManager.findComponentProperty(character, "CharacterStats")
+			.<DictionaryProperty>flatMap(c -> c.findProperty("Variables"))
+			.flatMap(v -> v.<Property>findEntry("OverrideName"))
+			.map(p -> p.obj == null ? "" : p.obj.toString().trim())
+			.filter(name -> !name.isEmpty());
+
+		if (override.isPresent()) {
+			return override.get();
+		}
+
+		final String objectName = ((ObjectPersistencePacket) character.obj).ObjectName;
+		if (objectName != null) {
+			for (final CompanionRegistry.Companion companion : CompanionRegistry.all()) {
+				final String prefix = companion.objectNamePrefix;
+				if (objectName.startsWith(prefix) && (objectName.length() == prefix.length()
+					|| "(_".indexOf(objectName.charAt(prefix.length())) >= 0)) {
+
+					return companion.displayName;
+				}
+			}
+		}
+
+		final String inside = EKUtils.extractCharacterName(objectName);
+		return inside.isEmpty() ? "That character" : inside.replace('_', ' ');
+	}
+
+	private static String containerName (final Property owner, final String component) {
+		final String who = characterName(owner);
+		switch (component) {
+			case "StashInventory":    return "The stash";
+			case "QuickbarInventory": return who + "'s quick slots";
+			case "CraftingInventory": return "The crafting bag";
+			case "QuestInventory":    return "The quest bag";
+			default:                  return who + "'s pack";
+		}
+	}
+
+	private static int stackSizeOf (final Property itemProperty) {
+		if (!(itemProperty instanceof ComplexProperty)) {
+			return 1;
+		}
+
+		return findExact((ComplexProperty) itemProperty, "stackSize")
+			.map(p -> p.obj instanceof Integer ? (Integer) p.obj : 1)
+			.orElse(1);
 	}
 
 	/**
@@ -425,13 +830,10 @@ public class InventoryManager {
 				return false;
 			}
 
-			final Optional<Integer> maxItems = findMaxItems(packOwner.get(), packComponent);
-			if (maxItems.isPresent() && itemList.get().items.size() >= maxItems.get()) {
-				logger.error("'%s' is full; nowhere to put the unequipped item.%n"
-					, packComponent);
-
-				return false;
-			}
+			// A full pack is only a problem if the item is still in it at the
+			// end: moving between two slots parks it here on the way.
+			touch(packCharacter, packComponent, change.itemGuid);
+			request(packCharacter, packComponent, change.itemGuid, change.destSlot);
 
 			final Optional<Property> entry = buildInventoryEntry(
 				packets, change.itemGuid, freeSlot(itemList.get(), change.destSlot, -1));
@@ -460,6 +862,7 @@ public class InventoryManager {
 		final Property displacedEntry = itemList.get().items.remove(index);
 		serializedList.get().items.remove(index);
 		setGuid(slots.get(slotIndex), change.itemGuid);
+		placed.add(new Placed(wearerID, change.weaponSet, slotIndex, change.itemGuid));
 
 		// Whatever was already worn falls back into the pack. Reusing the
 		// entry we just freed keeps this allocation-free and type-exact.
@@ -478,6 +881,7 @@ public class InventoryManager {
 
 			itemList.get().items.add(displacedEntry);
 			addGuid(serializedList.get(), occupant);
+			touch(packCharacter, packComponent, occupant);
 
 			if (!reparent(packets, occupant, packOwner.get())) {
 				return false;
@@ -513,13 +917,9 @@ public class InventoryManager {
 			return false;
 		}
 
-		final Optional<Integer> maxItems = findMaxItems(owner, change.destComponent);
-		if (maxItems.isPresent() && itemList.get().items.size() >= maxItems.get()) {
-			logger.error("'%s' is full; cannot add '%s'.%n"
-				, change.destComponent, change.newItemPrefab);
-
-			return false;
-		}
+		final String ownerID = ((ObjectPersistencePacket) owner.obj).ObjectID;
+		touch(ownerID, change.destComponent, change.itemGuid);
+		request(ownerID, change.destComponent, change.itemGuid, change.destSlot);
 
 		final Optional<Property> template = findAnyItemPacket(packets);
 		if (!template.isPresent()) {

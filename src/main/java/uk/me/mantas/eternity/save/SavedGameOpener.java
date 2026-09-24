@@ -276,10 +276,21 @@ public class SavedGameOpener implements Runnable {
 		// a UUID back to the item's own packet, whose ObjectName is the prefab
 		// name with a "(Clone)" suffix.
 		final Map<String, String> itemNamesByID = new HashMap<>();
+		soulboundTo.clear();
 		for (final Property property : gameObjects) {
 			final ObjectPersistencePacket packet = unwrapPacket(property);
 			if (packet.ObjectID != null && packet.ObjectName != null) {
 				itemNamesByID.put(packet.ObjectID.toLowerCase(), packet.ObjectName);
+			}
+
+			// Equippable.WhyCantEquip refuses an item soulbound to someone
+			// else, and the binding lives on the item's own packet.
+			if (packet.ObjectID != null && packet.ComponentPackets != null) {
+				findComponent(packet.ComponentPackets, "EquipmentSoulbind")
+					.map(c -> c.Variables.get("BoundGuid"))
+					.map(Object::toString)
+					.filter(guid -> !guid.isEmpty() && !EMPTY_GUID.equals(guid))
+					.ifPresent(guid -> soulboundTo.put(packet.ObjectID.toLowerCase(), guid));
 			}
 		}
 
@@ -867,6 +878,10 @@ public class SavedGameOpener implements Runnable {
 		return json;
 	}
 
+	// Item ObjectID -> the ObjectID of the character it is soulbound to, for
+	// this open only.
+	private final Map<String, String> soulboundTo = new HashMap<>();
+
 	// Real names and icons come from the catalog extracted out of the game's
 	// asset bundles; without one we degrade to a prettified file name.
 	private void decorateWithCatalog (
@@ -874,6 +889,11 @@ public class SavedGameOpener implements Runnable {
 
 		final String key = ItemCatalog.keyOf(baseItem);
 		itemJson.put("key", key);
+
+		final String bound = soulboundTo.get(itemJson.optString("guid", "").toLowerCase());
+		if (bound != null) {
+			itemJson.put("boundTo", bound);
+		}
 
 		final ItemCatalog catalog = ItemCatalog.getInstance();
 		final Optional<ItemCatalog.Entry> entry = catalog.lookup(baseItem);

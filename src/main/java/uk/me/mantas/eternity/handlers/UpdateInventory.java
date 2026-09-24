@@ -67,7 +67,12 @@ public class UpdateInventory extends SaveMutationHandler {
 			changes.add(parsed);
 		}
 
-		return new InventoryManager(save).apply(changes)
-			? null : "Inventory update failed. Details are in eternity.log; Settings shows where it is.";
+		// A rule the game would have enforced says so in its own terms; only a
+		// save that could not be read or edited falls back to the log.
+		final InventoryManager manager = new InventoryManager(save);
+		return manager.apply(changes)
+			? null
+			: manager.problem().orElse(
+				"Inventory update failed. Details are in eternity.log; Settings shows where it is.");
 	}
 }
