@@ -33,6 +33,7 @@ Nineteen scripted UI suites drive the running editor against a real
 | Polish/UTF-8 save names | Reads `sceneTitle` from `saveinfo.xml` |
 | Light/dark themes | Both audited |
 | Save format conversion | Rewritten as a byte pass and finally reachable from the UI (see §4.3) |
+| **Vendors tab** | Every store's stock, read from the area files; take out what you pick (§2.1) |
 
 ### Known limitations, stated plainly
 
@@ -302,6 +303,12 @@ and a request built from a list that has since changed is refused whole with
 no file touched. Store names are prettified from the object and scene names —
 the game's own (`Vendor.StoreName`) lives in the level's scene data, which is
 not in the save.
+
+*Verified in the game* (v3.9.5): all 693 entries the party had sold to Caed
+Nua's General Goods Merchant taken out in the editor, the written save loaded,
+the party walked into the Great Hall — whose area file the editor had rewritten
+— and the merchant's own store screen read "No items." in every category. The
+game's log shows the hall loading with no error from its stores.
 
 *What it buys is order more than space.* Taking every sold item out of every
 store the party has traded with — 2,325 items at 39 stores in a 9.9 MB
