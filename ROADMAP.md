@@ -7,11 +7,12 @@ next. Kept next to the code so it stays honest.
 
 ## 1. Where the project actually is
 
-~23,000 lines of Java, 367 passing JUnit tests plus a node-run suite for the
+~26,000 lines of Java, 499 passing JUnit tests plus a node-run suite for the
 UI's save merge, a jQuery/Bootstrap UI running on an embedded Chromium (JCEF),
 and a save format that has been reverse-engineered far enough to mint objects
-the game accepts. Nine scripted UI suites (291 checks) drive the running editor
-against a real 13-character save; see §2 for what the last full pass found.
+the game accepts and to rewrite the area files as well as the world state.
+Nineteen scripted UI suites drive the running editor against a real
+13-character save; see §2 for what the last full pass found.
 
 ### Shipped and verified in-game
 
@@ -248,34 +249,60 @@ console and useless in a save. It now sets the stored points for a rank.
 
 ### Phase 2 — world and inventory
 
-**2.1 Vendor cleanup** — *re-scoped after measuring; blocked on new save-pipeline
-support, and the one-button version is unsafe*
+**2.1 Vendor cleanup** — *done: a Vendors tab lists every store's stock from
+the area files and takes out what the player picks, nothing more*
 
-The premise is half right. Vendor stock does accumulate: a mid-game save carries
-**68 stores holding 3,772 items**. But two things measured on a real save change
-what can be built.
+Built in the shape the measurements called for: a reviewable list per store,
+defaulting to nothing. What it took, and what it found on the way:
 
-*It is not in the file the editor edits.* A scan of that save found **0 stores in
-`MobileObjects.save`** — every one of the 68 lives in a `.lvl` area file. Those
-use the identical serializer and all 164 of them read in 9.9s (77 MB), so the
-data is reachable, but `ChangesSaver` has only ever re-written the world state
-and copies the area files through untouched. Editing them means teaching the
-save pipeline to rewrite `.lvl` files, which is a piece of work in its own right
-and carries the risk of a 77 MB blast radius rather than a 13 MB one.
+*Area files are safe to rewrite.* Every one of the 190 packet files of a real
+mid-game save (111 MB) comes back **byte for byte** through the editor's
+reader and writer, so an area file is written exactly as the world state
+always has been: a sibling file, then an atomic move, and only the files that
+changed. A Save afterwards differs from the save it came from in exactly the
+area files that were edited — the UI suite unzips both and checks.
 
-*A blanket purge would destroy real content.* `Store.RegenerateItems()` only
-destroys and re-adds the items named in that store's `RegenerationItemTable`.
-Anything else in a store's `ItemList` — including the unique items a player has
-not bought yet, and everything they sold and might want back — is there
-permanently and never regenerates. "Delete all vendor stock" would quietly
-remove purchasable uniques from the save.
+*Only 40 of those 190 files hold a store*, and they can be told apart without
+reading them: a Store component's type string is written as a length byte and
+the bytes of "Store", and that sequence picks out exactly those 40. Read side
+by side, a mid-game save's 74 stores and 2,917 items take 0.8 s the first time
+the tab opens and 0.35 s after that, where reading every area file took 9.9 s.
 
-So this should not be a button. The shape that survives both findings is a
-**reviewable per-store list**: read the `.lvl` files, show what each store holds
-with catalog names and prices, and let the player delete what they choose,
-defaulting to nothing. Worth splitting into (a) `.lvl` read/write in the save
-pipeline and (b) the store browser on top of it.
-*Effort: high, most of it in (a). Risk: medium — a new class of file to write.*
+*"Original" is the line the game draws.* `InventoryItem.Original` is set only
+for a store's initial stock. Anything the player sold there is not original,
+and neither is restock — which `Store.RegenerateItems` destroys again, every
+copy of each prefab in its table, every twelve game hours. So "select what you
+sold" picks everything not original; original stock, uniques included, is
+marked on its tile and never picked for you, because nothing puts it back.
+
+*A damaged file reads short without an error.* `PacketDeserializer` returns
+whatever it managed to read — one packet of six from a truncated area file in
+the tests — and writing that back would silently drop the rest. The reader
+compares the leading count with what it read and treats a short read as no
+read at all; the manager refuses to write such a file. The other managers
+still trust their read of the world state.
+
+*A store's list can point at nothing.* 280 entries in a real save — 242 of the
+stronghold merchant's, 38 of Crucible Keep's — name an item whose packet does
+not exist anywhere; the game keeps such an entry as a bare copy of the prefab.
+Removing one is just its two list entries. An item's packet only goes when no
+list in the file still names it.
+
+The rest follows the game: the remaining entries are numbered 0..n-1 again
+(every store in the real saves reads that way; `Sort` and `CompressSlots`
+leave it so), prices are what the store asks (`ceil(value × sellMultiplier)`),
+and a request built from a list that has since changed is refused whole with
+no file touched. Store names are prettified from the object and scene names —
+the game's own (`Vendor.StoreName`) lives in the level's scene data, which is
+not in the save.
+
+*What it buys is order more than space.* Taking every sold item out of every
+store the party has traded with — 2,325 items at 39 stores in a 9.9 MB
+mid-game save — rewrites 39 area files in 2.8 s and leaves the save **3.4%
+smaller** (80.4 MB of area files unpacked become 77.2). The old premise, that
+vendor stock is what makes saves big, does not survive the measurement; what
+the tab does give is a stronghold merchant whose list is not 693 items of the
+party's cast-offs.
 
 **2.1b Bulk tidy-up and sell — requested on Reddit** — *done*
 
@@ -723,8 +750,8 @@ Features first, per the project owner's direction; compatibility afterwards.
 4. ~~Bulk tidy-up and sell (2.1b)~~ done
 5. ~~Stronghold editor (2.2)~~ done; hirelings can be dismissed and
    prisoners released
-5b. Vendor cleanup (2.1) — deferred: needs `.lvl` read/write first, and has to
-    be a reviewable list rather than a purge (see above)
+5b. ~~Vendor cleanup (2.1)~~ done: a reviewable list per store, read from
+    and written to the area files
 6. ~~Culture / race / class (1.3)~~ done, with what each choice is
    worth shown under it (1.3b)
 7. ~~Grimoire editor (2.3)~~ done

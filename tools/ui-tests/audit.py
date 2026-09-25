@@ -20,6 +20,7 @@ VIEWS = [("Attributes", "ATTR", "#character"),
          ("Abilities", "ABILITIES", "#abilitiesView"),
          ("Stronghold", "STRONGHOLD", "#strongholdView"),
          ("Grimoire", "GRIMOIRE", "#grimoireView"),
+         ("Vendors", "VENDORS", "#vendorsView"),
          ("Console", "CONSOLE", "#consoleView")]
 
 DIALOGS = ["settingsDialog", "saveNameDialog", "saveChangesDialog",
@@ -93,6 +94,11 @@ open_save(page, SAVE)
 for label, view, selector in VIEWS:
     page.eval("Eternity.SavedGame.switchView(Eternity.SavedGame.views.%s)" % view)
     time.sleep(1.6)
+    if view == "VENDORS":
+        # Read from the area files when the tab opens; measure the list,
+        # not the loading message.
+        page.wait_for("$('#vndList .vnd-vendor').length > 0", 120, "the vendor list")
+        time.sleep(0.8)
     check("%s opens" % label, page.eval("$(%s).is(':visible')" % json.dumps(selector)))
 
     for light in (False, True):

@@ -40,6 +40,7 @@ for label, view, selector in [
         ("Inventory", "INVENTORY", "#inventoryView"),
         ("Abilities", "ABILITIES", "#abilitiesView"),
         ("Stronghold", "STRONGHOLD", "#strongholdView"),
+        ("Vendors", "VENDORS", "#vendorsView"),
         ("Console", "CONSOLE", "#consoleView")]:
     page.eval("Eternity.SavedGame.switchView(Eternity.SavedGame.views.%s)" % view)
     time.sleep(1.4)

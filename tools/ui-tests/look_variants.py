@@ -28,7 +28,7 @@ def overflow():
 
 
 E("$('body').addClass('theme-light')")
-for name in ("INVENTORY", "GRIMOIRE", "ABILITIES"):
+for name in ("INVENTORY", "GRIMOIRE", "ABILITIES", "VENDORS"):
     E("Eternity.SavedGame.switchView(Eternity.SavedGame.views.%s)" % name)
     time.sleep(3)
     shot("light-" + name.lower())
@@ -36,7 +36,7 @@ E("$('body').removeClass('theme-light')")
 
 page.call("Emulation.setDeviceMetricsOverride", width=1440, height=900, deviceScaleFactor=1, mobile=False, fitWindow=False)
 time.sleep(1.5)
-for name in ("INVENTORY", "GRIMOIRE", "ABILITIES", "STRONGHOLD", "ATTR", "CONSOLE"):
+for name in ("INVENTORY", "GRIMOIRE", "ABILITIES", "STRONGHOLD", "VENDORS", "ATTR", "CONSOLE"):
     E("Eternity.SavedGame.switchView(Eternity.SavedGame.views.%s)" % name)
     time.sleep(3)
     count = overflow()

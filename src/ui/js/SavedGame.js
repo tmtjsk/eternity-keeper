@@ -35,7 +35,7 @@ var SavedGame = function () {
 
 	self.views = Object.freeze({
 		ATTR: 0, RAW: 1, GLOBALS: 2, CONSOLE: 3, INVENTORY: 4, ABILITIES: 5
-		, STRONGHOLD: 6, GRIMOIRE: 7});
+		, STRONGHOLD: 6, GRIMOIRE: 7, VENDORS: 8});
 
 	var defaultState = {
 		saveData: {}
@@ -1018,6 +1018,9 @@ var SavedGame = function () {
 		Eternity.GrimoireEditor.html.menuGrimoireEditor.off();
 		Eternity.GrimoireEditor.html.menuGrimoireEditor.click(
 			self.switchView.bind(self, self.views.GRIMOIRE));
+		Eternity.VendorEditor.html.menuVendorEditor.off();
+		Eternity.VendorEditor.html.menuVendorEditor.click(
+			self.switchView.bind(self, self.views.VENDORS));
 
 		Eternity.CurrencyEditor.render({enabled: true, amount: self.state.saveData.currency});
 		Eternity.Modifications.html.newSaveName.val(
@@ -1091,6 +1094,13 @@ var SavedGame = function () {
 			case self.views.GRIMOIRE:
 				Eternity.GrimoireEditor.html.grimoireView.show();
 				Eternity.GrimoireEditor.transition({enabled: true});
+				break;
+
+			// Stores belong to the world, not to the party. Their stock is
+			// read from the area files only once this tab is opened.
+			case self.views.VENDORS:
+				Eternity.VendorEditor.html.vendorsView.show();
+				Eternity.VendorEditor.transition({enabled: true, visible: true});
 				break;
 
 			default:

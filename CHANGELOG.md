@@ -39,6 +39,11 @@ Compared with upstream Eternity Keeper 0.21a, from 2016:
   class, race or companion could learn, including the abilities a talent grants.
 - **Grimoires**: edit a wizard's spellbook four spells to a level, the way the
   game lays it out.
+- **Vendors**: every store in the save with what it holds, read from the area
+  files the game keeps it in. Pick what to take out of a vendor's stock — what
+  you sold there, say — and Apply removes exactly that. Nothing is picked for
+  you, and the vendor's original stock, uniques included, is marked, because
+  the game never restocks it.
 - **Stronghold**: build and demolish Caed Nua's upgrades with the game's own
   Prestige and Security arithmetic, dismiss hirelings and release prisoners the
   way the game's own buttons do, and edit turns, debt and taxes.

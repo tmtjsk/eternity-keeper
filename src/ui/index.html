@@ -592,6 +592,12 @@
 								Grimoire
 							</a>
 						</li>
+						<li id="menuVendors" class="disabled">
+							<a href="javascript:void(0);" id="menuVendorEditor"
+							   data-bound="VendorEditor">
+								Vendors
+							</a>
+						</li>
 						<li id="menuConsole" class="disabled">
 							<a href="javascript:void(0);" id="menuOpenConsole" data-bound="SavedGame">
 								Console
@@ -1255,6 +1261,84 @@
 						</div>
 					</div>
 				</div>
+				<!-- The Vendors view. A store's stock is not in the world state but in
+				     the area file of the level it stands in, so this is read from
+				     those files on demand. Nothing is picked until the user picks it:
+				     original stock includes uniques nobody has bought yet. -->
+				<div class="row view vendors-view" id="vendorsView" data-bound="VendorEditor">
+					<div class="panel-bar" id="vndPanelBar" data-bound="VendorEditor">
+						<span class="panel-bar-title">Vendors</span>
+						<span class="panel-bar-hint">Pick what to take out of a vendor&rsquo;s stock; nothing goes until you apply.</span>
+						<span class="panel-bar-actions">
+							<button type="button" class="pm-btn panel-revert" id="vndRevert"
+							        data-bound="VendorEditor">
+								<i>&#10094;</i> Revert <i>&#10095;</i>
+							</button>
+							<button type="button" class="pm-btn panel-apply" id="vndApply"
+							        data-bound="VendorEditor">
+								<i>&#10094;</i> Apply changes <i>&#10095;</i>
+							</button>
+						</span>
+					</div>
+
+					<div class="vnd-message" id="vndMessage" data-bound="VendorEditor"></div>
+
+					<div class="vnd-columns" id="vndColumns" data-bound="VendorEditor">
+						<div class="vnd-rail">
+							<div class="vnd-rail-head">
+								<span>Vendors</span>
+								<span class="vnd-rail-count" id="vndCount"
+								      data-bound="VendorEditor"></span>
+							</div>
+							<label class="vnd-rail-option">
+								<input type="checkbox" id="vndShowUnvisited"
+								       data-bound="VendorEditor" />
+								Include vendors never opened
+							</label>
+							<button type="button" class="pm-btn vnd-everywhere" id="vndSelectEverywhere"
+							        data-bound="VendorEditor"
+							        title="Every item that is not a vendor&rsquo;s original stock, at every vendor you have traded with">
+								Select what you sold, everywhere
+							</button>
+							<div class="vnd-list" id="vndList" data-bound="VendorEditor"></div>
+						</div>
+
+						<div class="vnd-body">
+							<div class="vnd-head">
+								<span class="vnd-title" id="vndTitle" data-bound="VendorEditor"></span>
+								<span class="vnd-meta" id="vndMeta" data-bound="VendorEditor"></span>
+							</div>
+
+							<div class="vnd-toolbar">
+								<span class="inv-filters vnd-filters" id="vndFilters"
+								      data-bound="VendorEditor"></span>
+								<span class="vnd-actions">
+									<button type="button" class="pm-btn vnd-action" id="vndSelectSold"
+									        data-bound="VendorEditor">
+										Select what isn&rsquo;t original stock
+									</button>
+									<button type="button" class="pm-btn vnd-action" id="vndSelectNone"
+									        data-bound="VendorEditor">
+										Clear
+									</button>
+								</span>
+							</div>
+
+							<div class="vnd-grid" id="vndGrid" data-bound="VendorEditor"></div>
+
+							<div class="vnd-legend">
+								<span><span class="vnd-legend-mark vnd-legend-original"></span>
+									Original stock &mdash; what the vendor started with, uniques
+									included. Removed, it does not come back.</span>
+								<span><span class="vnd-legend-mark vnd-legend-marked"></span>
+									Picked for removal</span>
+							</div>
+
+							<div class="vnd-detail" id="vndDetail" data-bound="VendorEditor"></div>
+							<div class="vnd-status" id="vndStatus" data-bound="VendorEditor"></div>
+						</div>
+					</div>
+				</div>
 				<div class="row view console-view" id="consoleView" data-bound="ConsoleTab">
 					<!-- Revert and Apply for a panel that edits saveData as you type.
 					     Apply is a commit point rather than a write: it makes what is on
@@ -1403,6 +1487,7 @@
 	<script src="js/AbilityEditor.js"></script>
 	<script src="js/StrongholdEditor.js"></script>
 	<script src="js/GrimoireEditor.js"></script>
+	<script src="js/VendorEditor.js"></script>
 	<script src="js/PortraitPicker.js"></script>
 	<script src="js/PanelChanges.js"></script>
 	<script src="js/ConsoleTab.js"></script>

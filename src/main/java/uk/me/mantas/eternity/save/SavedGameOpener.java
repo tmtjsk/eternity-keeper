@@ -946,7 +946,7 @@ public class SavedGameOpener implements Runnable {
 	// in the game's binary asset bundles, which would need a separate
 	// item-catalog project to parse. This is an honest approximation:
 	// "Rings/Ring_PREORDER_Gauns_Pledge.prefab" -> "Ring PREORDER Gauns Pledge".
-	private static String prettifyItemName (final String baseItem) {
+	public static String prettifyItemName (final String baseItem) {
 		if (baseItem == null || baseItem.isEmpty()) {
 			return "(unknown item)";
 		}

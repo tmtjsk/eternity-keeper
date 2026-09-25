@@ -160,6 +160,7 @@ var Editor = function () {
 			self.AbilityEditor.transition({enabled: false});
 			self.StrongholdEditor.transition({enabled: false});
 			self.GrimoireEditor.transition({enabled: false});
+			self.VendorEditor.transition({enabled: false, visible: false});
 			self.PortraitPicker.transition({enabled: false});
 			self.PanelChanges.transition({enabled: false});
 			self.ConsoleTab.transition({enabled: false});
@@ -169,6 +170,7 @@ var Editor = function () {
 			self.AbilityEditor.html.menuCharacterAbilities.off().parent().addClass('disabled');
 			self.StrongholdEditor.html.menuStrongholdEditor.off().parent().addClass('disabled');
 			self.GrimoireEditor.html.menuGrimoireEditor.off().parent().addClass('disabled');
+			self.VendorEditor.html.menuVendorEditor.off().parent().addClass('disabled');
 			disableMenu('menuCharacter');
 			disableMenu('menuGlobals');
 			self.ImportCharacter.transition({enabled: false});
@@ -184,6 +186,7 @@ var Editor = function () {
 			self.AbilityEditor.html.menuCharacterAbilities.parent().removeClass('disabled');
 			self.StrongholdEditor.html.menuStrongholdEditor.parent().removeClass('disabled');
 			self.GrimoireEditor.html.menuGrimoireEditor.parent().removeClass('disabled');
+			self.VendorEditor.html.menuVendorEditor.parent().removeClass('disabled');
 			enableMenu('menuCharacter');
 			enableMenu('menuGlobals');
 			self.DifficultyEditor.transition({enabled: true});
@@ -191,6 +194,10 @@ var Editor = function () {
 			self.AbilityEditor.transition({enabled: true});
 			self.StrongholdEditor.transition({enabled: true});
 			self.GrimoireEditor.transition({enabled: true});
+			// Visible only once SavedGame shows its view: transition merges
+			// state, and a stale "visible" would read the area files of a
+			// save nobody asked to look at.
+			self.VendorEditor.transition({enabled: true, visible: false});
 			self.PortraitPicker.transition({enabled: true});
 			self.ConsoleTab.transition({enabled: true});
 			self.ImportCharacter.transition({enabled: true});
@@ -215,6 +222,7 @@ var Editor = function () {
 	self.AbilityEditor = new AbilityEditor();
 	self.StrongholdEditor = new StrongholdEditor();
 	self.GrimoireEditor = new GrimoireEditor();
+	self.VendorEditor = new VendorEditor();
 	self.PortraitPicker = new PortraitPicker();
 	self.PanelChanges = new PanelChanges();
 	self.ConsoleTab = new ConsoleTab();

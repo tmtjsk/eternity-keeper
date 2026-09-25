@@ -2,7 +2,8 @@
 #
 # Asked for: the three ability panels side by side and the same height, the
 # stronghold's upgrades and rail across the whole width, and both behaving as
-# the window changes size. Each size is emulated (the window itself stays put)
+# the window changes size. The Vendors tab joined them: its rail and stock
+# side by side at one height, clear of the Save button. Each size is emulated (the window itself stays put)
 # and measured; a screenshot of each lands in target/ui-tests/shots.
 import base64, json, os, sys, time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -134,6 +135,31 @@ for width, height in SIZES:
         check("%s stronghold: the rail stacks under the list at full width" % label,
               abs(rail["l"] - listbox["l"]) <= 2 and tab["r"] - 18 - listbox["r"] <= 4, (listbox, rail))
     shot("responsive-stronghold-" + label)
+
+    # ---- vendors -------------------------------------------------------------
+    view("VENDORS", 1.5)
+    page.wait_for("$('#vndList .vnd-vendor').length > 0", 120, "the vendor list")
+    time.sleep(0.5)
+    tab = boxes("#vendorsView")[0]
+    rail, body = boxes(".vnd-rail")[0], boxes(".vnd-body")[0]
+    print("   %s vendors: rail %s, stock %s" % (label, (rail["l"], rail["r"], rail["h"]),
+                                               (body["l"], body["r"], body["h"])))
+    check("%s vendors: nothing runs off the right edge" % label, overflow() == 0, overflow())
+    check("%s vendors: the rail and the stock side by side, one height" % label,
+          rail["t"] == body["t"] and rail["r"] <= body["l"] and abs(rail["h"] - body["h"]) <= 2,
+          (rail, body))
+    check("%s vendors: the stock reaches the tab's edge" % label, tab["r"] - 18 - body["r"] <= 4,
+          (tab["r"], body["r"]))
+    check("%s vendors: both columns end inside the window" % label,
+          max(rail["b"], body["b"]) <= inner, "%s of %s" % (max(rail["b"], body["b"]), inner))
+    fab = E("""(function(){ var e = $('#saveButton:visible')[0]; if (!e) return null;
+      var b = e.getBoundingClientRect(); return [b.left, b.top, b.right, b.bottom]; })()""")
+    if fab:
+        check("%s vendors: nothing runs under the Save button" % label,
+              body["r"] <= fab[0] or body["b"] <= fab[1], "button %s, stock %s" % (fab, body))
+    check("%s vendors: nothing spills out of a column" % label,
+          spills(".vnd-rail, .vnd-body") == 0, spills(".vnd-rail, .vnd-body"))
+    shot("responsive-vendors-" + label)
 
 check("a shorter window gives the ability panels less height",
       heights["1920x800"] < heights["1920x1080"], heights)

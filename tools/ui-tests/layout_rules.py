@@ -221,7 +221,8 @@ check("stronghold: the hireling rows stay inside the rail",
 
 # ---- every tab: the panel bar in the same place ----------------------------
 bars = {}
-for name in ("ATTR", "RAW", "GLOBALS", "INVENTORY", "ABILITIES", "STRONGHOLD", "GRIMOIRE", "CONSOLE"):
+for name in ("ATTR", "RAW", "GLOBALS", "INVENTORY", "ABILITIES", "STRONGHOLD", "GRIMOIRE", "VENDORS",
+             "CONSOLE"):
     view(name, 2.2)
     bar, actions = rect(".panel-bar"), rect(".panel-bar .panel-bar-actions")
     bars[name] = (bar["l"], bar["t"], actions["r"])

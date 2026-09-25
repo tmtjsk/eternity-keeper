@@ -2461,18 +2461,21 @@ body.theme-light .inv-tile-fallback {
 	color: #b3a179;
 }
 
+/* The wash is laid over the dark tile rather than replacing it: a translucent
+   colour straight on parchment came out as a pale tile, the one thing this
+   block exists to prevent. */
 body.theme-light .inv-quality-soulbound {
-	background: rgba(255, 255, 255, .2);
+	background: linear-gradient(rgba(255, 255, 255, .2), rgba(255, 255, 255, .2)) rgba(28, 23, 16, .82);
 	border-color: rgba(255, 255, 255, .7);
 }
 
 body.theme-light .inv-quality-fine {
-	background: rgba(96, 158, 224, .24);
+	background: linear-gradient(rgba(96, 158, 224, .24), rgba(96, 158, 224, .24)) rgba(28, 23, 16, .82);
 	border-color: rgba(70, 130, 200, .8);
 }
 
 body.theme-light .inv-quality-unique {
-	background: rgba(216, 172, 74, .26);
+	background: linear-gradient(rgba(216, 172, 74, .26), rgba(216, 172, 74, .26)) rgba(28, 23, 16, .82);
 	border-color: rgba(180, 130, 30, .85);
 }
 
@@ -5152,6 +5155,348 @@ body.theme-light .abl-sort-on {
 
 body.theme-light .inv-status-warn {
 	color: #8a4b12;
+}
+
+/* ---- Vendors -----------------------------------------------------------------
+   The vendors down a rail on the left, the chosen one's stock as tiles beside
+   it. Both columns are the window's height less the bars above and the
+   floating Save button's corner below, the way the ability panels are, and
+   each scrolls inside itself: a mid-game save lists some forty vendors, and
+   the stronghold's merchant alone can hold eight hundred items. */
+
+.vnd-message {
+	margin: 0 0 14px;
+	padding: 10px 14px;
+	font-size: 13px;
+	line-height: 1.55;
+	color: #c9b47e;
+	background: rgba(0, 0, 0, .22);
+	border: 1px solid rgba(201, 180, 126, .24);
+	border-radius: 3px;
+}
+
+.vnd-columns {
+	display: flex;
+	align-items: stretch;
+}
+
+.vnd-rail,
+.vnd-body {
+	display: flex;
+	flex-direction: column;
+	height: calc(100vh - 218px);
+	min-height: 420px;
+}
+
+.vnd-rail {
+	flex: 0 0 270px;
+	margin-right: 20px;
+}
+
+.vnd-body {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.vnd-rail-head {
+	flex: 0 0 auto;
+	font-size: 11px;
+	letter-spacing: .06em;
+	text-transform: uppercase;
+	color: #a2937a;
+	margin-bottom: 6px;
+}
+
+.vnd-rail-count {
+	float: right;
+	color: #93866f;
+	text-transform: none;
+	letter-spacing: 0;
+}
+
+.vnd-rail-option {
+	flex: 0 0 auto;
+	display: block;
+	margin: 0 0 8px;
+	font-size: 12px;
+	font-weight: normal;
+	color: #b9a680;
+	cursor: pointer;
+}
+
+.vnd-rail-option input {
+	margin: 0 6px 0 0;
+	vertical-align: -2px;
+}
+
+.vnd-everywhere {
+	flex: 0 0 auto;
+	margin: 0 0 10px;
+	padding: 4px 10px;
+	font-size: 12px;
+}
+
+.vnd-list {
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow-y: auto;
+	padding-right: 4px;
+}
+
+.vnd-vendor {
+	padding: 7px 10px 8px;
+	margin-bottom: 6px;
+	background: rgba(0, 0, 0, .2);
+	border: 1px solid rgba(201, 180, 126, .16);
+	border-left-width: 3px;
+	border-radius: 2px;
+	cursor: pointer;
+}
+
+.vnd-vendor:hover {
+	border-color: rgba(201, 180, 126, .34);
+}
+
+.vnd-vendor-selected {
+	background: rgba(201, 180, 126, .1);
+	border-left-color: #c9b47e;
+}
+
+.vnd-vendor-unvisited {
+	opacity: .7;
+}
+
+.vnd-vendor-name {
+	font-size: 13px;
+	color: #e8d5a3;
+}
+
+.vnd-vendor-picked {
+	float: right;
+	padding: 0 6px;
+	font-size: 11px;
+	line-height: 17px;
+	color: #ffd9cf;
+	background: rgba(176, 58, 40, .55);
+	border-radius: 8px;
+}
+
+.vnd-vendor-where,
+.vnd-vendor-count {
+	font-size: 11px;
+	color: #93866f;
+}
+
+.vnd-head {
+	flex: 0 0 auto;
+	padding-bottom: 8px;
+	margin-bottom: 10px;
+	border-bottom: 1px solid rgba(201, 180, 126, .2);
+}
+
+.vnd-title {
+	font-size: 17px;
+	color: #e8d5a3;
+	margin-right: 12px;
+}
+
+.vnd-meta {
+	font-size: 12px;
+	color: #93866f;
+}
+
+/* The category buttons and the two selection buttons share a row; the
+   buttons sit right after the categories they act with, not at the far end. */
+.vnd-toolbar {
+	flex: 0 0 auto;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	margin-bottom: 10px;
+}
+
+.vnd-toolbar .vnd-filters {
+	margin: 0 14px 4px 0;
+}
+
+.vnd-actions {
+	margin-bottom: 4px;
+}
+
+.vnd-action {
+	padding: 4px 10px;
+	font-size: 12px;
+	margin-right: 6px;
+}
+
+.vnd-grid {
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow-y: auto;
+	padding: 2px 0 0 2px;
+	font-size: 0;
+}
+
+.vnd-grid .vnd-tile {
+	margin: 0 6px 6px 0;
+	font-size: 13px;
+}
+
+.vnd-grid-empty {
+	font-size: 13px;
+	color: #93866f;
+	padding: 6px 2px;
+}
+
+/* Original stock carries a small gold mark in its corner: the one thing to
+   think twice about before removing, since the game never restocks it. */
+.vnd-tile-original:before {
+	content: "";
+	position: absolute;
+	left: 2px;
+	top: 2px;
+	width: 7px;
+	height: 7px;
+	background: #e2b84f;
+	transform: rotate(45deg);
+	box-shadow: 0 0 2px #000;
+}
+
+/* Picked for removal: the art dimmed under a red wash and a cross, so the
+   choice reads across a dense grid of similar icons. */
+.vnd-tile-marked {
+	border-color: #c4553f;
+	box-shadow: 0 0 0 2px rgba(196, 85, 63, .75) inset;
+}
+
+.vnd-tile-marked .inv-tile-icon,
+.vnd-tile-marked .inv-tile-fallback {
+	opacity: .38;
+}
+
+.vnd-tile-marked:after,
+.vnd-legend-marked:after {
+	content: "\2715";
+	position: absolute;
+	right: 3px;
+	top: 1px;
+	font-size: 13px;
+	line-height: 1;
+	color: #ffb3a3;
+	text-shadow: 0 0 3px #000, 0 0 3px #000;
+}
+
+.vnd-legend {
+	flex: 0 0 auto;
+	margin-top: 10px;
+	font-size: 11px;
+	color: #93866f;
+}
+
+.vnd-legend > span {
+	display: inline-block;
+	margin-right: 18px;
+}
+
+.vnd-legend-mark {
+	position: relative;
+	display: inline-block;
+	width: 16px;
+	height: 16px;
+	margin-right: 6px;
+	vertical-align: -4px;
+	background: rgba(0, 0, 0, .38);
+	border: 1px solid rgba(201, 180, 126, .26);
+	border-radius: 2px;
+}
+
+.vnd-legend-original:before {
+	content: "";
+	position: absolute;
+	left: 2px;
+	top: 2px;
+	width: 6px;
+	height: 6px;
+	background: #e2b84f;
+	transform: rotate(45deg);
+}
+
+.vnd-legend-mark.vnd-legend-marked {
+	border-color: #c4553f;
+}
+
+.vnd-legend-mark.vnd-legend-marked:after {
+	right: 2px;
+	top: 1px;
+	font-size: 11px;
+}
+
+.vnd-detail {
+	flex: 0 0 auto;
+	margin-top: 8px;
+	min-height: 20px;
+	font-size: 12px;
+	color: #b9a680;
+}
+
+.vnd-detail-name {
+	color: #e8d5a3;
+	margin-right: 10px;
+}
+
+.vnd-detail-hint {
+	color: #7f735e;
+}
+
+.vnd-status {
+	flex: 0 0 auto;
+	margin-top: 8px;
+	font-size: 12px;
+	color: #c9b47e;
+}
+
+body.theme-light .vnd-message {
+	color: #6b3812;
+	background: rgba(0, 0, 0, .04);
+	border-color: rgba(107, 56, 18, .25);
+}
+
+body.theme-light .vnd-vendor {
+	background: rgba(0, 0, 0, .04);
+	border-color: rgba(107, 56, 18, .2);
+}
+
+body.theme-light .vnd-vendor-selected {
+	background: rgba(107, 56, 18, .09);
+	border-left-color: #6b3812;
+}
+
+body.theme-light .vnd-title,
+body.theme-light .vnd-vendor-name,
+body.theme-light .vnd-detail-name {
+	color: #4a2f14;
+}
+
+body.theme-light .vnd-rail-head,
+body.theme-light .vnd-rail-count,
+body.theme-light .vnd-rail-option,
+body.theme-light .vnd-vendor-where,
+body.theme-light .vnd-vendor-count,
+body.theme-light .vnd-meta,
+body.theme-light .vnd-grid-empty,
+body.theme-light .vnd-legend,
+body.theme-light .vnd-detail,
+body.theme-light .vnd-detail-hint {
+	color: #5a4a2c;
+}
+
+body.theme-light .vnd-status {
+	color: #6b3812;
+}
+
+/* After the light-mode quality borders, which would otherwise win. */
+body.theme-light .vnd-tile-marked {
+	border-color: #c4553f;
 }
 
 /* ---- one frame for every tab ------------------------------------------------

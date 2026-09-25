@@ -66,8 +66,12 @@ public class JSHandlers {
 		handlers.put("updateAbilities", new UpdateAbilities());
 		handlers.put("updateStronghold", new UpdateStronghold());
 		handlers.put("updateGrimoires", new UpdateGrimoires());
+		handlers.put("updateVendors", new UpdateVendors());
 		handlers.put("resurrectCharacter", new ResurrectCharacter());
 		handlers.put("enableAchievements", new EnableAchievements());
+
+		// Read-only: the vendors in the working save's area files.
+		handlers.put("getVendors", new GetVendors());
 
 		// Characters in and out of .chr files.
 		handlers.put("exportCharacter", new ExportCharacter());

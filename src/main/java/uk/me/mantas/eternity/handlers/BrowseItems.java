@@ -18,6 +18,7 @@
 
 package uk.me.mantas.eternity.handlers;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 import uk.me.mantas.eternity.save.ItemCatalog;
 
@@ -37,11 +38,20 @@ public class BrowseItems extends CatalogQuery {
 
 	@Override
 	protected JSONObject answer (final JSONObject request) {
+		final ItemCatalog catalog = ItemCatalog.getInstance();
+
+		// Icon-only mode, for lists that arrive without their art: the
+		// Vendors tab holds thousands of items and asks for the icons of the
+		// store on screen.
+		final JSONArray iconKeys = request.optJSONArray("iconKeys");
+		if (iconKeys != null) {
+			return icons(catalog, iconKeys);
+		}
+
 		final String search = request.optString("search", "").toLowerCase().trim();
 		final int filter = request.optInt("filter", 0);
 		final int offset = offset(request);
 
-		final ItemCatalog catalog = ItemCatalog.getInstance();
 		final List<Map.Entry<String, ItemCatalog.Entry>> matches =
 			catalog.search(search, filter);
 
@@ -66,5 +76,21 @@ public class BrowseItems extends CatalogQuery {
 
 		response.put("available", catalog.size() > 0);
 		return response;
+	}
+
+	private static JSONObject icons (final ItemCatalog catalog, final JSONArray keys) {
+		final JSONObject icons = new JSONObject();
+		for (int i = 0; i < keys.length(); i++) {
+			final String key = keys.optString(i, "").toLowerCase();
+			catalog.lookup(key)
+				.filter(entry -> !entry.icon.isEmpty())
+				.map(entry -> catalog.iconData(entry.icon))
+				.filter(data -> !data.isEmpty())
+				.ifPresent(data -> icons.put(key, data));
+		}
+
+		return new JSONObject()
+			.put("icons", icons)
+			.put("available", catalog.size() > 0);
 	}
 }

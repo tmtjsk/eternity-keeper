@@ -75,7 +75,8 @@ running it.
 | `backups_ui.py` | A save deleted from the list is copied first; File → Backups restores it, refuses to restore over it, and a rename is copied too (works on a throwaway copy of one test save) |
 | `stronghold_people.py` | Hirelings and prisoners by the game's own names; a staged dismissal projects the gauges, Keep and Revert undo it, Apply dismisses; a prisoner released and read back from the written file (borrows a save with a prisoner from the real saves folder's `2.0 Save Games Backup`, and deletes it afterwards) |
 | `quick_and_weapons.py` | The game's weapon-set rules refused in the Inventory tab (two-handers, soulbound items, a swap that would hand one over) and by the server itself; a set's halves swapped, a stash stack split into a quick slot, a quick item traded for a pack item; saved and read back |
-| `responsive.py` | The Abilities and Stronghold tabs at six window sizes, from 1100x800 to 2560x1369: nothing off the right edge, the two ability lists one width and every panel on a line one height, the browser beside them or wrapped under them at full width, nothing under the floating Save button, the upgrades and the keep's rail spanning the tab or stacked; screenshots in `target/ui-tests/shots` |
+| `responsive.py` | The Abilities, Stronghold and Vendors tabs at six window sizes, from 1100x800 to 2560x1369: nothing off the right edge, the two ability lists one width and every panel on a line one height, the browser beside them or wrapped under them at full width, nothing under the floating Save button, the upgrades and the keep's rail spanning the tab or stacked, the vendor rail and stock side by side; screenshots in `target/ui-tests/shots` |
+| `vendors.py` | The Vendors tab on a save with 68 stores: the list, one vendor's 255 items with icons, prices and original stock marked, picking and clearing, the category filter, "what you sold, everywhere", Revert; then five items taken out of two vendors, saved, and the written file checked area file by area file — exactly the two edited `.lvl` files differ from the save it came from |
 | `gamedata_ui.py` | The game-data banner and Settings row on a first launch; `full` also runs a real extraction (a few minutes) |
 
 `gamedata_ui.py` starts its own editor with an empty data folder, so run it
@@ -86,7 +87,9 @@ editor feature, for loading in the game itself; `ingame_portraits.py` builds
 one whose load-list thumbnails have changed (the Watcher's face, a smaller
 party) and checks them in the file; `ingame_keep.py` builds one with the
 Crucible Knight dismissed and Kestorik released; `ingame_quick.py` one with
-Aloth's weapon sets traded and lockpicks split into the Watcher's quick slot; `filedialog.py` answers the
+Aloth's weapon sets traded and lockpicks split into the Watcher's quick slot;
+`ingame_vendors.py` one with everything the party sold to Caed Nua's General
+Goods Merchant taken out of his stock; `filedialog.py` answers the
 native file dialogs the editor opens. They are not pass/fail suites.
 
 A caution: many page reloads in one session can leave queries unanswered, which
