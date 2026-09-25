@@ -33,7 +33,6 @@ import uk.me.mantas.eternity.game.*;
 import uk.me.mantas.eternity.handlers.OpenSavedGame;
 import uk.me.mantas.eternity.serializer.CSharpCollection;
 import uk.me.mantas.eternity.serializer.DeserializedPackets;
-import uk.me.mantas.eternity.serializer.PacketDeserializer;
 import uk.me.mantas.eternity.serializer.properties.Property;
 
 import java.io.File;
@@ -83,7 +82,11 @@ public class SavedGameOpener implements Runnable {
 			return;
 		}
 
-		final List<Property> allPackets = deserialize(mobileObjectsFile);
+		final Optional<DeserializedPackets> read = deserialize(mobileObjectsFile);
+		final List<Property> allPackets = read.isPresent()
+				? read.get().getPackets()
+				: new ArrayList<>();
+
 		final List<Property> gameObjects = allPackets.stream()
 				.filter(this::isObjectPersistencePacket)
 				.filter(this::hasObjectName)
@@ -96,7 +99,7 @@ public class SavedGameOpener implements Runnable {
 		final JSONObject inventory = extractInventory(gameObjects, characters);
 		final JSONObject abilities = extractAbilities(gameObjects, characters);
 		final JSONArray grimoires = extractGrimoires(gameObjects);
-		final JSONObject validation = validate(allPackets);
+		final JSONObject validation = validate(read.orElse(null));
 
 		sendJSON(currency, globals, characters, deadCompanions, inventory, abilities
 			, grimoires, validation);
@@ -1049,17 +1052,22 @@ public class SavedGameOpener implements Runnable {
 	 * editor made surfaces at once rather than as items silently missing the
 	 * next time the game loads.
 	 *
-	 * <p>The object count is deliberately not checked: the deserializer reads
-	 * exactly as many packets as the file's count claims, so comparing the two
-	 * afterwards can only ever agree. That check earns its keep against a tree
-	 * built in memory, not one just read off disk.
+	 * <p>A file that could be read only in part says so: whatever came after
+	 * the damage is not there to show, and nothing will write the save back.
+	 * The count is not otherwise compared with the contents — a whole read
+	 * stops at the count, so the two agree by construction. That check earns
+	 * its keep against a tree built in memory, not one just read off disk.
 	 */
-	private JSONObject validate(final List<Property> packets) {
+	private JSONObject validate(final DeserializedPackets read) {
 		final JSONObject validation = new JSONObject();
 		final JSONArray problems = new JSONArray();
 		validation.put("problems", problems);
 
-		for (final SaveValidator.Problem problem : SaveValidator.validate(packets, -1)) {
+		final List<SaveValidator.Problem> found = new ArrayList<>();
+		SaveValidator.shortRead(read).ifPresent(found::add);
+		found.addAll(SaveValidator.validate(read == null ? null : read.getPackets(), -1));
+
+		for (final SaveValidator.Problem problem : found) {
 			final JSONObject json = new JSONObject();
 			json.put("kind", problem.kind.name());
 			json.put("objectName", problem.objectName);
@@ -1524,21 +1532,21 @@ public class SavedGameOpener implements Runnable {
 		return characters;
 	}
 
-	private List<Property> deserialize(final File mobileObjectsFile) {
-		List<Property> objects = new ArrayList<>();
+	// Whatever of the file can be read: a damaged save is still shown, with the
+	// validation strip saying it is not all there, and nothing writes it back.
+	private Optional<DeserializedPackets> deserialize(final File mobileObjectsFile) {
 		try {
-			final PacketDeserializer deserializer = packetDeserializer.forFile(mobileObjectsFile);
-			final Optional<DeserializedPackets> deserialized = deserializer.deserialize();
+			final Optional<DeserializedPackets> deserialized =
+					packetDeserializer.forFile(mobileObjectsFile).deserializeEvenIfShort();
+
 			if (!deserialized.isPresent()) {
 				OpenSavedGame.deserializationError(callback);
-				return objects;
 			}
 
-			objects = deserialized.get().getPackets();
-		} catch (final FileNotFoundException | IndexOutOfBoundsException e) {
+			return deserialized;
+		} catch (final FileNotFoundException e) {
 			OpenSavedGame.deserializationError(callback);
+			return Optional.empty();
 		}
-
-		return objects;
 	}
 }

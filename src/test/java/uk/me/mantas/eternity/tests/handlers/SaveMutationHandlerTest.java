@@ -24,10 +24,12 @@ import org.cef.callback.CefQueryCallback;
 import org.json.JSONObject;
 import org.junit.After;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 import uk.me.mantas.eternity.EKUtils;
 import uk.me.mantas.eternity.environment.Environment;
 import uk.me.mantas.eternity.handlers.OpenSavedGame;
 import uk.me.mantas.eternity.handlers.SaveMutationHandler;
+import uk.me.mantas.eternity.serializer.ShortReadException;
 import uk.me.mantas.eternity.tests.TestHarness;
 
 import java.io.File;
@@ -248,6 +250,27 @@ public class SaveMutationHandlerTest extends TestHarness {
 
 		verify(callback, timeout(60000)).failure(anyInt()
 			, argThat(message -> message.contains("MobileObjects.save is locked")));
+		verify(callback, never()).success(anyString());
+	}
+
+	/**
+	 * A save that could only be read in part was never written, so "Could
+	 * not write the save" would blame the wrong step. The exception's own
+	 * words already say what happened and why, and they are the whole message.
+	 */
+	@Test
+	public void aShortReadIsReportedInItsOwnWords () throws Exception {
+		final File save = workingSave();
+		final Probe probe = new Probe();
+		probe.throwing = new ShortReadException("MobileObjects.save", 23, 22);
+		final CefQueryCallback callback = mock(CefQueryCallback.class);
+
+		send(probe, request(save, false), callback);
+
+		final ArgumentCaptor<String> message = ArgumentCaptor.forClass(String.class);
+		verify(callback, timeout(60000)).failure(anyInt(), message.capture());
+		assertEquals("Only 22 of the 23 objects in MobileObjects.save could be read, so nothing "
+			+ "was written: the rest would have been lost.", message.getValue());
 		verify(callback, never()).success(anyString());
 	}
 

@@ -276,12 +276,20 @@ copy of each prefab in its table, every twelve game hours. So "select what you
 sold" picks everything not original; original stock, uniques included, is
 marked on its tile and never picked for you, because nothing puts it back.
 
-*A damaged file reads short without an error.* `PacketDeserializer` returns
-whatever it managed to read — one packet of six from a truncated area file in
-the tests — and writing that back would silently drop the rest. The reader
-compares the leading count with what it read and treats a short read as no
-read at all; the manager refuses to write such a file. The other managers
-still trust their read of the world state.
+*A damaged file reads short without an error* — or did. `PacketDeserializer`
+returned whatever it managed to read — one packet of six from a truncated area
+file in the tests, 6,043 of 6,953 from a real world state cut at 90% — and
+writing that back would silently drop the rest. The check began here, in this
+tab's own reader; since 2026-09-25 it is the reader's for the whole editor.
+`deserialize()` refuses a short read with a `ShortReadException` whose message
+is the user's ("Only 4893 of the 4894 objects in MobileObjects.save could be
+read, so nothing was written: the rest would have been lost."), and
+`DeserializedPackets` will not write one whatever a caller has done with it.
+Every writer refuses in those words — each Apply, Save, import and export,
+resurrection and conversion — and a damaged save still opens, under a strip
+that leads with "Part of this save could not be read". Verified on the running
+editor with a real save cut half-way through its last object: the strip, an
+Apply and a Save all said so, and nothing reached the saves folder.
 
 *A store's list can point at nothing.* 280 entries in a real save — 242 of the
 stronghold merchant's, 38 of Crucible Keep's — name an item whose packet does

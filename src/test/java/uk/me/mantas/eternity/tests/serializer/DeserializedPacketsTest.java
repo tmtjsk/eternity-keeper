@@ -19,11 +19,15 @@
 
 package uk.me.mantas.eternity.tests.serializer;
 
+import org.apache.commons.io.FileUtils;
 import org.junit.Test;
 import org.mockito.InOrder;
+import uk.me.mantas.eternity.EKUtils;
 import uk.me.mantas.eternity.environment.Environment;
 import uk.me.mantas.eternity.serializer.DeserializedPackets;
+import uk.me.mantas.eternity.serializer.PacketDeserializer;
 import uk.me.mantas.eternity.serializer.SharpSerializer;
+import uk.me.mantas.eternity.serializer.ShortReadException;
 import uk.me.mantas.eternity.serializer.properties.Property;
 import uk.me.mantas.eternity.serializer.properties.SimpleProperty;
 import uk.me.mantas.eternity.tests.TestHarness;
@@ -32,7 +36,9 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
+import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
 public class DeserializedPacketsTest extends TestHarness {
@@ -55,5 +61,54 @@ public class DeserializedPacketsTest extends TestHarness {
 		// left a huge window for concurrent readers to see a growing file.
 		verify(mockSerializer).serializeAll(mockCount, components);
 		verify(mockSerializer, never()).serialize(any(Property.class));
+	}
+
+	// Packets put together in memory were never read, so nothing can be
+	// missing from them; only a read can come up short.
+	@Test
+	public void packetsPutTogetherInMemoryAreWhole () throws IOException {
+		mockSerializer(mockEnvironment());
+		final SimpleProperty count = mock(SimpleProperty.class);
+		count.obj = 5;
+
+		assertTrue(new DeserializedPackets(new ArrayList<>(), count).isWhole());
+	}
+
+	// The last line of defence: whatever a caller did with a short read,
+	// writing it is refused before a byte reaches the disk.
+	@Test
+	public void aShortReadIsNeverWritten () throws IOException {
+		final SharpSerializer mockSerializer = mockSerializer(mockEnvironment());
+		final SimpleProperty count = mock(SimpleProperty.class);
+		count.obj = 2;
+
+		when(mockSerializer.deserialize())
+			.thenReturn(Optional.of(count))
+			.thenReturn(Optional.of(mock(Property.class)))
+			.thenReturn(Optional.empty());
+
+		final DeserializedPackets partial =
+			new PacketDeserializer("world.save").deserializeEvenIfShort().get();
+
+		final File target = new File(EKUtils.createTempDir(PREFIX).get(), "world.save");
+		FileUtils.writeStringToFile(target, "as it was", "UTF-8");
+
+		try {
+			partial.replace(target);
+			fail("replace wrote a short read");
+		} catch (final ShortReadException expected) {
+			assertEquals("world.save", expected.file);
+		}
+
+		try {
+			partial.reserialize(target);
+			fail("reserialize wrote a short read");
+		} catch (final ShortReadException expected) {
+			assertEquals(1, expected.read);
+		}
+
+		verify(mockSerializer, never()).serializeAll(any(), any());
+		assertEquals("as it was", FileUtils.readFileToString(target, "UTF-8"));
+		assertArrayEquals(new String[] {"world.save"}, target.getParentFile().list());
 	}
 }

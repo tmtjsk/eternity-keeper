@@ -18,7 +18,9 @@
 
 package uk.me.mantas.eternity.tests.save;
 
+import org.apache.commons.io.FileUtils;
 import org.junit.Test;
+import uk.me.mantas.eternity.EKUtils;
 import uk.me.mantas.eternity.game.ComponentPersistencePacket;
 import uk.me.mantas.eternity.game.ObjectPersistencePacket;
 import uk.me.mantas.eternity.save.SaveValidator;
@@ -32,7 +34,7 @@ import uk.me.mantas.eternity.serializer.properties.Property;
 import uk.me.mantas.eternity.tests.TestHarness;
 
 import java.io.File;
-import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -243,9 +245,36 @@ public class SaveValidatorTest extends TestHarness {
 		assertTrue(SaveValidator.validate(new ArrayList<>(), 0).isEmpty());
 	}
 
+	// A file read short is its own problem, not a wrong count: the count may be
+	// perfectly right, and what is missing is whatever the file held after the
+	// damage. It is said once, as what it is.
+	@Test
+	public void aFileReadShortSaysSo () throws Exception {
+		final File resources = new File(getClass().getResource("/").toURI());
+		final File world = new File(EKUtils.createTempDir(PREFIX).get(), "MobileObjects.save");
+		FileUtils.copyFile(new File(resources, "MobileObjects.save"), world);
+		ShortReadTest.cutShort(world, "Global(Clone)");
+
+		final DeserializedPackets partial =
+			new PacketDeserializer(world).deserializeEvenIfShort().get();
+
+		final Optional<Problem> problem = SaveValidator.shortRead(partial);
+		assertTrue(problem.isPresent());
+		assertEquals(Problem.Kind.SHORT_READ, problem.get().kind);
+		assertTrue(problem.get().detail
+			, problem.get().detail.startsWith("only 22 of the 23 objects in MobileObjects.save"));
+
+		final List<Problem> problems = SaveValidator.validate(partial);
+		assertEquals(problems.toString(), 1, problems.size());
+		assertEquals(Problem.Kind.SHORT_READ, problems.get(0).kind);
+
+		assertFalse(SaveValidator.shortRead(new PacketDeserializer(
+			new File(resources, "MobileObjects.save")).deserialize().get()).isPresent());
+	}
+
 	@Test
 	public void theRealFixturesPassCleanly ()
-		throws URISyntaxException, FileNotFoundException {
+		throws URISyntaxException, IOException {
 
 		// The point of the whole thing: a save nobody has broken says nothing.
 		final File resources = new File(getClass().getResource("/").toURI());

@@ -406,7 +406,7 @@ public class CharacterImporterTest extends TestHarness {
 	}
 
 	private DeserializedPackets deserialize (final File file)
-		throws FileNotFoundException {
+		throws IOException {
 
 		final Optional<DeserializedPackets> deserialized =
 			new PacketDeserializer(file).deserialize();

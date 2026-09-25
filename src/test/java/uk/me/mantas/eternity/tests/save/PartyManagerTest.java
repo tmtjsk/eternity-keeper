@@ -32,7 +32,6 @@ import uk.me.mantas.eternity.serializer.properties.Property;
 import uk.me.mantas.eternity.tests.TestHarness;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.*;
@@ -57,7 +56,7 @@ public class PartyManagerTest extends TestHarness {
 	}
 
 	private DeserializedPackets deserialize (final File saveDir)
-		throws FileNotFoundException {
+		throws IOException {
 
 		final Optional<DeserializedPackets> deserialized =
 			new PacketDeserializer(new File(saveDir, "MobileObjects.save")).deserialize();

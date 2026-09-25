@@ -18,8 +18,8 @@
 
 package uk.me.mantas.eternity.serializer;
 
+import uk.me.mantas.eternity.Logger;
 import uk.me.mantas.eternity.environment.Environment;
-import uk.me.mantas.eternity.factory.SharpSerializerFactory;
 import uk.me.mantas.eternity.serializer.properties.Property;
 import uk.me.mantas.eternity.serializer.properties.ReferenceTargetProperty;
 import uk.me.mantas.eternity.serializer.properties.SimpleProperty;
@@ -33,11 +33,20 @@ import java.util.Optional;
 // This is a specialised instance of the Deserializer when we know we are dealing with a file that
 // has been serialized in PoE's particular format (i.e. the first object is a plain integer of the
 // number of following ComponentPersistencePacket objects).
+//
+// A file cut short, or damaged part of the way through, gives back fewer packets than that count
+// and nothing else to show for it. Anything that wrote such a read back would lose the rest of
+// the file without a word, so deserialize() refuses one outright; deserializeEvenIfShort() is for
+// looking only, and what it gives back refuses to be written.
 
 public class PacketDeserializer {
+	private static final Logger logger = Logger.getLogger(PacketDeserializer.class);
+
+	private final File file;
 	private final SharpSerializer deserializer;
 
 	public PacketDeserializer (final File file) throws FileNotFoundException {
+		this.file = file;
 		deserializer =
 			Environment.getInstance().factory().sharpSerializer().forFile(file.getAbsolutePath());
 	}
@@ -50,23 +59,89 @@ public class PacketDeserializer {
 		return deserializer.followReference(property);
 	}
 
-	public Optional<DeserializedPackets> deserialize () throws FileNotFoundException {
-		final List<Property> deserialized = new ArrayList<>();
-		final Optional<Property> objCountProp = deserializer.deserialize();
-
-		if (!objCountProp.isPresent()) {
-			return Optional.empty();
-		}
-
-		final int count = (int) objCountProp.get().obj;
-		for (int i = 0; i < count; i++) {
-			final Optional<Property> property = deserializer.deserialize();
-			if (property.isPresent()) {
-				deserialized.add(property.get());
+	/**
+	 * Every packet the file's leading count promises. Anything that goes on to
+	 * write what it read reads it with this.
+	 *
+	 * @return nothing when the file does not start with an object count at all
+	 * @throws ShortReadException when fewer packets could be read than the
+	 *         count promises; its message says so in words for the user
+	 */
+	public Optional<DeserializedPackets> deserialize () throws ShortReadException {
+		final Optional<DeserializedPackets> read = deserializeEvenIfShort();
+		if (read.isPresent()) {
+			final Optional<ShortReadException> shortRead = read.get().shortRead();
+			if (shortRead.isPresent()) {
+				throw shortRead.get();
 			}
 		}
 
-		final SimpleProperty countProperty = (SimpleProperty) objCountProp.get();
-		return Optional.of(new DeserializedPackets(deserialized, countProperty));
+		return read;
+	}
+
+	/**
+	 * As many of the file's packets as can be read, for showing a save that is
+	 * damaged -- never for writing one. What comes back says whether it is the
+	 * whole file ({@link DeserializedPackets#isWhole}) and refuses to be written
+	 * when it is not.
+	 *
+	 * <p>Reading stops at the first packet the file cannot get past: a failed
+	 * read leaves the reader where it was, so every later one would start at
+	 * the same byte and fail the same way. Asking again for each missing packet
+	 * made a real world state cut at 90% take three times as long to read as the
+	 * whole file, and logged the same error 910 times. A packet that throws ends
+	 * the read too, since nothing then says where it ends. One that is read but
+	 * cannot be built has been read past, so the rest still come.
+	 *
+	 * @return nothing when the file does not start with an object count at all
+	 */
+	public Optional<DeserializedPackets> deserializeEvenIfShort () {
+		final Optional<Property> header;
+		try {
+			header = deserializer.deserialize();
+		} catch (final RuntimeException e) {
+			logger.error(e, "%s does not start with an object count: %s%n", file.getName(), e);
+			return Optional.empty();
+		}
+
+		if (!header.isPresent()
+			|| !(header.get() instanceof SimpleProperty)
+			|| !(header.get().obj instanceof Number)
+			|| ((Number) header.get().obj).intValue() < 0) {
+
+			return Optional.empty();
+		}
+
+		final SimpleProperty count = (SimpleProperty) header.get();
+		final int declared = ((Number) count.obj).intValue();
+		final List<Property> packets = new ArrayList<>();
+
+		for (int i = 0; i < declared; i++) {
+			final long before = deserializer.position();
+			final Optional<Property> packet;
+
+			try {
+				packet = deserializer.deserialize();
+			} catch (final RuntimeException e) {
+				logger.error(e, "%s: object %d of %d could not be read: %s%n"
+					, file.getName(), i + 1, declared, e);
+
+				break;
+			}
+
+			if (packet.isPresent()) {
+				packets.add(packet.get());
+			} else if (deserializer.position() == before) {
+				logger.error("%s cannot be read past object %d of %d.%n"
+					, file.getName(), i + 1, declared);
+
+				break;
+			} else {
+				logger.error("%s: object %d of %d was read but could not be built.%n"
+					, file.getName(), i + 1, declared);
+			}
+		}
+
+		return Optional.of(new DeserializedPackets(packets, count, file.getName(), declared));
 	}
 }

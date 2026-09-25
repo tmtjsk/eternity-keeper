@@ -30,15 +30,41 @@ import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.List;
+import java.util.Optional;
 
 public class DeserializedPackets {
 	private List<Property> packets;
 	private final SimpleProperty count;
 	private final SharpSerializerFactory sharpSerializer;
 
+	// What the read that made these found: the file, how many packets its
+	// count promised and how many came back. Fixed when it was read, because
+	// every writer sets the count to the packets it holds before writing,
+	// which would make a short read look whole by the time it is written.
+	private final String source;
+	private final int declared;
+	private final int read;
+
+	/** Packets put together in memory: never read, so nothing is missing from them. */
 	public DeserializedPackets (final List<Property> packets, final SimpleProperty count) {
+		this(packets, count, null, packets.size());
+	}
+
+	/**
+	 * What reading {@code source} gave back, whose leading count promised
+	 * {@code declared} packets.
+	 */
+	DeserializedPackets (
+		final List<Property> packets
+		, final SimpleProperty count
+		, final String source
+		, final int declared) {
+
 		this.packets = packets;
 		this.count = count;
+		this.source = source;
+		this.declared = declared;
+		this.read = packets.size();
 		sharpSerializer = Environment.getInstance().factory().sharpSerializer();
 	}
 
@@ -54,6 +80,21 @@ public class DeserializedPackets {
 		return count;
 	}
 
+	/** Whether every packet the file's count promised was read. */
+	public boolean isWhole () {
+		return read >= declared;
+	}
+
+	/**
+	 * Why these packets must not be written, when they are only the start of
+	 * the file they were read from.
+	 */
+	public Optional<ShortReadException> shortRead () {
+		return isWhole()
+			? Optional.empty()
+			: Optional.of(new ShortReadException(source, declared, read));
+	}
+
 	/**
 	 * Serializes into {@code destinationFile}, which must already exist and is
 	 * appended to (invariant 13) -- right for a file created a moment ago. To
@@ -66,6 +107,7 @@ public class DeserializedPackets {
 	public void reserialize (final File destinationFile, final SerializerFormat outputFormat)
 		throws IOException {
 
+		refuseIfShort();
 		final SharpSerializer serializer =
 			sharpSerializer.forFile(destinationFile.getAbsolutePath()).toFormat(outputFormat);
 
@@ -87,8 +129,11 @@ public class DeserializedPackets {
 	 *
 	 * @throws IOException when the write or the move fails. {@code target} is
 	 *         then exactly as it was, and no sibling is left behind.
+	 * @throws ShortReadException when these packets are only the start of the
+	 *         file they were read from; nothing is written at all.
 	 */
 	public void replace (final File target) throws IOException {
+		refuseIfShort();
 		final File directory = target.getAbsoluteFile().getParentFile();
 		final File writing = File.createTempFile(target.getName() + ".", ".writing", directory);
 
@@ -109,6 +154,15 @@ public class DeserializedPackets {
 			if (writing.exists() && !writing.delete()) {
 				writing.deleteOnExit();
 			}
+		}
+	}
+
+	// Whatever a caller has done with a short read since -- setting its count
+	// to the packets it holds included -- it is not written.
+	private void refuseIfShort () throws ShortReadException {
+		final Optional<ShortReadException> shortRead = shortRead();
+		if (shortRead.isPresent()) {
+			throw shortRead.get();
 		}
 	}
 }

@@ -213,27 +213,14 @@ public class VendorStock {
 
 	/**
 	 * The packets of one file, or nothing when any of them could not be read.
-	 * A file read short would lose everything after the gap if it were
-	 * written back, so a partial read counts as no read at all.
+	 * {@code PacketDeserializer} refuses a read that comes up short itself now,
+	 * for every writer in the editor; this only turns that, and any other
+	 * failure, into "nothing", so the list can name a file it cannot read
+	 * instead of stopping at it.
 	 */
 	public static Optional<DeserializedPackets> readWhole (final File file) {
 		try {
-			final Optional<DeserializedPackets> packets = new PacketDeserializer(file).deserialize();
-			if (!packets.isPresent()) {
-				return Optional.empty();
-			}
-
-			final Object count = packets.get().getCount().obj;
-			if (!(count instanceof Number)
-				|| ((Number) count).intValue() != packets.get().getPackets().size()) {
-
-				logger.error("%s: read %d packets of %s.%n"
-					, file.getName(), packets.get().getPackets().size(), count);
-
-				return Optional.empty();
-			}
-
-			return packets;
+			return new PacketDeserializer(file).deserialize();
 		} catch (final IOException | RuntimeException e) {
 			logger.error(e, "Unable to read %s: %s%n", file.getName(), e.toString());
 			return Optional.empty();

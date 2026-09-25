@@ -78,6 +78,10 @@ Compared with upstream Eternity Keeper 0.21a, from 2016:
   another tab reloads the save.
 - A save that breaks the format's own rules is flagged when it opens, before
   the game quietly drops what it cannot read.
+- **A damaged save is never written back.** A save that can only be read in
+  part — cut short, or corrupted part of the way through — still opens, with a
+  warning that says how much is missing, but no edit, Save, import or export
+  writes from it: writing back only what could be read would lose the rest.
 - Polish and other non-ASCII save names display correctly.
 
 ### Also

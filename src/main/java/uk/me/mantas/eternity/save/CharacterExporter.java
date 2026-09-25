@@ -19,6 +19,7 @@
 
 package uk.me.mantas.eternity.save;
 
+import uk.me.mantas.eternity.Logger;
 import uk.me.mantas.eternity.environment.Environment;
 import uk.me.mantas.eternity.factory.PacketDeserializerFactory;
 import uk.me.mantas.eternity.factory.SharpSerializerFactory;
@@ -26,6 +27,7 @@ import uk.me.mantas.eternity.game.ObjectPersistencePacket;
 import uk.me.mantas.eternity.serializer.DeserializedPackets;
 import uk.me.mantas.eternity.serializer.PacketDeserializer;
 import uk.me.mantas.eternity.serializer.SharpSerializer;
+import uk.me.mantas.eternity.serializer.ShortReadException;
 import uk.me.mantas.eternity.serializer.properties.Property;
 import uk.me.mantas.eternity.serializer.properties.SimpleProperty;
 
@@ -37,6 +39,8 @@ import java.util.List;
 import java.util.Optional;
 
 public class CharacterExporter {
+	private static final Logger logger = Logger.getLogger(CharacterExporter.class);
+
 	private final File saveDirectory;
 	private final File chrFile;
 	private final String guid;
@@ -72,7 +76,28 @@ public class CharacterExporter {
 		sharpSerializer = environment.factory().sharpSerializer();
 	}
 
+	/**
+	 * Writes the character and everything it owns into the file this was made
+	 * for. An export that is refused or fails leaves no file behind: the
+	 * constructor made an empty one to write into, and an empty or partial
+	 * {@code .chr} beside the user's others would look like a character.
+	 *
+	 * @throws ShortReadException when the save could be read only in part --
+	 *         whatever the character owns after the damage would be missing
+	 */
 	public boolean export () throws IOException {
+		boolean exported = false;
+		try {
+			exported = write();
+			return exported;
+		} finally {
+			if (!exported && chrFile.exists() && !chrFile.delete()) {
+				logger.error("Unable to remove the unfinished %s.%n", chrFile.getAbsolutePath());
+			}
+		}
+	}
+
+	private boolean write () throws IOException {
 		final File mobileObjectsFile = new File(saveDirectory, "MobileObjects.save");
 		if (!mobileObjectsFile.exists()) {
 			throw new FileNotFoundException(mobileObjectsFile.getAbsolutePath());

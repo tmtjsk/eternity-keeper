@@ -32,6 +32,7 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -53,14 +54,19 @@ import java.util.UUID;
  *   <li>A carried or worn item GUID with no standalone packet of its own.</li>
  *   <li>A leading object count that disagrees with the contents (invariant 5),
  *       which makes every later read stop early.</li>
+ *   <li>A file that gave back fewer objects than its count promised — cut
+ *       short, or damaged part of the way through. The editor shows what it
+ *       could read and writes none of it back
+ *       ({@link uk.me.mantas.eternity.serializer.ShortReadException}).</li>
  * </ul>
  *
- * <p>All five were measured against four real saves before being written —
+ * <p>The first five were measured against four real saves before being written —
  * a 4,894-packet mid-game save, an early-prologue one, and both unit fixtures —
- * and report nothing on any of them. A sixth candidate did not survive that
- * measurement: <em>"Parent names an object that exists"</em> fires 29 times on
- * a perfectly healthy save, because a dead companion's belongings outlive the
- * companion the game deleted. It is deliberately not checked.
+ * and report nothing on any of them; the sixth cannot fire on a file that reads
+ * whole. Another candidate did not survive that measurement: <em>"Parent names
+ * an object that exists"</em> fires 29 times on a perfectly healthy save,
+ * because a dead companion's belongings outlive the companion the game
+ * deleted. It is deliberately not checked.
  */
 public class SaveValidator {
 	/** Something about the save that should not be true. */
@@ -72,6 +78,7 @@ public class SaveValidator {
 			, UNRESOLVED_ITEM
 			, UNRESOLVED_EQUIPMENT
 			, OBJECT_COUNT
+			, SHORT_READ
 		}
 
 		public final Kind kind;
@@ -103,14 +110,33 @@ public class SaveValidator {
 
 	private SaveValidator () {}
 
+	/** A file that gave back fewer objects than its count promised, or nothing. */
+	public static Optional<Problem> shortRead (final DeserializedPackets packets) {
+		return packets == null
+			? Optional.empty()
+			: packets.shortRead().map(read -> new Problem(Problem.Kind.SHORT_READ, "", ""
+				, String.format(
+					"only %d of the %d objects in %s could be read, so the editor will "
+						+ "not write this save: the rest would be lost"
+					, read.read, read.declared, read.file)));
+	}
+
 	public static List<Problem> validate (final DeserializedPackets packets) {
 		if (packets == null) {
 			return Collections.emptyList();
 		}
 
+		// A short read is said as what it is. Its count may be quite right,
+		// and comparing it with the objects read would say the same thing
+		// again as a count that is wrong.
+		final List<Problem> problems = new ArrayList<>();
+		shortRead(packets).ifPresent(problems::add);
+
 		final Object count = packets.getCount() == null ? null : packets.getCount().obj;
-		return validate(packets.getPackets()
-			, count instanceof Number ? ((Number) count).intValue() : -1);
+		problems.addAll(validate(packets.getPackets()
+			, problems.isEmpty() && count instanceof Number ? ((Number) count).intValue() : -1));
+
+		return problems;
 	}
 
 	/**

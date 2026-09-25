@@ -23,6 +23,8 @@ import uk.me.mantas.eternity.EKUtils;
 import uk.me.mantas.eternity.Logger;
 import uk.me.mantas.eternity.game.ObjectPersistencePacket;
 import uk.me.mantas.eternity.serializer.DeserializedPackets;
+import uk.me.mantas.eternity.serializer.PacketDeserializer;
+import uk.me.mantas.eternity.serializer.ShortReadException;
 import uk.me.mantas.eternity.serializer.properties.CollectionProperty;
 import uk.me.mantas.eternity.serializer.properties.ComplexProperty;
 import uk.me.mantas.eternity.serializer.properties.DictionaryProperty;
@@ -127,7 +129,13 @@ public class VendorManager {
 				return refuse("This save has no " + entry.getKey() + ".");
 			}
 
-			final Optional<DeserializedPackets> read = VendorStock.readWhole(file);
+			final Optional<DeserializedPackets> read;
+			try {
+				read = new PacketDeserializer(file).deserialize();
+			} catch (final ShortReadException e) {
+				return refuse(e.getMessage());
+			}
+
 			if (!read.isPresent()) {
 				return refuse(entry.getKey() + " could not be read, so nothing was changed.");
 			}

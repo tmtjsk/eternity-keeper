@@ -61,9 +61,13 @@ var ExportCharacter = function () {
 			self.state.exporting = false;
 			spinner.hide();
 
-			// NO_SAVENAME means the user cancelled the file dialog.
+			// NO_SAVENAME means the user cancelled the file dialog. The other
+			// codes keep the dialog's own words; a reason given in words -- a
+			// save that could only be read in part -- is shown as it stands.
 			if (response !== 'NO_SAVENAME') {
-				self.html.exportCharacterDialog.find('.alert-danger').show();
+				self.html.exportCharacterDialog.find('.alert-danger')
+					.text(/^[A-Z_]+$/.test(response) ? 'Error exporting character.' : response)
+					.show();
 			}
 		};
 

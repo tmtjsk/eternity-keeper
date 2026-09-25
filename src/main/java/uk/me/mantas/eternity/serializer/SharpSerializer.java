@@ -85,6 +85,14 @@ public class SharpSerializer {
 		return this;
 	}
 
+	/**
+	 * How far into the file the reads have got. A read that fails leaves it
+	 * where it was, so the next one starts at the same byte.
+	 */
+	public long position () {
+		return position;
+	}
+
 	public Optional<Property> deserialize () {
 		try {
 			FileInputStream baseStream = new FileInputStream(targetFile);

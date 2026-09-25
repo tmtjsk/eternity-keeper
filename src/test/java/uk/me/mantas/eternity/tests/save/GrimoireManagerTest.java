@@ -33,7 +33,6 @@ import uk.me.mantas.eternity.serializer.properties.Property;
 import uk.me.mantas.eternity.tests.TestHarness;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -82,7 +81,7 @@ public class GrimoireManagerTest extends TestHarness {
 	}
 
 	/** The spell names a save's one grimoire holds, in stored order. */
-	private List<String> spellsIn (final File saveDir) throws FileNotFoundException {
+	private List<String> spellsIn (final File saveDir) throws IOException {
 		final Optional<DeserializedPackets> packets =
 			new PacketDeserializer(new File(saveDir, "MobileObjects.save")).deserialize();
 
@@ -121,7 +120,7 @@ public class GrimoireManagerTest extends TestHarness {
 		return null;
 	}
 
-	private int packetCount (final File saveDir) throws FileNotFoundException {
+	private int packetCount (final File saveDir) throws IOException {
 		final Optional<DeserializedPackets> packets =
 			new PacketDeserializer(new File(saveDir, "MobileObjects.save")).deserialize();
 

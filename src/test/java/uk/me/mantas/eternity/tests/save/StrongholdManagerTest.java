@@ -34,7 +34,6 @@ import uk.me.mantas.eternity.serializer.properties.Property;
 import uk.me.mantas.eternity.tests.TestHarness;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -97,7 +96,7 @@ public class StrongholdManagerTest extends TestHarness {
 	}
 
 	private ComponentPersistencePacket stronghold (final File saveDir)
-		throws FileNotFoundException {
+		throws IOException {
 
 		final Optional<DeserializedPackets> packets =
 			new PacketDeserializer(new File(saveDir, "MobileObjects.save")).deserialize();
@@ -124,7 +123,7 @@ public class StrongholdManagerTest extends TestHarness {
 
 	@SuppressWarnings("unchecked")
 	private Hashtable<String, Integer> globals (final File saveDir)
-		throws FileNotFoundException {
+		throws IOException {
 
 		final Optional<DeserializedPackets> packets =
 			new PacketDeserializer(new File(saveDir, "MobileObjects.save")).deserialize();

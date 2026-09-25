@@ -667,7 +667,7 @@ public class SavedGameOpenerTest extends TestHarness {
 		final File mockMobileObjectsFile = mock(File.class);
 		final CefQueryCallback mockCallback = mock(CefQueryCallback.class);
 
-		when(mockDeserializer.deserialize()).thenReturn(Optional.empty());
+		when(mockDeserializer.deserializeEvenIfShort()).thenReturn(Optional.empty());
 		when(mockMobileObjectsFile.getAbsolutePath()).thenReturn("404");
 
 		final SavedGameOpener savedGameOpener = new SavedGameOpener("404", mockCallback);
@@ -680,12 +680,15 @@ public class SavedGameOpenerTest extends TestHarness {
 	@Test
 	public void deserializeTestThrowsException () throws FileNotFoundException {
 		final Environment mockEnvironment = mockEnvironment();
-		final PacketDeserializer mockDeserializer = mockDeserializer(mockEnvironment);
+		final PacketDeserializerFactory mockFactory = mock(PacketDeserializerFactory.class);
 		final File mockMobileObjectsFile = mock(File.class);
 		final CefQueryCallback mockCallback = mock(CefQueryCallback.class);
 
+		// Reading tolerates a short file, so the one thing left to throw is
+		// finding the file at all.
+		when(mockEnvironment.factory().packetDeserializer()).thenReturn(mockFactory);
+		when(mockFactory.forFile(any(File.class))).thenThrow(new FileNotFoundException());
 		when(mockMobileObjectsFile.getAbsolutePath()).thenReturn("404");
-		doThrow(new FileNotFoundException()).when(mockDeserializer).deserialize();
 
 		final SavedGameOpener savedGameOpener = new SavedGameOpener("404", mockCallback);
 		final ExposedClass exposedOpener = expose(savedGameOpener);

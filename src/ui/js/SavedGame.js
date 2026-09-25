@@ -744,6 +744,7 @@ var SavedGame = function () {
 		, UNRESOLVED_ITEM: 'A carried item has no object of its own'
 		, UNRESOLVED_EQUIPMENT: 'A worn item has no object of its own'
 		, OBJECT_COUNT: 'The file\'s object count is wrong'
+		, SHORT_READ: 'Part of the file could not be read'
 	};
 
 	var populateValidation = validation => {
@@ -755,10 +756,14 @@ var SavedGame = function () {
 			return;
 		}
 
+		// A file that could only be read in part is the one fact worth leading
+		// with: nothing else on screen can be trusted to be all there.
 		self.html.saveWarning.show();
-		self.html.saveWarningHead.text(problems.length === 1
-			? 'This save contradicts itself in one place'
-			: 'This save contradicts itself in ' + problems.length + ' places');
+		self.html.saveWarningHead.text(problems.some(problem => problem.kind === 'SHORT_READ')
+			? 'Part of this save could not be read'
+			: problems.length === 1
+				? 'This save contradicts itself in one place'
+				: 'This save contradicts itself in ' + problems.length + ' places');
 
 		// A long list helps nobody; the kinds are what matter, and the first
 		// few examples of each. The rest are in eternity.log.

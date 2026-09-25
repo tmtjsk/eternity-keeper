@@ -27,6 +27,7 @@ import org.json.JSONObject;
 import uk.me.mantas.eternity.Logger;
 import uk.me.mantas.eternity.environment.Environment;
 import uk.me.mantas.eternity.save.CharacterExporter;
+import uk.me.mantas.eternity.serializer.ShortReadException;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -75,6 +76,10 @@ public class ExportCharacter extends CefMessageRouterHandlerAdapter {
 		} catch (final JSONException e) {
 			logger.error("Error parsing JSON request: %s%n", request);
 			callback.failure(-1, "BAD_REQUEST");
+		} catch (final ShortReadException e) {
+			// Not a code: the page shows a reason in words as it stands.
+			logger.error("Export refused: %s%n", e.getMessage());
+			callback.failure(-1, e.getMessage());
 		} catch (final FileNotFoundException e) {
 			logger.error("Unable to find file : %s%n", e.getMessage());
 			callback.failure(-1, "FILE_NOT_FOUND");
