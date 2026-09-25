@@ -288,6 +288,13 @@ not exist anywhere; the game keeps such an entry as a bare copy of the prefab.
 Removing one is just its two list entries. An item's packet only goes when no
 list in the file still names it.
 
+*And a GUID does not name an entry.* Nine of those packetless GUIDs are shared
+by eighteen of the merchant's entries, each a different item — a Dyrwoodan
+outfit and a monk's outfit under one. So an entry is addressed by its place in
+the list, with the GUID it should hold there as the check that nothing moved.
+Addressing by GUID picked namesakes and could have removed the wrong entry; it
+surfaced only when the in-game test save said 675 picked for 693 tiles.
+
 The rest follows the game: the remaining entries are numbered 0..n-1 again
 (every store in the real saves reads that way; `Sort` and `CompressSlots`
 leave it so), prices are what the store asks (`ceil(value × sellMultiplier)`),

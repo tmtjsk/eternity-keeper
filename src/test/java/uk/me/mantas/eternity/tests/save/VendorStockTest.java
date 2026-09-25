@@ -140,6 +140,7 @@ public class VendorStockTest extends TestHarness {
 		assertEquals(2, artificer.items.size());
 
 		final Item arrow = artificer.items.get(0);
+		assertEquals(0, arrow.index);
 		assertEquals(TRAP_ARROW, arrow.guid);
 		assertEquals("Trap_Item_Arrow", arrow.prefab);
 		assertEquals(1, arrow.stack);
@@ -147,6 +148,7 @@ public class VendorStockTest extends TestHarness {
 		assertTrue(arrow.hasPacket);
 
 		final Item flames = artificer.items.get(1);
+		assertEquals(1, flames.index);
 		assertEquals(TRAP_FLAMES, flames.guid);
 		assertEquals("Trap_Item_Fan_of_Flames", flames.prefab);
 		assertEquals(2, flames.stack);

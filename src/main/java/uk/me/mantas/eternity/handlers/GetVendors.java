@@ -85,6 +85,7 @@ public class GetVendors extends CatalogQuery {
 
 		final String prefab = item.prefab == null ? "" : item.prefab;
 		final JSONObject json = new JSONObject()
+			.put("index", item.index)
 			.put("guid", item.guid)
 			.put("key", ItemCatalog.keyOf(prefab))
 			.put("stackSize", item.stack)

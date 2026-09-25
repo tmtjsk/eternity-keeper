@@ -25,6 +25,7 @@ import uk.me.mantas.eternity.EKUtils;
 import uk.me.mantas.eternity.game.InventoryItem;
 import uk.me.mantas.eternity.game.ObjectPersistencePacket;
 import uk.me.mantas.eternity.save.VendorManager;
+import uk.me.mantas.eternity.save.VendorManager.Entry;
 import uk.me.mantas.eternity.save.VendorManager.Removal;
 import uk.me.mantas.eternity.save.VendorStock;
 import uk.me.mantas.eternity.save.VendorStock.Vendor;
@@ -89,8 +90,14 @@ public class VendorManagerTest extends TestHarness {
 		return slots;
 	}
 
-	private static Removal removal (final String file, final String vendor, final String... items) {
+	private static Removal removal (final String file, final String vendor, final Entry... items) {
 		return new Removal(file, vendor, Arrays.asList(items));
+	}
+
+	// An entry is its place in the store's lists, with the GUID it should
+	// hold there as the check that the list has not changed.
+	private static Entry at (final int index, final String guid) {
+		return new Entry(index, guid);
 	}
 
 	@Test
@@ -101,7 +108,7 @@ public class VendorManagerTest extends TestHarness {
 
 		final VendorManager manager = new VendorManager(save);
 		assertTrue(manager.apply(Collections.singletonList(
-			removal(ARTIFICER_HALL, STORE_ARTIFICER, TRAP_ARROW))));
+			removal(ARTIFICER_HALL, STORE_ARTIFICER, at(0, TRAP_ARROW)))));
 		assertFalse(manager.problem().isPresent());
 
 		final Vendor artificer = vendor(save, ARTIFICER_HALL, STORE_ARTIFICER);
@@ -125,7 +132,7 @@ public class VendorManagerTest extends TestHarness {
 		assertEquals(21, slots(new File(save, WORLD), HEODAN).size());
 
 		assertTrue(new VendorManager(save).apply(Collections.singletonList(
-			removal(WORLD, HEODAN, HEODAN_SHIELD, HEODAN_LOCKPICKS))));
+			removal(WORLD, HEODAN, at(0, HEODAN_SHIELD), at(1, HEODAN_LOCKPICKS)))));
 
 		final List<Integer> expected = new ArrayList<>();
 		for (int i = 0; i < 19; i++) {
@@ -142,7 +149,7 @@ public class VendorManagerTest extends TestHarness {
 		final File save = setupSave(getClass());
 
 		assertTrue(new VendorManager(save).apply(Collections.singletonList(
-			removal(FISHERY, FISHERY_STORE, RING_OF_OVERSEEING))));
+			removal(FISHERY, FISHERY_STORE, at(1, RING_OF_OVERSEEING)))));
 
 		final Vendor fishery = vendor(save, FISHERY, FISHERY_STORE);
 		assertEquals(1, fishery.items.size());
@@ -158,7 +165,7 @@ public class VendorManagerTest extends TestHarness {
 		final byte[] world = FileUtils.readFileToByteArray(new File(save, WORLD));
 
 		assertTrue(new VendorManager(save).apply(Collections.singletonList(
-			removal(ARTIFICER_HALL, STORE_ARTIFICER, TRAP_FLAMES))));
+			removal(ARTIFICER_HALL, STORE_ARTIFICER, at(1, TRAP_FLAMES)))));
 
 		assertArrayEquals(fishery, FileUtils.readFileToByteArray(new File(save, FISHERY)));
 		assertArrayEquals(chapel, FileUtils.readFileToByteArray(new File(save, CHAPEL)));
@@ -170,7 +177,7 @@ public class VendorManagerTest extends TestHarness {
 		final File save = setupSave(getClass());
 
 		assertTrue(new VendorManager(save).apply(Collections.singletonList(
-			removal(ARTIFICER_HALL, STORE_ARTIFICER, TRAP_ARROW, TRAP_FLAMES))));
+			removal(ARTIFICER_HALL, STORE_ARTIFICER, at(0, TRAP_ARROW), at(1, TRAP_FLAMES)))));
 
 		assertTrue(vendor(save, ARTIFICER_HALL, STORE_ARTIFICER).items.isEmpty());
 		assertTrue(vendor(save, ARTIFICER_HALL, NPC_ARTIFICER).items.isEmpty());
@@ -182,9 +189,9 @@ public class VendorManagerTest extends TestHarness {
 		final File save = setupSave(getClass());
 
 		assertTrue(new VendorManager(save).apply(Arrays.asList(
-			removal(ARTIFICER_HALL, STORE_ARTIFICER, TRAP_ARROW)
-			, removal(CHAPEL, CHAPEL_PRIEST, "dc9bd0e1-e804-4bd6-a89a-7a4ccb9fe381")
-			, removal(WORLD, HEODAN, HEODAN_LOCKPICKS))));
+			removal(ARTIFICER_HALL, STORE_ARTIFICER, at(0, TRAP_ARROW))
+			, removal(CHAPEL, CHAPEL_PRIEST, at(0, "dc9bd0e1-e804-4bd6-a89a-7a4ccb9fe381"))
+			, removal(WORLD, HEODAN, at(1, HEODAN_LOCKPICKS)))));
 
 		assertEquals(1, vendor(save, ARTIFICER_HALL, STORE_ARTIFICER).items.size());
 		assertEquals(2, vendor(save, CHAPEL, CHAPEL_PRIEST).items.size());
@@ -200,8 +207,8 @@ public class VendorManagerTest extends TestHarness {
 
 		final VendorManager manager = new VendorManager(save);
 		assertFalse(manager.apply(Arrays.asList(
-			removal(ARTIFICER_HALL, STORE_ARTIFICER, TRAP_ARROW)
-			, removal(FISHERY, FISHERY_STORE, TRAP_FLAMES))));
+			removal(ARTIFICER_HALL, STORE_ARTIFICER, at(0, TRAP_ARROW))
+			, removal(FISHERY, FISHERY_STORE, at(1, TRAP_FLAMES)))));
 
 		assertTrue(manager.problem().isPresent());
 		assertTrue(manager.problem().get(), manager.problem().get().contains("Fishery"));
@@ -214,7 +221,7 @@ public class VendorManagerTest extends TestHarness {
 		final VendorManager manager = new VendorManager(save);
 
 		assertFalse(manager.apply(Collections.singletonList(
-			removal(CHAPEL, STORE_ARTIFICER, TRAP_ARROW))));
+			removal(CHAPEL, STORE_ARTIFICER, at(0, TRAP_ARROW)))));
 		assertTrue(manager.problem().isPresent());
 	}
 
@@ -231,7 +238,7 @@ public class VendorManagerTest extends TestHarness {
 
 			final VendorManager manager = new VendorManager(save);
 			assertFalse(file, manager.apply(Collections.singletonList(
-				removal(file, STORE_ARTIFICER, TRAP_ARROW))));
+				removal(file, STORE_ARTIFICER, at(0, TRAP_ARROW)))));
 			assertTrue(file, manager.problem().isPresent());
 		}
 
@@ -263,7 +270,7 @@ public class VendorManagerTest extends TestHarness {
 		assertFalse(vendor(save, ARTIFICER_HALL, STORE_ARTIFICER).items.get(0).hasPacket);
 
 		assertTrue(new VendorManager(save).apply(Collections.singletonList(
-			removal(ARTIFICER_HALL, STORE_ARTIFICER, TRAP_ARROW))));
+			removal(ARTIFICER_HALL, STORE_ARTIFICER, at(0, TRAP_ARROW)))));
 		assertEquals(1, vendor(save, ARTIFICER_HALL, STORE_ARTIFICER).items.size());
 		assertEquals(kept.size(), packets(hall).getPackets().size());
 	}
@@ -287,10 +294,67 @@ public class VendorManagerTest extends TestHarness {
 		deserialized.replace(hall);
 
 		assertTrue(new VendorManager(save).apply(Collections.singletonList(
-			removal(ARTIFICER_HALL, STORE_ARTIFICER, TRAP_ARROW))));
+			removal(ARTIFICER_HALL, STORE_ARTIFICER, at(0, TRAP_ARROW)))));
 
 		assertEquals(1, vendor(save, ARTIFICER_HALL, STORE_ARTIFICER).items.size());
 		assertTrue(hasPacket(hall, TRAP_ARROW));
+	}
+
+	// A GUID does not name an entry. 18 entries of the stronghold merchant's
+	// stock in a real save share nine GUIDs between different items -- a
+	// Dyrwoodan outfit and a monk's outfit under one -- none of them with a
+	// packet. Taking out the second must not take the first.
+	@Test
+	public void anEntryIsFoundByItsPlaceNotItsGuid () throws Exception {
+		final File save = setupSave(getClass());
+		final File hall = new File(save, ARTIFICER_HALL);
+
+		final DeserializedPackets deserialized = packets(hall);
+		final CollectionProperty guids = storeList(deserialized, STORE_ARTIFICER);
+		final SimpleProperty first = (SimpleProperty) guids.items.get(0);
+		final SimpleProperty second = (SimpleProperty) guids.items.get(1);
+		second.value = first.value;
+		second.obj = first.obj;
+		deserialized.replace(hall);
+
+		final Vendor before = vendor(save, ARTIFICER_HALL, STORE_ARTIFICER);
+		assertEquals(TRAP_ARROW, before.items.get(1).guid);
+		assertEquals("Trap_Item_Fan_of_Flames", before.items.get(1).prefab);
+
+		assertTrue(new VendorManager(save).apply(Collections.singletonList(
+			removal(ARTIFICER_HALL, STORE_ARTIFICER, at(1, TRAP_ARROW)))));
+
+		final Vendor after = vendor(save, ARTIFICER_HALL, STORE_ARTIFICER);
+		assertEquals(1, after.items.size());
+		assertEquals("the one asked for went", "Trap_Item_Arrow", after.items.get(0).prefab);
+		assertTrue("and the arrow trap still has its packet", hasPacket(hall, TRAP_ARROW));
+	}
+
+	@Test
+	public void aPlaceTheListDoesNotHaveIsRefused () throws Exception {
+		final File save = setupSave(getClass());
+		final byte[] hall = FileUtils.readFileToByteArray(new File(save, ARTIFICER_HALL));
+
+		for (final Entry entry : new Entry[] {at(2, TRAP_ARROW), at(-1, TRAP_ARROW), at(1, TRAP_ARROW)}) {
+			final VendorManager manager = new VendorManager(save);
+			assertFalse(entry.index + "", manager.apply(Collections.singletonList(
+				removal(ARTIFICER_HALL, STORE_ARTIFICER, entry))));
+			assertTrue(manager.problem().isPresent());
+		}
+
+		assertArrayEquals(hall, FileUtils.readFileToByteArray(new File(save, ARTIFICER_HALL)));
+	}
+
+	@Test
+	public void aPlaceNamedTwiceGoesOnce () throws Exception {
+		final File save = setupSave(getClass());
+
+		assertTrue(new VendorManager(save).apply(Collections.singletonList(
+			removal(ARTIFICER_HALL, STORE_ARTIFICER, at(0, TRAP_ARROW), at(0, TRAP_ARROW)))));
+
+		final Vendor artificer = vendor(save, ARTIFICER_HALL, STORE_ARTIFICER);
+		assertEquals(1, artificer.items.size());
+		assertEquals(TRAP_FLAMES, artificer.items.get(0).guid);
 	}
 
 	private static CollectionProperty storeList (

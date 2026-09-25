@@ -83,8 +83,15 @@ public class VendorStock {
 
 	private static final Pattern PLAIN_NAME = Pattern.compile("[^/\\\\:]+");
 
-	/** One entry of a store's stock. */
+	/**
+	 * One entry of a store's stock. An entry is its place in the store's two
+	 * lists: its GUID usually names the item's packet, but a GUID with no
+	 * packet can repeat -- in a real save nine of them are shared by eighteen
+	 * of the stronghold merchant's entries, each a different item.
+	 */
 	public static final class Item {
+		/** The entry's place in ItemList and SerializedItemList. */
+		public final int index;
 		/** The SerializedItemList GUID, which is also the ObjectID of the item's packet. */
 		public final String guid;
 		/** Prefab file name without its extension, or null when nothing names it. */
@@ -95,9 +102,10 @@ public class VendorStock {
 		/** Whether the item's own packet is in the same file. */
 		public final boolean hasPacket;
 
-		Item (final String guid, final String prefab, final int stack
+		Item (final int index, final String guid, final String prefab, final int stack
 			, final boolean original, final boolean hasPacket) {
 
+			this.index = index;
 			this.guid = guid;
 			this.prefab = prefab;
 			this.stack = stack;
@@ -334,7 +342,8 @@ public class VendorStock {
 					: itemPacket != null ? objectPrefab(itemPacket.ObjectName) : null;
 
 				items.add(new Item(
-					guid
+					i
+					, guid
 					, prefab
 					, entry == null ? 1 : entry.stackSize
 					, entry != null && entry.Original

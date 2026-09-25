@@ -62,6 +62,8 @@ var VendorEditor = function () {
 	var loading = false;
 	var loadError = '';
 	var selected = '';
+	// Vendor key -> {entry's place: true}. By place, not GUID: a GUID with no
+	// packet can repeat within one store, each time on a different item.
 	var marked = {};
 	var filter = 0;
 	var showUnvisited = false;
@@ -152,7 +154,7 @@ var VendorEditor = function () {
 			? 'Original stock: part of what this vendor started with. Removed, it does not come back.'
 			: 'Not original stock: sold here, or restock this vendor re-rolls every 12 game hours.');
 
-		if (marksAt(vendor)[item.guid]) {
+		if (marksAt(vendor)[item.index]) {
 			lines.push('Picked for removal. Click again to keep it.');
 		}
 
@@ -178,12 +180,13 @@ var VendorEditor = function () {
 		}
 
 		tile.toggleClass('vnd-tile-original', !!item.original)
-			.toggleClass('vnd-tile-marked', !!marksAt(vendor)[item.guid])
+			.toggleClass('vnd-tile-marked', !!marksAt(vendor)[item.index])
 			.attr('title', describe(vendor, item).join(TOOLTIP_BREAK))
+			.attr('data-index', item.index)
 			.attr('data-guid', item.guid);
 
 		tile.on('mouseenter', () => {
-			detail = item.guid;
+			detail = item.index;
 			drawDetail();
 		});
 
@@ -195,16 +198,16 @@ var VendorEditor = function () {
 			}
 
 			var marks = marked[keyOf(vendor)] = marksAt(vendor);
-			if (marks[item.guid]) {
-				delete marks[item.guid];
+			if (marks[item.index]) {
+				delete marks[item.index];
 			} else {
-				marks[item.guid] = true;
+				marks[item.index] = true;
 			}
 
-			tile.toggleClass('vnd-tile-marked', !!marks[item.guid])
+			tile.toggleClass('vnd-tile-marked', !!marks[item.index])
 				.attr('title', describe(vendor, item).join(TOOLTIP_BREAK));
 
-			detail = item.guid;
+			detail = item.index;
 			status = '';
 			refresh();
 		});
@@ -266,8 +269,7 @@ var VendorEditor = function () {
 
 	var drawDetail = () => {
 		var vendor = current();
-		var item = vendor && detail
-			? vendor.items.filter(i => i.guid === detail)[0] : null;
+		var item = vendor && detail !== null ? vendor.items[detail] : null;
 
 		self.html.vndDetail.empty();
 		if (!item) {
@@ -290,7 +292,7 @@ var VendorEditor = function () {
 
 		var at = (vendors || []).filter(v => markedCount(v) > 0);
 		var worth = at.reduce((sum, vendor) => sum + vendor.items
-			.filter(item => marksAt(vendor)[item.guid])
+			.filter(item => marksAt(vendor)[item.index])
 			.reduce((s, item) => s + price(item, item.stackSize), 0), 0);
 
 		return number(count) + (count === 1 ? ' item' : ' items') + ' picked at '
@@ -353,9 +355,9 @@ var VendorEditor = function () {
 		var vendor = current();
 		var visibleItems = shown(vendor);
 		self.html.vndSelectSold.prop('disabled', !!self.state.working
-			|| !visibleItems.some(item => !item.original && !marksAt(vendor)[item.guid]));
+			|| !visibleItems.some(item => !item.original && !marksAt(vendor)[item.index]));
 		self.html.vndSelectNone.prop('disabled', !!self.state.working
-			|| !visibleItems.some(item => marksAt(vendor)[item.guid]));
+			|| !visibleItems.some(item => marksAt(vendor)[item.index]));
 
 		return ready;
 	};
@@ -417,6 +419,7 @@ var VendorEditor = function () {
 				loading = false;
 				vendors = result.vendors || [];
 				unreadable = result.unreadable || [];
+				detail = null;
 
 				if (!current()) {
 					var first = listed()[0] || vendors[0];
@@ -441,7 +444,7 @@ var VendorEditor = function () {
 		}
 
 		var marks = marked[keyOf(vendor)] = marksAt(vendor);
-		shown(vendor).filter(item => !item.original).forEach(item => marks[item.guid] = true);
+		shown(vendor).filter(item => !item.original).forEach(item => marks[item.index] = true);
 		redraw('');
 	};
 
@@ -452,7 +455,7 @@ var VendorEditor = function () {
 		}
 
 		var marks = marksAt(vendor);
-		shown(vendor).forEach(item => delete marks[item.guid]);
+		shown(vendor).forEach(item => delete marks[item.index]);
 		redraw('');
 	};
 
@@ -461,7 +464,7 @@ var VendorEditor = function () {
 	self.selectEverywhere = () => {
 		(vendors || []).filter(vendor => vendor.opened).forEach(vendor => {
 			var marks = marked[keyOf(vendor)] = marksAt(vendor);
-			vendor.items.filter(item => !item.original).forEach(item => marks[item.guid] = true);
+			vendor.items.filter(item => !item.original).forEach(item => marks[item.index] = true);
 		});
 
 		redraw('Review any vendor on the left before applying.');
@@ -479,8 +482,8 @@ var VendorEditor = function () {
 				file: vendor.file
 				, vendor: vendor.id
 				, items: vendor.items
-					.filter(item => marksAt(vendor)[item.guid])
-					.map(item => item.guid)
+					.filter(item => marksAt(vendor)[item.index])
+					.map(item => ({index: item.index, guid: item.guid}))
 			}));
 
 		var count = totalMarked();

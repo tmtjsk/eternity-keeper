@@ -40,6 +40,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeMap;
 
 /**
  * Takes items out of vendors' stock.
@@ -52,9 +53,14 @@ import java.util.Set;
  * {@code CompressSlots} leave a store and how every store in the real saves
  * reads.
  *
+ * <p>An entry is named by its place in the lists, with the GUID that place
+ * should hold as the check that nothing moved. The GUID alone will not do: one
+ * with no packet can repeat, and in a real save nine are shared by eighteen of
+ * the stronghold merchant's entries -- different items under one GUID.
+ *
  * <p>Everything is planned before anything is written: a request naming one
- * item that is no longer there is refused whole, with no file touched. Files
- * are then replaced one at a time, each atomically.
+ * entry that is no longer where it was is refused whole, with no file touched.
+ * Files are then replaced one at a time, each atomically.
  */
 public class VendorManager {
 	private static final Logger logger = Logger.getLogger(VendorManager.class);
@@ -68,16 +74,26 @@ public class VendorManager {
 		this.saveDirectory = saveDirectory;
 	}
 
-	/** Items to take out of one vendor's stock. */
+	/** One entry of a store's stock: its place, and the GUID it should hold there. */
+	public static final class Entry {
+		public final int index;
+		public final String guid;
+
+		public Entry (final int index, final String guid) {
+			this.index = index;
+			this.guid = guid;
+		}
+	}
+
+	/** Entries to take out of one vendor's stock. */
 	public static final class Removal {
 		/** The packet file the vendor is in, as {@link VendorStock.Vendor#file} names it. */
 		public final String file;
 		/** The store object's ObjectID. */
 		public final String vendor;
-		/** The items' GUIDs. */
-		public final List<String> items;
+		public final List<Entry> items;
 
-		public Removal (final String file, final String vendor, final List<String> items) {
+		public Removal (final String file, final String vendor, final List<Entry> items) {
 			this.file = file;
 			this.vendor = vendor;
 			this.items = items == null ? Collections.emptyList() : items;
@@ -175,16 +191,21 @@ public class VendorManager {
 			return refuse(name + "'s stock lists disagree in length already, so it was left alone.");
 		}
 
-		for (final String guid : removal.items) {
-			final int index = indexOf(guids.get(), guid);
-			if (index < 0) {
+		// Highest place first, so the places still to come do not move.
+		final TreeMap<Integer, String> places = new TreeMap<>(Collections.reverseOrder());
+		for (final Entry entry : removal.items) {
+			if (entry == null || !holds(guids.get(), entry)) {
 				return refuse("Something picked from " + name + "'s stock is no longer there. "
 					+ "The list was out of date; nothing was changed.");
 			}
 
-			itemList.get().items.remove(index);
-			guids.get().items.remove(index);
-			taken.add(guid.toLowerCase());
+			places.put(entry.index, entry.guid);
+		}
+
+		for (final Map.Entry<Integer, String> place : places.entrySet()) {
+			itemList.get().items.remove((int) place.getKey());
+			guids.get().items.remove((int) place.getKey());
+			taken.add(place.getValue().toLowerCase());
 		}
 
 		for (int slot = 0; slot < itemList.get().items.size(); slot++) {
@@ -254,22 +275,16 @@ public class VendorManager {
 			.map(CollectionProperty.class::cast);
 	}
 
-	private static int indexOf (final CollectionProperty guids, final String guid) {
-		if (guid == null) {
-			return -1;
+	/** Whether the list still holds the entry's GUID at the entry's place. */
+	private static boolean holds (final CollectionProperty guids, final Entry entry) {
+		if (entry.guid == null || entry.index < 0 || entry.index >= guids.items.size()) {
+			return false;
 		}
 
-		for (int i = 0; i < guids.items.size(); i++) {
-			final Property item = guids.items.get(i);
-			if (item instanceof SimpleProperty
-				&& ((SimpleProperty) item).value != null
-				&& guid.equalsIgnoreCase(((SimpleProperty) item).value.toString())) {
-
-				return i;
-			}
-		}
-
-		return -1;
+		final Property item = guids.items.get(entry.index);
+		return item instanceof SimpleProperty
+			&& ((SimpleProperty) item).value != null
+			&& entry.guid.equalsIgnoreCase(((SimpleProperty) item).value.toString());
 	}
 
 	private static boolean setSlot (final Property entry, final int slot) {

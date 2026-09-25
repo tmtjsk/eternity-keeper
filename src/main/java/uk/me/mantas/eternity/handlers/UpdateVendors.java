@@ -22,6 +22,7 @@ package uk.me.mantas.eternity.handlers;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import uk.me.mantas.eternity.save.VendorManager;
+import uk.me.mantas.eternity.save.VendorManager.Entry;
 import uk.me.mantas.eternity.save.VendorManager.Removal;
 
 import java.io.File;
@@ -30,9 +31,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 // Takes items out of vendors' stock. The request carries {oldSave, savedYet,
-// removals: [{file, vendor, items: [guid, ...]}]}: which area file, which store
-// in it, and which of its items. The reply is the reopened save, as for every
-// Apply; the Vendors tab asks for its list again afterwards.
+// removals: [{file, vendor, items: [{index, guid}, ...]}]}: which area file,
+// which store in it, and which of its entries -- by place, with the GUID that
+// place should hold as the check that the list has not changed since the page
+// read it. The reply is the reopened save, as for every Apply; the Vendors
+// tab asks for its list again afterwards.
 public class UpdateVendors extends SaveMutationHandler {
 	@Override
 	protected String mutate (final File save, final JSONObject request) throws IOException {
@@ -42,10 +45,11 @@ public class UpdateVendors extends SaveMutationHandler {
 		for (int i = 0; i < removalsJson.length(); i++) {
 			final JSONObject removal = removalsJson.getJSONObject(i);
 			final JSONArray itemsJson = removal.getJSONArray("items");
-			final List<String> items = new ArrayList<>();
+			final List<Entry> items = new ArrayList<>();
 
 			for (int j = 0; j < itemsJson.length(); j++) {
-				items.add(itemsJson.getString(j));
+				final JSONObject item = itemsJson.getJSONObject(j);
+				items.add(new Entry(item.getInt("index"), item.getString("guid")));
 			}
 
 			removals.add(new Removal(removal.getString("file"), removal.getString("vendor"), items));

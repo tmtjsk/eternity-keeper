@@ -58,13 +58,12 @@ public class UpdateVendorsTest extends TestHarness {
 			.put("removals", list);
 	}
 
-	private static JSONObject removal (final String file, final String vendor, final String... items) {
-		final JSONArray guids = new JSONArray();
-		for (final String item : items) {
-			guids.put(item);
-		}
+	// Each item is its place in the store's lists and the GUID it should hold.
+	private static JSONObject removal (
+		final String file, final String vendor, final int index, final String guid) {
 
-		return new JSONObject().put("file", file).put("vendor", vendor).put("items", guids);
+		return new JSONObject().put("file", file).put("vendor", vendor).put("items", new JSONArray()
+			.put(new JSONObject().put("index", index).put("guid", guid)));
 	}
 
 	// The reply is the reopened save, like every Apply: taking stock out of
@@ -77,8 +76,8 @@ public class UpdateVendorsTest extends TestHarness {
 
 		final CefQueryCallback callback = mock(CefQueryCallback.class);
 		new UpdateVendors().onQuery(mock(CefBrowser.class), 0, request(save
-			, removal("PX1_0004_Fishery.lvl", FISHERY, RING)
-			, removal("MobileObjects.save", HEODAN, LOCKPICKS)).toString(), false, callback);
+			, removal("PX1_0004_Fishery.lvl", FISHERY, 1, RING)
+			, removal("MobileObjects.save", HEODAN, 1, LOCKPICKS)).toString(), false, callback);
 
 		verify(callback, timeout(60000)).success(argThat(reply ->
 			new JSONObject(reply).has("characters")));
@@ -98,7 +97,7 @@ public class UpdateVendorsTest extends TestHarness {
 
 		final CefQueryCallback callback = mock(CefQueryCallback.class);
 		new UpdateVendors().onQuery(mock(CefBrowser.class), 0, request(save
-			, removal("PX1_0004_Fishery.lvl", FISHERY, LOCKPICKS)).toString(), false, callback);
+			, removal("PX1_0004_Fishery.lvl", FISHERY, 1, LOCKPICKS)).toString(), false, callback);
 
 		verify(callback, timeout(60000)).failure(anyInt(), argThat(message ->
 			message.contains("Fishery") && message.contains("out of date")));

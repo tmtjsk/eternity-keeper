@@ -130,6 +130,29 @@ time.sleep(0.5)
 check("Revert clears every pick", "Reverted" in status() and E("$('#vndApply').prop('disabled')")
       and E("$('#vndList .vnd-vendor-picked').length") == 0, status())
 
+# The stronghold's merchant repeats GUIDs: nine of them name eighteen of his
+# entries, each a different item, none with a packet. An entry is picked by
+# its place.
+pick_vendor("General Goods Merchant")
+dup = E("""(function(){ var seen = {}, found = null;
+  $('#vndGrid .vnd-tile').each(function(){ var g = $(this).attr('data-guid'), i = Number($(this).attr('data-index'));
+    if (found === null && seen[g] !== undefined) found = [seen[g], i]; seen[g] = i; });
+  return found; })()""")
+check("the merchant's list repeats a GUID", dup is not None, dup)
+if dup:
+    E("$('#vndGrid .vnd-tile[data-index=%d]').click()" % dup[1])
+    time.sleep(0.4)
+    check("picking one of those entries picks it alone", tiles(".vnd-tile-marked") == 1
+          and E("$('#vndGrid .vnd-tile[data-index=%d]').hasClass('vnd-tile-marked')" % dup[1]),
+          tiles(".vnd-tile-marked"))
+E("$('#vndSelectSold').click()")
+time.sleep(0.5)
+merchant = tiles()
+check("every entry counts, repeated GUID or not",
+      ("%s items picked at 1 vendor" % "{:,}".format(merchant)) in status(), "%d tiles; %s" % (merchant, status()))
+E("$('#vndRevert').click()")
+time.sleep(0.5)
+
 # ---- applying for real ---------------------------------------------------------------
 pick_vendor("Artificer")
 check("the Artificer holds two traps", tiles() == 2, tiles())

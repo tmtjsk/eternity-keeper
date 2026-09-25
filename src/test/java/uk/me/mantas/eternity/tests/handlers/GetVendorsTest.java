@@ -114,6 +114,7 @@ public class GetVendorsTest extends TestHarness {
 
 		final JSONObject arrow = artificer.getJSONArray("items").getJSONObject(0);
 		assertEquals("b33915e6-fee7-4a29-a043-b65d91b1200e", arrow.getString("guid"));
+		assertEquals("an entry is its place in the list; a GUID can repeat", 0, arrow.getInt("index"));
 		assertEquals("trap_item_arrow", arrow.getString("key"));
 		assertEquals("Arrow Trap", arrow.getString("displayName"));
 		assertEquals(1, arrow.getInt("stackSize"));
@@ -165,7 +166,8 @@ public class GetVendorsTest extends TestHarness {
 			.put("removals", new JSONArray().put(new JSONObject()
 				.put("file", "AR_0611_Artificer_Hall.lvl")
 				.put("vendor", ARTIFICER)
-				.put("items", new JSONArray().put("b33915e6-fee7-4a29-a043-b65d91b1200e"))))
+				.put("items", new JSONArray().put(new JSONObject()
+					.put("index", 0).put("guid", "b33915e6-fee7-4a29-a043-b65d91b1200e")))))
 			.toString(), false, applied);
 		verify(applied, timeout(60000)).success(anyString());
 
