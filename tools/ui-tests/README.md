@@ -75,6 +75,7 @@ running it.
 | `backups_ui.py` | A save deleted from the list is copied first; File → Backups restores it, refuses to restore over it, and a rename is copied too (works on a throwaway copy of one test save) |
 | `stronghold_people.py` | Hirelings and prisoners by the game's own names; a staged dismissal projects the gauges, Keep and Revert undo it, Apply dismisses; a prisoner released and read back from the written file (borrows a save with a prisoner from the real saves folder's `2.0 Save Games Backup`, and deletes it afterwards) |
 | `quick_and_weapons.py` | The game's weapon-set rules refused in the Inventory tab (two-handers, soulbound items, a swap that would hand one over) and by the server itself; a set's halves swapped, a stash stack split into a quick slot, a quick item traded for a pack item; saved and read back |
+| `responsive.py` | The Abilities and Stronghold tabs at six window sizes, from 1100x800 to 2560x1369: nothing off the right edge, the two ability lists one width and every panel on a line one height, the browser beside them or wrapped under them at full width, nothing under the floating Save button, the upgrades and the keep's rail spanning the tab or stacked; screenshots in `target/ui-tests/shots` |
 | `gamedata_ui.py` | The game-data banner and Settings row on a first launch; `full` also runs a real extraction (a few minutes) |
 
 `gamedata_ui.py` starts its own editor with an empty data folder, so run it

@@ -78,6 +78,9 @@ Compared with upstream Eternity Keeper 0.21a, from 2016:
 ### Also
 
 - Light and dark themes.
+- Every tab adapts to the window. The Abilities tab puts what a character
+  knows, their talents and the browser side by side at one height; the
+  Stronghold tab spreads its upgrades across the whole width in two columns.
 - Saving is about 15 times faster (roughly 2 seconds instead of 30).
 - Save format conversion (*Format* on the save list) rewrites a save for Steam
   and GOG builds older than the 2017 Unity update.

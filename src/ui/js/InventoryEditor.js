@@ -1218,7 +1218,8 @@ var InventoryEditor = function () {
 		self.html.invBrowseCount.text(browseTotal + ' items');
 		self.html.invBrowsePage.text(browseTotal < 1
 			? ''
-			: (browseOffset + 1) + '–' + Math.min(browseOffset + browseLimit, browseTotal));
+			: (browseOffset + 1) + '–' + Math.min(browseOffset + browseLimit, browseTotal)
+				+ ' of ' + browseTotal);
 
 		self.html.invBrowsePrev.prop('disabled', browseOffset <= 0);
 		self.html.invBrowseNext.prop('disabled', browseOffset + browseLimit >= browseTotal);

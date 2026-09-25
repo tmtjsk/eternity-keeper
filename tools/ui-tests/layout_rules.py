@@ -4,7 +4,7 @@
 # buttons stranded at the far edge from the spell search. The sweep that
 # followed found the same two faults elsewhere -- things that belong together
 # drawn far apart, and panel furniture in a different place on every tab.
-import json, os, sys, time
+import json, os, re, sys, time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from harness import Page, check, summary, open_save, to_list, boot
 
@@ -104,10 +104,59 @@ view("GRIMOIRE", 3.5)
 ok, detail = beside("#grmSort", "#grmSearch")
 check("grimoire: sort buttons beside the spell search", ok, detail)
 
-# ---- abilities: sort beside the rest of the search toolbar -----------------
+# ---- abilities: three panels, one height ------------------------------------
+# Asked for: the abilities panel as wide as the talents one, the browser moved
+# up beside them, and all three the same length so the tab looks tidy.
 view("ABILITIES", 3.5)
+PANELS = """(function(){
+  var view = $('#abilitiesView')[0].getBoundingClientRect();
+  var boxes = $('#abilitiesView .abl-panel:visible, #abilitiesView .abl-browser-panel:visible').toArray()
+    .map(function(e){ var b = e.getBoundingClientRect();
+      return {l: Math.round(b.left), t: Math.round(b.top), r: Math.round(b.right), b: Math.round(b.bottom),
+              w: Math.round(b.width), h: Math.round(b.height)}; });
+  return {view: {l: Math.round(view.left), r: Math.round(view.right)}, panels: boxes,
+          inner: window.innerHeight}; })()"""
+layout = E(PANELS)
+panels = layout["panels"]
+print("   ability panels: %s" % panels)
+check("abilities: three panels side by side",
+      len(panels) == 3 and len({p["t"] for p in panels}) == 1
+      and panels[0]["r"] <= panels[1]["l"] and panels[1]["r"] <= panels[2]["l"],
+      [(p["l"], p["t"]) for p in panels])
+check("abilities: the abilities panel is as wide as the talents panel",
+      len(panels) >= 2 and abs(panels[0]["w"] - panels[1]["w"]) <= 2,
+      [p["w"] for p in panels[:2]])
+check("abilities: all three panels are the same height",
+      len(panels) == 3 and max(p["h"] for p in panels) - min(p["h"] for p in panels) <= 2,
+      [p["h"] for p in panels])
+check("abilities: together they fill the width of the tab",
+      len(panels) == 3 and layout["view"]["r"] - 18 - panels[2]["r"] <= 4
+      and panels[0]["l"] - layout["view"]["l"] <= 22,
+      "view %s, panels %s-%s" % (layout["view"], panels[0]["l"] if panels else None,
+                                 panels[-1]["r"] if panels else None))
+check("abilities: and end inside the window",
+      len(panels) == 3 and max(p["b"] for p in panels) <= layout["inner"],
+      "bottom %s of %s" % (max(p["b"] for p in panels) if panels else None, layout["inner"]))
+
 ok, detail = beside("#ablBrowseSort", ".abl-search .abl-any-class", 32)
 check("abilities: sort buttons in the search toolbar", ok, detail)
+
+# The pager: the same compact buttons the inventory's pager has, and a label
+# neither of them covers (the dialog-sized buttons hid part of it).
+E("$('#ablBrowseSearch').val('').trigger('keyup')")
+page.wait_for("$('#ablBrowseGrid .abl-row-add').length > 0", 60, "ability rows")
+pager = E("""(function(){
+  function box(sel){ var b = $(sel)[0].getBoundingClientRect(); return [b.left, b.top, b.right, b.bottom]; }
+  return {prev: box('#ablBrowsePrev'), next: box('#ablBrowseNext'), label: box('#ablBrowsePage'),
+          text: $('#ablBrowsePage').text(), font: parseFloat($('#ablBrowseNext').css('font-size')),
+          invFont: parseFloat($('#invBrowseNext').css('font-size'))}; })()""")
+apart = lambda a, b: a[2] <= b[0] or b[2] <= a[0] or a[3] <= b[1] or b[3] <= a[1]
+check("abilities: the pager's label is clear of both buttons",
+      apart(pager["label"], pager["prev"]) and apart(pager["label"], pager["next"]), pager)
+check("abilities: the pager says which of how many", re.match(r"^\d+–\d+ of \d+$", pager["text"]) is not None,
+      pager["text"])
+check("abilities: pager buttons the size of the inventory's", pager["font"] == pager["invFont"],
+      "%s vs %s" % (pager["font"], pager["invFont"]))
 
 E("$('#ablBrowseSearch').val('').trigger('keyup')")
 page.wait_for("$('#ablBrowseGrid .abl-row-add').length > 0", 60, "ability rows")
@@ -138,6 +187,24 @@ view("STRONGHOLD", 2.5)
 row = rect("#shUpgrades .sh-upgrade")
 check("stronghold: an upgrade row is no wider than 1200px", row and row["w"] <= 1200,
       row and "%spx" % row["w"])
+
+# Asked for: the upgrades panel and the rail beside it spanning the whole tab.
+# The rows use the width by flowing into two columns, which is what keeps the
+# rule above true on a wide screen.
+span = E("""(function(){
+  var view = $('#strongholdView')[0].getBoundingClientRect(),
+      list = $('.sh-upgrades-panel')[0].getBoundingClientRect(),
+      rail = $('.sh-side')[0].getBoundingClientRect();
+  return {view: [Math.round(view.left), Math.round(view.right)],
+          list: [Math.round(list.left), Math.round(list.right)],
+          rail: [Math.round(rail.left), Math.round(rail.right)]}; })()""")
+check("stronghold: the upgrades and the rail span the tab",
+      span["list"][0] - span["view"][0] <= 22 and span["view"][1] - 18 - span["rail"][1] <= 4
+      and span["rail"][0] - span["list"][1] <= 24, span)
+tops = E("""$('#shUpgrades .sh-upgrade:visible').toArray().map(function(e){
+  return Math.round(e.getBoundingClientRect().top); })""")
+check("stronghold: the upgrades flow in two columns on a wide screen",
+      len(tops) > 1 and tops.count(tops[0]) == 2, tops[:4])
 
 # A hireling's Dismiss button sits on the same line as their name, inside the
 # rail -- a float placed after the name would drop to a line of its own.

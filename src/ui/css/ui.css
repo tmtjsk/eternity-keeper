@@ -2281,9 +2281,19 @@ body.theme-light .save-target-browse:hover {
 	color: #8d7f63;
 }
 
-.inv-browse-pager .pm-btn {
+/* The dialog size (.pm-btn's 17px, no side padding) is for dialogs. On the
+   ability browser it dwarfed the list and crowded the label between the two
+   buttons, so both browsers page with the same compact pair. */
+.inv-browse-pager .pm-btn,
+.abl-browse-pager .pm-btn {
 	padding: 2px 12px;
 	font-size: 11px;
+}
+
+.inv-browse-pager .pm-btn i,
+.abl-browse-pager .pm-btn i {
+	margin: 0 4px;
+	font-size: 10px;
 }
 
 .inv-browse-page {
@@ -2766,14 +2776,35 @@ body.theme-light .skills-remaining input {
 	color: #c9a227;
 }
 
+/* Three columns of one height: what the character knows, their talents,
+   and the browser to add from. The two lists always share a width; the
+   browser, which holds a list and a description side by side, takes about
+   twice that. When the window cannot fit all three the browser wraps under
+   the other two at full width, and below that everything stacks.
+
+   The panels' right margin is the gutter, and the row reaches 18px past the
+   tab so the last panel on each line ends flush with the tab's edge -- no
+   flexbox gap in Chrome 45. */
 .abl-columns {
-	flex: 1 1 100%;
-	width: 100%;
-	font-size: 0;
+	flex: 0 0 auto;
+	width: calc(100% + 18px);
+	margin-right: -18px;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: stretch;
 }
 
+/* One height for all three: the window's, less what sits above the panels
+   (the navigation bar and the panel bar, 134px) and the 84px the floating
+   Save button needs below them -- this tab does not scroll, so anything under
+   the button would stay under it. Each panel is a flex column, so its lists
+   take the height they need and scroll once they run out of it. */
 .abl-panel,
 .abl-browser-panel {
+	display: flex;
+	flex-direction: column;
+	height: calc(100vh - 218px);
+	min-height: 480px;
 	background: rgba(0, 0, 0, .22);
 	border: 1px solid rgba(201, 180, 126, .28);
 	border-radius: 3px;
@@ -2781,25 +2812,21 @@ body.theme-light .skills-remaining input {
 	margin: 0 18px 18px 0;
 }
 
-/* Capped rather than stretched: a row is an icon, two short lines and a
-   button, so on a wide screen the full window width left ~850px of nothing
-   between the name and the button that acts on it. */
 .abl-panel {
-	display: inline-block;
-	vertical-align: top;
-	width: 46%;
-	max-width: 560px;
-	min-width: 330px;
+	flex: 1 1 340px;
+	min-width: 300px;
 	font-size: 13px;
 }
 
 .abl-browser-panel {
-	flex: 1 1 100%;
-	width: 100%;
-	/* The two panels above cap at 1138px between them; the description column
-	   and its gutter are added on top of that so the list itself keeps the
-	   width it had rather than being squeezed by the new half. */
-	max-width: 1484px;
+	flex: 2 1 760px;
+	min-width: 300px;
+}
+
+.abl-panel-head,
+.abl-search,
+.abl-browse-pager {
+	flex: 0 0 auto;
 }
 
 .abl-panel-head {
@@ -2821,20 +2848,19 @@ body.theme-light .skills-remaining input {
 	padding-top: 3px;
 }
 
-/* Sized against the window rather than pinned: on a tall screen the fixed
-   heights left the lists scrolling inside a mostly empty page. */
+/* A list is as tall as its rows, and shrinks to scroll once the panel runs
+   out of room. The talents panel holds two, which share what there is in
+   proportion to their length -- so "Granted by talents" sits right under the
+   talents instead of being pushed to the foot of the panel. */
 .abl-list {
-	max-height: 30vh;
+	flex: 0 1 auto;
+	min-height: 0;
 	overflow-y: auto;
 }
 
-.abl-list-locked {
-	max-height: 18vh;
-}
-
 .abl-browse-grid {
-	max-height: 42vh;
-	min-height: 172px;
+	flex: 1 1 auto;
+	min-height: 0;
 	overflow-y: auto;
 }
 
@@ -3101,14 +3127,6 @@ body.theme-light .abl-icon-fallback {
 	color: #4f3a1f;
 }
 
-@media (max-width: 1100px) {
-	.abl-panel {
-		width: 100%;
-		min-width: 0;
-		margin-right: 0;
-	}
-}
-
 /* Already known: shown for context, but not offered a second time. */
 .abl-row-owned .abl-name,
 .abl-row-owned .abl-meta {
@@ -3299,7 +3317,36 @@ body.theme-light .inv-sell-summary {
 
 .sh-side {
 	flex: 0 0 260px;
-	margin-right: 18px;
+}
+
+/* The upgrades flow into two columns once each can be 560px wide: the panel
+   spans the tab, and a row still keeps its cost and button near its name. A
+   34% basis leaves room for two to a line and never three; the minimum width
+   is what drops them to one column on a narrower window. The rows' right
+   margin is the gutter, taken back by the list's negative margin.
+
+   An odd row out would stretch across both columns on the last line, so a
+   zero-height filler (StrongholdEditor) always follows the last row and
+   keeps it at a column's width. */
+.sh-upgrades {
+	display: flex;
+	flex-wrap: wrap;
+	margin-right: -24px;
+}
+
+.sh-upgrades > .sh-upgrade,
+.sh-upgrades > .sh-upgrade-filler {
+	flex: 1 1 34%;
+	min-width: 560px;
+	margin-right: 24px;
+}
+
+.sh-upgrade-filler {
+	height: 0;
+}
+
+.sh-upgrades > .sh-empty {
+	flex: 1 1 100%;
 }
 
 .sh-numbers-panel,
@@ -3358,10 +3405,6 @@ body.theme-light .inv-sell-summary {
 	align-items: flex-start;
 	padding: 10px 6px;
 	border-bottom: 1px solid rgba(201, 180, 126, .12);
-}
-
-.sh-upgrade:last-child {
-	border-bottom: 0;
 }
 
 .sh-upgrade-icon {
@@ -3857,12 +3900,15 @@ body.theme-light .sh-unavailable-mark {
 	}
 
 	.sh-upgrades-panel {
-		margin-right: 18px;
+		margin-right: 0;
 		margin-bottom: 14px;
 	}
 
-	.sh-side {
-		margin-right: 18px;
+	/* The rail has stacked underneath; one full-width column. */
+	.sh-upgrades > .sh-upgrade,
+	.sh-upgrades > .sh-upgrade-filler {
+		flex-basis: 100%;
+		min-width: 0;
 	}
 
 	.sh-gauge {
@@ -4887,14 +4933,20 @@ body.theme-light .grm-sort-on {
 
 /* -------------------- The ability browser's two halves -------------------- */
 
-/* Chrome 45 has no flexbox `gap`, so the gutter is the left column's margin. */
+/* Chrome 45 has no flexbox `gap`, so the gutter is the left column's margin.
+   The list column runs the panel's full height with its pager at the foot;
+   the description hugs its own text. */
 .abl-browse-columns {
+	flex: 1 1 auto;
+	min-height: 0;
 	display: flex;
-	align-items: flex-start;
+	align-items: stretch;
 }
 
 .abl-browse-list {
-	flex: 1 1 auto;
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
 	min-width: 0;
 	margin-right: 16px;
 }
@@ -4955,8 +5007,12 @@ body.theme-light .grm-sort-on {
 /* -------------------- What the highlighted row does -------------------- */
 
 .abl-detail {
-	flex: 0 0 330px;
-	width: 330px;
+	flex: 1 1 330px;
+	min-width: 220px;
+	max-width: 520px;
+	align-self: flex-start;
+	max-height: 100%;
+	overflow-y: auto;
 	padding: 12px 14px 14px;
 	background: rgba(0, 0, 0, .24);
 	border: 1px solid rgba(201, 180, 126, .24);
@@ -5157,23 +5213,14 @@ html {
 /* ---- an upgrade's cost and button beside its words --------------------------
    Stretched across a 2560px window a row's description ended around 900px
    and its stats and Build button began at 1,650px. */
-.sh-upgrades-panel {
-	flex: 0 1 1180px;
-	max-width: 1180px;
-}
-
 /* ---- an ability's + button beside its name ----------------------------------
    The browser list took whatever the panel left beside the description, which
    put each row's + button about 700px from the name it adds. A row is an
-   icon, two short lines and a button; the panel hugs the list and the
-   description instead. */
+   icon, two short lines and a button, so the list stops at 560px and the
+   description beside it takes the rest. */
 .abl-browse-list {
 	flex: 0 1 560px;
 	max-width: 560px;
-}
-
-.abl-browser-panel {
-	max-width: 960px;
 }
 
 /* Reading the game's own data (GameData.js): a banner on the save list until

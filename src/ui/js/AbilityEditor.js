@@ -554,7 +554,7 @@ var AbilityEditor = function () {
 
 		self.html.ablBrowseCount.text(browseTotal + ' matches');
 		self.html.ablBrowsePage.text(browseTotal < 1 ? '' : (browseOffset + 1)
-			+ '–' + Math.min(browseOffset + browseLimit, browseTotal));
+			+ '–' + Math.min(browseOffset + browseLimit, browseTotal) + ' of ' + browseTotal);
 
 		self.html.ablBrowsePrev.prop('disabled', browseOffset <= 0);
 		self.html.ablBrowseNext.prop(

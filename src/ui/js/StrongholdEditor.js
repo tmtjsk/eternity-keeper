@@ -349,6 +349,10 @@ var StrongholdEditor = function () {
 		rows.forEach(upgrade =>
 			self.html.shUpgrades.append(upgradeRow(upgrade, built)));
 
+		// Two columns on a wide window: without this an odd row out would
+		// stretch across both on the last line.
+		self.html.shUpgrades.append($('<div>').addClass('sh-upgrade-filler'));
+
 		var total = catalog().length;
 		var have = catalog().filter(upgrade => built[upgrade.key]).length;
 		self.html.shUpgradeCount.text(have + ' of ' + total + ' built');
