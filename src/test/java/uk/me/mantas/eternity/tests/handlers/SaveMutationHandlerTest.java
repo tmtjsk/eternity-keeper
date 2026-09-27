@@ -29,6 +29,7 @@ import uk.me.mantas.eternity.EKUtils;
 import uk.me.mantas.eternity.environment.Environment;
 import uk.me.mantas.eternity.handlers.OpenSavedGame;
 import uk.me.mantas.eternity.handlers.SaveMutationHandler;
+import uk.me.mantas.eternity.serializer.InconsistentWriteException;
 import uk.me.mantas.eternity.serializer.ShortReadException;
 import uk.me.mantas.eternity.tests.TestHarness;
 
@@ -271,6 +272,29 @@ public class SaveMutationHandlerTest extends TestHarness {
 		verify(callback, timeout(60000)).failure(anyInt(), message.capture());
 		assertEquals("Only 22 of the 23 objects in MobileObjects.save could be read, so nothing "
 			+ "was written: the rest would have been lost.", message.getValue());
+		verify(callback, never()).success(anyString());
+	}
+
+	/**
+	 * An edit the writer refused, because it would have left the save
+	 * contradicting itself, was not written either -- said the same way, in
+	 * the refusal's own words.
+	 */
+	@Test
+	public void aContradictionIsReportedInItsOwnWords () throws Exception {
+		final File save = workingSave();
+		final Probe probe = new Probe();
+		final InconsistentWriteException refusal = new InconsistentWriteException("MobileObjects.save"
+			, java.util.Collections.singletonList("Player_Elwyn's PlayerInventory would hold 1 item but 2 item IDs"));
+		probe.throwing = refusal;
+		final CefQueryCallback callback = mock(CefQueryCallback.class);
+
+		send(probe, request(save, false), callback);
+
+		final ArgumentCaptor<String> message = ArgumentCaptor.forClass(String.class);
+		verify(callback, timeout(60000)).failure(anyInt(), message.capture());
+		assertEquals(refusal.getMessage(), message.getValue());
+		assertTrue(message.getValue(), message.getValue().contains("nothing was written"));
 		verify(callback, never()).success(anyString());
 	}
 

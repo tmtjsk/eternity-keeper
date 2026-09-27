@@ -30,7 +30,7 @@ import uk.me.mantas.eternity.environment.Environment;
 import uk.me.mantas.eternity.save.CharacterImporter;
 import uk.me.mantas.eternity.save.CharacterImporter.ImportConflict;
 import uk.me.mantas.eternity.save.SavedGameOpener;
-import uk.me.mantas.eternity.serializer.ShortReadException;
+import uk.me.mantas.eternity.serializer.WriteRefusedException;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -112,7 +112,7 @@ public class ImportCharacter extends CefMessageRouterHandlerAdapter {
 			logger.error("File not found: %s%n", e.getMessage());
 			callback.failure(-1, "Unable to find your save or CHR file.");
 			return;
-		} catch (final ShortReadException e) {
+		} catch (final WriteRefusedException e) {
 			logger.error("Import refused: %s%n", e.getMessage());
 			callback.failure(-1, e.getMessage());
 			return;
@@ -152,9 +152,10 @@ public class ImportCharacter extends CefMessageRouterHandlerAdapter {
 		} catch (FileNotFoundException e) {
 			logger.error("File not found: %s%n", e.getMessage());
 			callback.failure(-1, "Unable to find your save or CHR file.");
-		} catch (ShortReadException e) {
-			// The save or the character file could be read only in part, and
-			// the message says which; nothing was imported.
+		} catch (WriteRefusedException e) {
+			// The save or the character file could be read only in part, or
+			// the import would have left the save contradicting itself; the
+			// message says which, and nothing was imported.
 			logger.error("Import refused: %s%n", e.getMessage());
 			callback.failure(-1, e.getMessage());
 		} catch (IOException e) {

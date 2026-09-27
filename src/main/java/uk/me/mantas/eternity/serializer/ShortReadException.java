@@ -19,8 +19,6 @@
 
 package uk.me.mantas.eternity.serializer;
 
-import java.io.IOException;
-
 /**
  * A packet file that gave back fewer objects than its leading count promised.
  *
@@ -30,7 +28,7 @@ import java.io.IOException;
  * nothing that could only be read in part is written. The message is meant for
  * the user as it stands: it says what happened and why nothing was written.
  */
-public class ShortReadException extends IOException {
+public class ShortReadException extends WriteRefusedException {
 	/** The file's name, as the user knows it. */
 	public final String file;
 	/** How many objects its leading count promised. */

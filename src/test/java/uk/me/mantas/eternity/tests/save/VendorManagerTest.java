@@ -263,9 +263,10 @@ public class VendorManagerTest extends TestHarness {
 		final DeserializedPackets before = packets(hall);
 		final List<Property> kept = new ArrayList<>(before.getPackets());
 		assertTrue(kept.removeIf(p -> TRAP_ARROW.equalsIgnoreCase(EKUtils.unwrapPacket(p).ObjectID)));
-		before.setPackets(kept);
 		assertTrue(Property.update(before.getCount(), kept.size()));
-		before.replace(hall);
+		// Damage the writer would refuse as an edit, so it is put together in
+		// memory: judged against itself as it stands.
+		new DeserializedPackets(kept, before.getCount()).replace(hall);
 
 		assertFalse(vendor(save, ARTIFICER_HALL, STORE_ARTIFICER).items.get(0).hasPacket);
 
@@ -291,7 +292,9 @@ public class VendorManagerTest extends TestHarness {
 		copy.value = original.value;
 		copy.obj = original.obj;
 		other.items.add(copy);
-		deserialized.replace(hall);
+		// NPC_Artificer's two lists no longer pair up, which the writer would
+		// refuse as an edit; put together in memory, it is judged as it stands.
+		new DeserializedPackets(deserialized.getPackets(), deserialized.getCount()).replace(hall);
 
 		assertTrue(new VendorManager(save).apply(Collections.singletonList(
 			removal(ARTIFICER_HALL, STORE_ARTIFICER, at(0, TRAP_ARROW)))));

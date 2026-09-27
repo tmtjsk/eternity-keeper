@@ -7,11 +7,11 @@ next. Kept next to the code so it stays honest.
 
 ## 1. Where the project actually is
 
-~26,000 lines of Java, 499 passing JUnit tests plus a node-run suite for the
+~27,000 lines of Java, 547 passing JUnit tests plus a node-run suite for the
 UI's save merge, a jQuery/Bootstrap UI running on an embedded Chromium (JCEF),
 and a save format that has been reverse-engineered far enough to mint objects
 the game accepts and to rewrite the area files as well as the world state.
-Nineteen scripted UI suites drive the running editor against a real
+Twenty scripted UI suites drive the running editor against a real
 13-character save; see §2 for what the last full pass found.
 
 ### Shipped and verified in-game
@@ -561,7 +561,9 @@ deleted. A check that cries wolf on an untouched save is worse than no check.
 It reports rather than refuses: by the time the opener sees a problem the
 damage is already in the working copy, and blocking the write would not undo
 it. The strip says what is wrong, what the game will do about it, and that
-reopening the save is the way back.
+reopening the save is the way back. Since 2026-09-27 the same invariants are
+also checked before anything is written (§5), and there a breach the edit
+made is refused before it reaches the working copy.
 
 Verified end to end against a deliberately broken save — two item packets
 given the same ObjectID, the aliasing bug's exact signature.
@@ -749,11 +751,23 @@ Not requested, offered for the record.
   there. Delete also stopped accepting any path the page sent.
 - **Save comparison.** Diff two saves and show what changed — the single most
   useful thing when working out whether an edit took effect.
-- **Validation pass before writing.** Assert the invariants already learned:
-  every `InstanceID.Guid` equals its own `ObjectID`, no duplicate ObjectIDs,
-  list lengths agree with counts, every `SerializedItemList` GUID resolves to a
-  real packet. This would have caught the item-minting aliasing bug immediately
-  instead of only surfacing in-game.
+- ~~**Validation pass before writing.**~~ Done (2026-09-27):
+  `serializer/PacketInvariants` checks what is about to be written — the
+  leading count, an ID two objects share, an `InstanceID.Guid` that is not its
+  object's own, item lists that no longer pair up, a listed, worn or held GUID
+  with nothing behind it, and every value held as the kind the file declares —
+  and `DeserializedPackets` refuses an edit that newly breaks one, in words,
+  with nothing written. Only new breaches count, because the game leaves its
+  own: across 38 real saves, thousands of inventory entries in the area files
+  name items that are not there. It costs about 7% of a read. It caught a real bug the day it went
+  in: import kept the IDs a character's belongings had in the save the file
+  came from, so an item handed to someone else since the export — or every
+  item, keeping both copies of a character — existed twice, which the game
+  drops. Between saves of the test environment's mid-game playthrough, 236 of
+  the 524 possible overwrite imports would have lost something that way.
+  Imported objects get IDs of their own now (`save/GuidRemap`, shared with
+  resurrection), and `import_chr.py` drives one such import through the
+  editor.
 - **Undo within a session.** Changes are staged then applied; an undo stack over
   the staged model is achievable.
 - **Bulk party operations** — heal all, level all, refill camping supplies.

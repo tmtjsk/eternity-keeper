@@ -163,10 +163,13 @@ public class ShortReadTest extends TestHarness {
 		read.reserialize(file);
 
 		// Where the lost object starts: the length of the same file without it.
+		// That file's count no longer matches, so it is put together in memory
+		// -- judged against itself as it stands -- rather than written as an
+		// edit of what was read, which the writer would refuse.
 		final File without = new File(EKUtils.createTempDir(PREFIX).get(), file.getName());
 		assertTrue(without.createNewFile());
-		read.setPackets(packets.subList(0, packets.size() - 1));
-		read.reserialize(without);
+		new DeserializedPackets(packets.subList(0, packets.size() - 1), read.getCount())
+			.reserialize(without);
 
 		final long start = without.length();
 		final long end = file.length();

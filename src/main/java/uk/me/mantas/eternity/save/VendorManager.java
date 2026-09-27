@@ -25,6 +25,7 @@ import uk.me.mantas.eternity.game.ObjectPersistencePacket;
 import uk.me.mantas.eternity.serializer.DeserializedPackets;
 import uk.me.mantas.eternity.serializer.PacketDeserializer;
 import uk.me.mantas.eternity.serializer.ShortReadException;
+import uk.me.mantas.eternity.serializer.WriteRefusedException;
 import uk.me.mantas.eternity.serializer.properties.CollectionProperty;
 import uk.me.mantas.eternity.serializer.properties.ComplexProperty;
 import uk.me.mantas.eternity.serializer.properties.DictionaryProperty;
@@ -164,6 +165,16 @@ public class VendorManager {
 			}
 
 			planned.put(file, read.get());
+		}
+
+		// Every file checked before any is written, so a refusal leaves them
+		// all as they were rather than half the edit in place.
+		for (final DeserializedPackets packets : planned.values()) {
+			try {
+				packets.checkWritable();
+			} catch (final WriteRefusedException e) {
+				return refuse(e.getMessage());
+			}
 		}
 
 		for (final Map.Entry<File, DeserializedPackets> entry : planned.entrySet()) {

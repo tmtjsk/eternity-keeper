@@ -19,6 +19,7 @@
 
 package uk.me.mantas.eternity.serializer;
 
+import uk.me.mantas.eternity.Logger;
 import uk.me.mantas.eternity.environment.Environment;
 import uk.me.mantas.eternity.factory.SharpSerializerFactory;
 import uk.me.mantas.eternity.serializer.properties.Property;
@@ -29,10 +30,15 @@ import java.io.IOException;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 public class DeserializedPackets {
+	private static final Logger logger = Logger.getLogger(DeserializedPackets.class);
+
 	private List<Property> packets;
 	private final SimpleProperty count;
 	private final SharpSerializerFactory sharpSerializer;
@@ -45,7 +51,18 @@ public class DeserializedPackets {
 	private final int declared;
 	private final int read;
 
-	/** Packets put together in memory: never read, so nothing is missing from them. */
+	// What these packets already contradicted about themselves when they were
+	// read, or put together. Taken then because every writer edits them in
+	// place: by the time they are written, only what was noted here tells an
+	// edit's own mistake apart from one the file came with.
+	private final Set<String> baseline = new HashSet<>();
+
+	/**
+	 * Packets put together in memory: never read, so nothing is missing from
+	 * them, and what they contradict about themselves is judged from here on
+	 * -- whatever they already get wrong as handed over is theirs, not an
+	 * edit's.
+	 */
 	public DeserializedPackets (final List<Property> packets, final SimpleProperty count) {
 		this(packets, count, null, packets.size());
 	}
@@ -66,6 +83,10 @@ public class DeserializedPackets {
 		this.declared = declared;
 		this.read = packets.size();
 		sharpSerializer = Environment.getInstance().factory().sharpSerializer();
+
+		for (final PacketInvariants.Breach breach : PacketInvariants.check(packets, count)) {
+			baseline.add(breach.signature);
+		}
 	}
 
 	public List<Property> getPackets () {
@@ -107,11 +128,22 @@ public class DeserializedPackets {
 	public void reserialize (final File destinationFile, final SerializerFormat outputFormat)
 		throws IOException {
 
-		refuseIfShort();
-		final SharpSerializer serializer =
-			sharpSerializer.forFile(destinationFile.getAbsolutePath()).toFormat(outputFormat);
+		checkWritable(destinationFile.getName());
+		write(destinationFile, outputFormat);
+	}
 
-		serializer.serializeAll(count, packets);
+	/**
+	 * Refuses, in the user's own words, what must not be written: a short read
+	 * (whatever has been done with it since), or an edit that has left these
+	 * packets contradicting themselves in a way they did not when they were
+	 * read ({@link PacketInvariants}). Writing does this anyway; a writer that
+	 * changes several files calls it for all of them before writing any.
+	 *
+	 * @throws WriteRefusedException -- a {@link ShortReadException} or an
+	 *         {@link InconsistentWriteException}
+	 */
+	public void checkWritable () throws WriteRefusedException {
+		checkWritable(source);
 	}
 
 	/**
@@ -129,16 +161,17 @@ public class DeserializedPackets {
 	 *
 	 * @throws IOException when the write or the move fails. {@code target} is
 	 *         then exactly as it was, and no sibling is left behind.
-	 * @throws ShortReadException when these packets are only the start of the
-	 *         file they were read from; nothing is written at all.
+	 * @throws WriteRefusedException when these packets are only the start of
+	 *         the file they were read from, or an edit has left them
+	 *         contradicting themselves; nothing is written at all.
 	 */
 	public void replace (final File target) throws IOException {
-		refuseIfShort();
+		checkWritable(target.getName());
 		final File directory = target.getAbsoluteFile().getParentFile();
 		final File writing = File.createTempFile(target.getName() + ".", ".writing", directory);
 
 		try {
-			reserialize(writing);
+			write(writing, SerializerFormat.PRESERVE);
 
 			if (writing.length() < 1) {
 				throw new IOException("Nothing was written for " + target.getName());
@@ -157,12 +190,38 @@ public class DeserializedPackets {
 		}
 	}
 
+	private void write (final File destination, final SerializerFormat outputFormat)
+		throws IOException {
+
+		final SharpSerializer serializer =
+			sharpSerializer.forFile(destination.getAbsolutePath()).toFormat(outputFormat);
+
+		serializer.serializeAll(count, packets);
+	}
+
 	// Whatever a caller has done with a short read since -- setting its count
-	// to the packets it holds included -- it is not written.
-	private void refuseIfShort () throws ShortReadException {
+	// to the packets it holds included -- it is not written. Nor is an edit
+	// that leaves the file contradicting itself where it did not before.
+	private void checkWritable (final String name) throws WriteRefusedException {
 		final Optional<ShortReadException> shortRead = shortRead();
 		if (shortRead.isPresent()) {
 			throw shortRead.get();
+		}
+
+		final List<String> fresh = new ArrayList<>();
+		for (final PacketInvariants.Breach breach : PacketInvariants.check(packets, count)) {
+			if (!baseline.contains(breach.signature)) {
+				fresh.add(breach.detail);
+			}
+		}
+
+		if (!fresh.isEmpty()) {
+			final String file = source != null ? source : name;
+			for (final String problem : fresh) {
+				logger.error("Refusing to write %s: %s%n", file, problem);
+			}
+
+			throw new InconsistentWriteException(file, fresh);
 		}
 	}
 }

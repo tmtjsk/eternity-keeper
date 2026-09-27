@@ -40,7 +40,7 @@ import uk.me.mantas.eternity.game.ObjectPersistencePacket;
 import uk.me.mantas.eternity.handlers.SaveChanges;
 import uk.me.mantas.eternity.serializer.DeserializedPackets;
 import uk.me.mantas.eternity.serializer.PacketDeserializer;
-import uk.me.mantas.eternity.serializer.ShortReadException;
+import uk.me.mantas.eternity.serializer.WriteRefusedException;
 import uk.me.mantas.eternity.serializer.properties.*;
 
 import java.io.File;
@@ -139,10 +139,11 @@ public class ChangesSaver implements Runnable {
 			callback.success("{\"success\":true}");
 		} catch (final JSONException e) {
 			callback.failure(-1, SaveChanges.jsonError());
-		} catch (final ShortReadException e) {
+		} catch (final WriteRefusedException e) {
 			// Said as it stands: "IO Error" and a class name would bury what the
-			// user needs to know -- the save could not all be read, and so
-			// nothing was written.
+			// user needs to know -- the save could not all be read, or the
+			// changes would have left it contradicting itself, and so nothing
+			// was written.
 			logger.error("Save refused: %s%n", e.getMessage());
 			callback.failure(-1, SaveChanges.genericError(e.getMessage()));
 		} catch (final IOException e) {

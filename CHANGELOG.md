@@ -82,6 +82,13 @@ Compared with upstream Eternity Keeper 0.21a, from 2016:
   part — cut short, or corrupted part of the way through — still opens, with a
   warning that says how much is missing, but no edit, Save, import or export
   writes from it: writing back only what could be read would lose the rest.
+- **An edit that would break the save is not written.** Everything the editor
+  writes is checked first against the rules the game relies on — every
+  object's ID unique and its own, item lists that pair up, nothing listed that
+  is not in the save, every value of the kind the file expects — and a change
+  that would break one is refused with a message saying what and where,
+  instead of becoming a save the game quietly loses things from. What the game
+  itself left in a save never stops an edit.
 - **Importing a character from another save of the same game keeps their
   items.** Anything they carry that the save already holds — an item handed to
   someone else since the export, say — comes in as a copy of its own. Before,

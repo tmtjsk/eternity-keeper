@@ -26,7 +26,7 @@ import org.json.JSONObject;
 import uk.me.mantas.eternity.Logger;
 import uk.me.mantas.eternity.environment.Environment;
 import uk.me.mantas.eternity.save.SavedGameOpener;
-import uk.me.mantas.eternity.serializer.ShortReadException;
+import uk.me.mantas.eternity.serializer.WriteRefusedException;
 
 import java.io.File;
 import java.io.IOException;
@@ -55,8 +55,9 @@ public abstract class SaveMutationHandler extends CefMessageRouterHandlerAdapter
 	 * @return {@code null} on success, or what to tell the user when the edit
 	 *         was refused
 	 * @throws IOException when the save could not be read or written; the
-	 *         message reaches the user. A {@link ShortReadException} -- a save
-	 *         that could be read only in part -- reaches them as it stands.
+	 *         message reaches the user. A {@link WriteRefusedException} -- a
+	 *         save that could be read only in part, or an edit that would have
+	 *         left it contradicting itself -- reaches them as it stands.
 	 */
 	protected abstract String mutate (File save, JSONObject request) throws IOException;
 
@@ -111,9 +112,10 @@ public abstract class SaveMutationHandler extends CefMessageRouterHandlerAdapter
 			logger.error("Error reading request %s: %s%n", request, e.getMessage());
 			callback.failure(-1, "Error parsing JSON request.");
 			return;
-		} catch (final ShortReadException e) {
-			// Nothing was written, so "could not write" would blame the wrong
-			// step. The exception already says what happened, in the user's terms.
+		} catch (final WriteRefusedException e) {
+			// A save read only in part, or an edit that would have left it
+			// contradicting itself: nothing was written, so "could not write"
+			// would blame the wrong step. The refusal says what happened.
 			logger.error("Editing %s refused: %s%n", save.getAbsolutePath(), e.getMessage());
 			callback.failure(-1, e.getMessage());
 			return;
