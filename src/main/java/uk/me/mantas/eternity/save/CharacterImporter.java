@@ -34,8 +34,12 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import static uk.me.mantas.eternity.game.UnityEngine.Vector3;
@@ -205,6 +209,36 @@ public class CharacterImporter {
 			final UUID newGUID = UUID.randomUUID();
 			Property.update(characterProperty.get(), "GUID", newGUID);
 			Property.update(characterProperty.get(), "ObjectID", newGUID.toString());
+		}
+
+		// Everything else the file brings keeps the IDs it had in the save it
+		// came from. Into another playthrough those are unique; into another
+		// save of the same one they need not be -- an item handed to someone
+		// else since the export, both copies of a character kept -- and each
+		// object would exist twice under one ID, which the game drops both of.
+		// The file's copy gets a fresh ID and its lists and slots follow it;
+		// what the save keeps is left as it is. What names the character itself
+		// is left alone too: a companion's ID is the fixed GUID the game knows
+		// the companion by, and each ability's Owner is that.
+		final Set<String> taken = new HashSet<>();
+		for (final Property object : retainedObjects) {
+			final String id = ((ObjectPersistencePacket) object.obj).ObjectID;
+			if (id != null) {
+				taken.add(id.toLowerCase());
+			}
+		}
+
+		final Map<String, UUID> remap = new LinkedHashMap<>();
+		for (final Property object : chrObjects) {
+			final String id = ((ObjectPersistencePacket) object.obj).ObjectID;
+			if (object != characterProperty.get() && id != null && taken.contains(id.toLowerCase())) {
+				remap.put(id, UUID.randomUUID());
+			}
+		}
+
+		if (!remap.isEmpty()) {
+			logger.info("Gave %d imported objects IDs of their own (%d references).%n"
+				, remap.size(), GuidRemap.rewrite(chrObjects, remap));
 		}
 
 		final boolean anchored = anchorCharacter(characterProperty.get(), levelName, location);

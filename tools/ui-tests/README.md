@@ -69,6 +69,7 @@ running it.
 | `merge_bugs.py` | Unsaved edits survive every Apply |
 | `writes.py` | One edit through every write path, saved and read back from the file |
 | `mint.py` | A minted item and ability, saved and read back |
+| `import_chr.py` | Aloth exported to a `.chr` and imported over himself in another save of the same playthrough — the editor asks first, and the 14 things he brings that the save keeps elsewhere get IDs of their own — then into a different playthrough as a newcomer; both saves validate clean and nothing reaches the saves folder |
 | `layout_rules.py` | Measured layout rules (packs three to a row, controls beside what they act on…) |
 | `look_variants.py` | The overflow checks at 1440px and in light mode |
 | `catalog_offer.py` | The browsers offer only shipped content |

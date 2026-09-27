@@ -175,6 +175,190 @@ public class CharacterImporterTest extends TestHarness {
 		assertEquals(player.Location.z, importedPacket.Location.z, 1e-4);
 	}
 
+	// Keeping both copies of a character: every object the character file
+	// brings -- items, abilities -- is already in the save under the same ID.
+	// The copy got a fresh ID of its own and they did not, so each existed
+	// twice and the game drops both. They get fresh IDs too, and the copy's
+	// lists and slots follow them. What names the character itself is left
+	// alone: a companion's ID is the fixed GUID the game knows the companion
+	// by, and each ability's Owner is that.
+	@Test
+	public void keepingBothCopiesGivesTheCopyItsOwnIds ()
+		throws IOException
+		, URISyntaxException {
+
+		final File workingDir = tempDir();
+		final File saveDir = new File(workingDir, "target.savegame");
+		assertTrue(saveDir.mkdir());
+		FileUtils.copyFileToDirectory(new File(resourceDirectory(), "MobileObjects.save"), saveDir);
+
+		final DeserializedPackets original = deserialize(new File(saveDir, "MobileObjects.save"));
+		final java.util.Set<String> originalIds = ids(original);
+		final String companionName = findByObjectID(original.getPackets(), COMPANION_GUID).ObjectName;
+
+		final File chrFile = exportCompanionChr(workingDir);
+		final java.util.Set<String> brought = ids(deserialize(chrFile));
+		assertTrue("the case in question: all of it is already there", originalIds.containsAll(brought));
+
+		final CharacterImporter importer =
+			new CharacterImporter(requestJSON(saveDir), chrFile.getAbsolutePath());
+		assertTrue(importer.importCharacter());
+
+		final DeserializedPackets modified =
+			deserialize(new File(importer.saveFile(), "MobileObjects.save"));
+		final java.util.Map<String, Long> seen = modified.getPackets().stream()
+			.map(property -> ((ObjectPersistencePacket) property.obj).ObjectID.toLowerCase())
+			.collect(Collectors.groupingBy(id -> id, Collectors.counting()));
+
+		assertTrue("no ID twice: " + seen, seen.values().stream().allMatch(n -> n == 1));
+		assertTrue("the original is untouched", ids(modified).containsAll(originalIds));
+
+		final java.util.Set<String> fresh = new java.util.HashSet<>(ids(modified));
+		fresh.removeAll(originalIds);
+		assertEquals("every object the copy brought has an ID of its own", brought.size(), fresh.size());
+
+		final List<ObjectPersistencePacket> copy = modified.getPackets().stream()
+			.map(property -> (ObjectPersistencePacket) property.obj)
+			.filter(packet -> fresh.contains(packet.ObjectID.toLowerCase()))
+			.collect(Collectors.toList());
+
+		final String copyId = copy.stream()
+			.filter(packet -> companionName.equals(packet.ObjectName))
+			.map(packet -> packet.ObjectID.toLowerCase())
+			.findFirst()
+			.orElseThrow(() -> new AssertionError("no copy of " + companionName));
+
+		final java.util.Set<String> originalsThings = new java.util.HashSet<>(brought);
+		originalsThings.remove(COMPANION_GUID);
+		int listed = 0;
+		for (final ObjectPersistencePacket packet : copy) {
+			final List<String> named = namedIds(packet);
+			assertTrue(packet.ObjectName + " names one of the original's things: " + named
+				, java.util.Collections.disjoint(named, originalsThings));
+			if (copyId.equals(packet.ObjectID.toLowerCase())) {
+				for (final String id : named) {
+					if (fresh.contains(id)) {
+						listed++;
+					}
+				}
+			}
+		}
+
+		assertTrue("the copy's own lists name its own things", listed > 0);
+	}
+
+	// An overwrite takes out only what the replaced character owns. Anything
+	// the file brings that the save now keeps somewhere else -- an item handed
+	// to someone since the export -- would come back under the ID it still has
+	// there. The one the file brings gets an ID of its own; the other stays
+	// exactly where it is.
+	@Test
+	public void anItemHandedOnSinceTheExportComesBackUnderAnIdOfItsOwn ()
+		throws IOException
+		, URISyntaxException {
+
+		final String ring = "c4b7033d-c452-4946-a9ba-9998cb411201";
+		final File workingDir = tempDir();
+		final File saveDir = new File(workingDir, "target.savegame");
+		assertTrue(saveDir.mkdir());
+		FileUtils.copyFileToDirectory(new File(resourceDirectory(), "MobileObjects.save"), saveDir);
+
+		final File chrFile = new File(workingDir, "player.chr");
+		assertTrue(new CharacterExporter(
+			resourceDirectory().getAbsolutePath(), PLAYER_GUID, chrFile.getAbsolutePath()).export());
+
+		// Since the export, Elwyn has handed the ring to Calisca.
+		assertTrue(new uk.me.mantas.eternity.save.InventoryManager(saveDir).apply(
+			java.util.Collections.singletonList(new uk.me.mantas.eternity.save.InventoryManager.Change(
+				PLAYER_GUID, "PlayerInventory", ring, 1, COMPANION_GUID, "Inventory", -1))));
+
+		final CharacterImporter importer =
+			new CharacterImporter(requestJSON(saveDir), chrFile.getAbsolutePath());
+		assertTrue(importer.overwriteCharacter());
+
+		final DeserializedPackets modified =
+			deserialize(new File(importer.saveFile(), "MobileObjects.save"));
+		final java.util.Map<String, Long> seen = modified.getPackets().stream()
+			.map(property -> ((ObjectPersistencePacket) property.obj).ObjectID.toLowerCase())
+			.collect(Collectors.groupingBy(id -> id, Collectors.counting()));
+		assertTrue("no ID twice: " + seen, seen.values().stream().allMatch(n -> n == 1));
+
+		final ObjectPersistencePacket calisca = findByObjectID(modified.getPackets(), COMPANION_GUID);
+		assertTrue("Calisca keeps the ring", listed(calisca, "Inventory").contains(ring));
+		assertEquals(calisca.ObjectName, findByObjectID(modified.getPackets(), ring).Parent);
+
+		final ObjectPersistencePacket elwyn = findByObjectID(modified.getPackets(), PLAYER_GUID);
+		final List<String> elwyns = listed(elwyn, "PlayerInventory");
+		assertFalse(elwyns.contains(ring));
+
+		final String ringName = findByObjectID(modified.getPackets(), ring).ObjectName;
+		final List<ObjectPersistencePacket> rings = modified.getPackets().stream()
+			.map(property -> (ObjectPersistencePacket) property.obj)
+			.filter(packet -> ringName.equals(packet.ObjectName))
+			.collect(Collectors.toList());
+		assertEquals("the file's ring is back, beside Calisca's", 2, rings.size());
+
+		final ObjectPersistencePacket brought = rings.stream()
+			.filter(packet -> !ring.equals(packet.ObjectID))
+			.findFirst().get();
+		assertEquals(elwyn.ObjectName, brought.Parent);
+		assertTrue("Elwyn's pack names the ring the file brought", elwyns.contains(brought.ObjectID.toLowerCase()));
+	}
+
+	// The GUIDs a character's container lists, in lower case.
+	private static List<String> listed (final ObjectPersistencePacket character, final String component) {
+		final Optional<uk.me.mantas.eternity.game.ComponentPersistencePacket> found =
+			EKUtils.findComponent(character.ComponentPackets, component);
+		assertTrue(character.ObjectName + " has no " + component, found.isPresent());
+
+		final List<String> guids = new ArrayList<>();
+		for (final java.util.Iterator<?> it = ((uk.me.mantas.eternity.serializer.CSharpCollection)
+			found.get().Variables.get("SerializedItemList")).iterator(); it.hasNext();) {
+
+			guids.add(it.next().toString().toLowerCase());
+		}
+
+		return guids;
+	}
+
+	private static java.util.Set<String> ids (final DeserializedPackets packets) {
+		return packets.getPackets().stream()
+			.map(property -> ((ObjectPersistencePacket) property.obj).ObjectID.toLowerCase())
+			.collect(Collectors.toSet());
+	}
+
+	// Every GUID an object's variables name, one level into lists.
+	private static List<String> namedIds (final ObjectPersistencePacket packet) {
+		final List<String> named = new ArrayList<>();
+		for (final uk.me.mantas.eternity.game.ComponentPersistencePacket component : packet.ComponentPackets) {
+			if (component == null || component.Variables == null) {
+				continue;
+			}
+
+			for (final Object value : component.Variables.values()) {
+				if (value instanceof uk.me.mantas.eternity.serializer.CSharpCollection) {
+					for (final java.util.Iterator<?> it =
+						((uk.me.mantas.eternity.serializer.CSharpCollection) value).iterator(); it.hasNext();) {
+
+						addId(named, it.next());
+					}
+				} else {
+					addId(named, value);
+				}
+			}
+		}
+
+		return named;
+	}
+
+	private static void addId (final List<String> named, final Object value) {
+		if (value instanceof UUID || (value instanceof String
+			&& ((String) value).matches("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"))) {
+
+			named.add(value.toString().toLowerCase());
+		}
+	}
+
 	@Test
 	public void detectsMainCharacterConflict ()
 		throws IOException

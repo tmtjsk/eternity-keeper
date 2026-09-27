@@ -35,7 +35,6 @@ import uk.me.mantas.eternity.serializer.properties.*;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
-import java.util.Map.Entry;
 
 import static uk.me.mantas.eternity.EKUtils.findComponent;
 import static uk.me.mantas.eternity.EKUtils.unwrapPacket;
@@ -282,11 +281,7 @@ public class Resurrector {
 		}
 
 		if (!remap.isEmpty()) {
-			final Set<Property> visited = Collections.newSetFromMap(new IdentityHashMap<>());
-			int rewrites = 0;
-			for (final Property p : incoming) {
-				rewrites += rewriteUUIDs(p, remap, visited);
-			}
+			final int rewrites = GuidRemap.rewrite(incoming, remap);
 
 			logger.info(
 				"Regenerated %d colliding UUIDs (%d occurrences rewritten).%n"
@@ -537,58 +532,5 @@ public class Resurrector {
 
 		logger.error("No InGameGlobal object found in target save.%n");
 		return false;
-	}
-
-	// Depth-first walk of a property tree replacing UUID/String occurrences
-	// of remapped ids. Flat-copied reference stubs share child lists, so an
-	// identity set guards against double-visits.
-	private static int rewriteUUIDs (
-		final Property property, final Map<String, UUID> remap, final Set<Property> visited) {
-
-		if (property == null || !visited.add(property)) {
-			return 0;
-		}
-
-		int rewrites = 0;
-
-		if (property instanceof SimpleProperty) {
-			final Object value = ((SimpleProperty) property).value;
-			if (value instanceof UUID && remap.containsKey(value.toString())) {
-				Property.update(property, remap.get(value.toString()));
-				rewrites++;
-			} else if (value instanceof String && remap.containsKey(value)) {
-				Property.update(property, remap.get(value).toString());
-				rewrites++;
-			}
-
-			return rewrites;
-		}
-
-		if (property instanceof SingleDimensionalArrayProperty) {
-			for (final Object item : ((SingleDimensionalArrayProperty) property).items) {
-				rewrites += rewriteUUIDs((Property) item, remap, visited);
-			}
-		} else if (property instanceof CollectionProperty) {
-			for (final Property item : ((CollectionProperty) property).items) {
-				rewrites += rewriteUUIDs(item, remap, visited);
-			}
-			for (final Object sub : ((CollectionProperty) property).properties) {
-				rewrites += rewriteUUIDs((Property) sub, remap, visited);
-			}
-		} else if (property instanceof DictionaryProperty) {
-			for (final Entry<Property, Property> entry : ((DictionaryProperty) property).items) {
-				rewrites += rewriteUUIDs(entry.getKey(), remap, visited);
-				rewrites += rewriteUUIDs(entry.getValue(), remap, visited);
-			}
-			for (final Object sub : ((DictionaryProperty) property).properties) {
-				rewrites += rewriteUUIDs((Property) sub, remap, visited);
-			}
-		} else if (property instanceof ComplexProperty) {
-			for (final Object sub : ((ComplexProperty) property).properties) {
-				rewrites += rewriteUUIDs((Property) sub, remap, visited);
-			}
-		}
-
-		return rewrites;
 	}
 }

@@ -82,6 +82,10 @@ Compared with upstream Eternity Keeper 0.21a, from 2016:
   part — cut short, or corrupted part of the way through — still opens, with a
   warning that says how much is missing, but no edit, Save, import or export
   writes from it: writing back only what could be read would lose the rest.
+- **Importing a character from another save of the same game keeps their
+  items.** Anything they carry that the save already holds — an item handed to
+  someone else since the export, say — comes in as a copy of its own. Before,
+  the two shared an ID and the game dropped both.
 - Polish and other non-ASCII save names display correctly.
 
 ### Also
