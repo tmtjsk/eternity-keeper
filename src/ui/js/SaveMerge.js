@@ -35,7 +35,8 @@
 // is never silently replaced.
 //
 // Only the scalar scopes the UI edits in place take part: each character's
-// stats and portrait, the party's money and the globals. The inventory,
+// stats, portrait and health flag, the party's money and camping supplies, and
+// the globals. The inventory,
 // abilities, stronghold and grimoire payloads are the managers' own business,
 // staged and applied by them, so theirs is always the truth there. Those same
 // scopes are all Save writes, so `writable` is what a Save request carries.
@@ -65,13 +66,17 @@ var SaveMerge = (function () {
 	 * of it is edited in place.
 	 */
 	var snapshot = save => {
-		var out = {characters: {}, globals: {}, currency: save.currency};
+		var out = {
+			characters: {}, globals: {}, currency: save.currency
+			, campingSupplies: save.campingSupplies
+		};
 
 		(save.characters || []).forEach(character => {
 			out.characters[character.GUID] = {
 				stats: valuesOf(character.stats)
 				, portraitPaths: valuesOf(character.portraitPaths)
 				, portrait: character.portrait
+				, health: valuesOf(character.health)
 			};
 		});
 
@@ -145,10 +150,16 @@ var SaveMerge = (function () {
 
 				character.portrait = mineCharacter.portrait;
 			}
+
+			keepEdits(baseCharacter.health, mineCharacter.health, character.health);
 		});
 
 		if (!same(mine.currency, base.currency)) {
 			theirs.currency = mine.currency;
+		}
+
+		if (!same(mine.campingSupplies, base.campingSupplies)) {
+			theirs.campingSupplies = mine.campingSupplies;
 		}
 
 		Object.keys(theirs.globals || {}).forEach(object => {
@@ -194,7 +205,7 @@ var SaveMerge = (function () {
 			});
 		});
 
-		return {
+		var request = {
 			currency: save.currency
 			, globals: globals
 			, characters: (save.characters || []).map(character => {
@@ -203,9 +214,21 @@ var SaveMerge = (function () {
 					out.portraitPaths = asStrings(character.portraitPaths);
 				}
 
+				if (character.health) {
+					out.health = asStrings(character.health);
+				}
+
 				return out;
 			})
 		};
+
+		// A save whose player has no PlayerInventory has nothing to write here,
+		// and the server leaves the count alone when none is sent.
+		if (save.campingSupplies !== undefined && save.campingSupplies !== null) {
+			request.campingSupplies = save.campingSupplies;
+		}
+
+		return request;
 	};
 
 	return {snapshot: snapshot, merge: merge, writable: writable};

@@ -453,6 +453,56 @@
 		</div>
 	</div>
 
+	<!-- Heal, level up and resupply (PartyCare.js). Each row does what the
+	     game would: the heal is its own full-refill flag, the level-up its
+	     AddExperienceToLevel, the supplies its cap for the difficulty. -->
+	<div class="modal fade" id="partyCareDialog" role="dialog" data-bound="PartyCare">
+		<div class="modal-dialog party-care-dialog">
+			<div class="modal-content">
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal">
+						<span>&times;</span>
+					</button>
+					<h4 class="modal-title">Heal, level up and resupply</h4>
+				</div>
+				<div class="modal-body">
+					<div class="pc-row">
+						<div class="pc-what">
+							<div class="pc-name">Health and stamina</div>
+							<div class="pc-details" id="partyCareHealText" data-bound="PartyCare"></div>
+						</div>
+						<button type="button" class="btn btn-primary btn-sm pc-action" id="partyCareHeal"
+						        data-bound="PartyCare">Heal the party</button>
+					</div>
+					<div class="pc-row">
+						<div class="pc-what">
+							<div class="pc-name">Experience</div>
+							<div class="pc-details" id="partyCareLevelText" data-bound="PartyCare"></div>
+						</div>
+						<select class="form-control input-sm pc-level" id="partyCareLevel"
+						        data-bound="PartyCare" title="The level to bring everyone up to"></select>
+						<button type="button" class="btn btn-primary btn-sm pc-action" id="partyCareLevelUp"
+						        data-bound="PartyCare">Level up</button>
+					</div>
+					<div class="pc-row">
+						<div class="pc-what">
+							<div class="pc-name">Camping supplies</div>
+							<div class="pc-details" id="partyCareSuppliesText" data-bound="PartyCare"></div>
+						</div>
+						<button type="button" class="btn btn-primary btn-sm pc-action" id="partyCareRefill"
+						        data-bound="PartyCare">Refill</button>
+					</div>
+					<p class="pc-status" id="partyCareStatus" data-bound="PartyCare"></p>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="pm-btn pm-btn-dialog" data-dismiss="modal">
+						<i>&#10094;</i> Close <i>&#10095;</i>
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
 	<div class="modal fade" id="difficultyDialog" role="dialog" data-bound="DifficultyEditor">
 		<div class="modal-dialog difficulty-dialog">
 			<div class="modal-content">
@@ -518,6 +568,11 @@
 									<a href="javascript:void(0);" id="menu-party-management"
 									   data-bound="PartyManagement">
 										<i class="fa fa-fw fa-users"></i> Party management&hellip;
+									</a>
+								</li>
+								<li class="disabled">
+									<a href="javascript:void(0);" id="menuPartyCare" data-bound="PartyCare">
+										<i class="fa fa-fw fa-medkit"></i> Heal, level up and resupply&hellip;
 									</a>
 								</li>
 								<li class="divider"></li>
@@ -1495,6 +1550,7 @@
 	<script src="js/ImportCharacter.js"></script>
 	<script src="js/ExportCharacter.js"></script>
 	<script src="js/PartyManagement.js"></script>
+	<script src="js/PartyCare.js"></script>
 	<script src="js/Editor.js"></script>
 
 </body>

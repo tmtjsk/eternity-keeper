@@ -55,6 +55,10 @@ public class SavedGameOpener implements Runnable {
 		"Prestige", "Security", "AvailableTurns", "m_currentTurn", "m_Debt"
 		, "BonusTurnMoney", "UnviewedEventCount"};
 
+	// Health's own "fill me up" flag: true on a new character, cleared by the
+	// first frame that sets health and stamina to their maximum.
+	private static final String FULL_HEALTH_ON_LOAD = "m_needs_current_values";
+
 	private static final Logger logger = Logger.getLogger(SavedGameOpener.class);
 	private final String saveGameLocation;
 	private final CefQueryCallback callback;
@@ -93,6 +97,7 @@ public class SavedGameOpener implements Runnable {
 				.collect(Collectors.toList());
 
 		final float currency = extractCurrency(gameObjects);
+		final Optional<Integer> campingSupplies = extractCampingSupplies(gameObjects);
 		final Map<String, Property> globals = extractGlobals(gameObjects);
 		final Map<String, Property> characters = extractCharacters(gameObjects);
 		final List<JSONObject> deadCompanions = extractDeadCompanions(gameObjects, characters);
@@ -101,8 +106,8 @@ public class SavedGameOpener implements Runnable {
 		final JSONArray grimoires = extractGrimoires(gameObjects);
 		final JSONObject validation = validate(read.orElse(null));
 
-		sendJSON(currency, globals, characters, deadCompanions, inventory, abilities
-			, grimoires, validation);
+		sendJSON(currency, campingSupplies, globals, characters, deadCompanions, inventory
+			, abilities, grimoires, validation);
 	}
 
 	// Companions who died in-game have no mobile object left in the save —
@@ -256,6 +261,16 @@ public class SavedGameOpener implements Runnable {
 		}
 
 		return ((CurrencyValue) currencyValue).v;
+	}
+
+	// One number on the player's inventory. The game clamps it to what the
+	// difficulty allows only when it changes, so it is shipped as it stands.
+	private Optional<Integer> extractCampingSupplies(final List<Property> gameObjects) {
+		return findProperty(gameObjects, objectName -> objectName.toLowerCase().startsWith("player_"))
+				.flatMap(player -> findComponent(unwrapPacket(player).ComponentPackets, "PlayerInventory"))
+				.map(inventory -> inventory.Variables.get("campingSupplies"))
+				.filter(value -> value instanceof Integer)
+				.map(value -> (Integer) value);
 	}
 
 	// Every party member carries their OWN 16-slot pack — the player's is a
@@ -1043,6 +1058,17 @@ public class SavedGameOpener implements Runnable {
 		extractComponentScalars(packet, "Portrait")
 			.ifPresent(paths -> jsonObject.put("portraitPaths", paths));
 
+		// Healing is the game's own flag rather than a number worked out here:
+		// the first frame after a load answers it by filling health and stamina
+		// to the maximum the game computes from class, level, Constitution and
+		// whatever is active. Only the flag travels, since Save writes back
+		// whatever it is sent and the rest of Health is the game's. A save from
+		// before the flag existed has none to set.
+		extractComponentScalars(packet, "Health")
+			.map(scalars -> scalars.get(FULL_HEALTH_ON_LOAD))
+			.ifPresent(flag ->
+				jsonObject.put("health", new JSONObject().put(FULL_HEALTH_ON_LOAD, flag)));
+
 		return Optional.of(jsonObject);
 	}
 
@@ -1082,7 +1108,8 @@ public class SavedGameOpener implements Runnable {
 	}
 
 	private void sendJSON(
-			final float currency, final Map<String, Property> globals,
+			final float currency, final Optional<Integer> campingSupplies,
+			final Map<String, Property> globals,
 			final Map<String, Property> characters, final List<JSONObject> deadCompanions,
 			final JSONObject inventory, final JSONObject abilities,
 			final JSONArray grimoires, final JSONObject validation) {
@@ -1090,6 +1117,7 @@ public class SavedGameOpener implements Runnable {
 		final JSONObject json = new JSONObject();
 
 		json.put("currency", currency);
+		campingSupplies.ifPresent(count -> json.put("campingSupplies", count));
 		json.put("achievementsDisabled", detectAchievementsDisabled(globals));
 		json.put("inventory", inventory);
 		json.put("abilities", abilities);

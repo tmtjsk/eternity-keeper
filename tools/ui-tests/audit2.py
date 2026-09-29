@@ -101,6 +101,7 @@ open_save(page, SAVE)
 for menu, dialog in [("menu-party-management", "partyManagementDialog"),
                      ("menuCurrencyEditor", "currencyDialog"),
                      ("menuDifficultyEditor", "difficultyDialog"),
+                     ("menuPartyCare", "partyCareDialog"),
                      ("menu-export-character", "exportCharacterDialog")]:
     page.eval("$('#%s').click()" % menu)
     time.sleep(1.4)

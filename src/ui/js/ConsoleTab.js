@@ -129,9 +129,6 @@ var ConsoleTab = function () {
 	// rank N costs N(N+1)/2 points -- which is what the save stores.
 	var MAX_SKILL_RANK = 20;
 
-	// Experience needed to reach a level: 1000 * L * (L - 1) / 2.
-	var xpForLevel = level => 1000 * level * (level - 1) / 2;
-
 	var intArg = token => {
 		var n = parseInt(token, 10);
 		return isNaN(n) ? undefined : n;
@@ -187,18 +184,26 @@ var ConsoleTab = function () {
 				if (level === undefined || level < 1 || level > 16) {
 					return print('Usage: AddExperienceToLevel <1-16>', 'error');
 				}
-				var threshold = xpForLevel(level);
-				var raised = 0;
-				characters().forEach(c => {
-					var stat = statOf(c, 'Experience');
-					if (stat && parseInt(stat.value, 10) < threshold) {
-						stat.value = threshold;
-						raised++;
-					}
-				});
-				markDirty();
-				print(raised + ' party member(s) set to ' + threshold + ' XP (level '
+
+				// The same level-up as Heal, level up and resupply.
+				var raised = Eternity.PartyCare.levelTo(level);
+				print(raised.length + ' party member(s) set to '
+					+ Eternity.PartyCare.experienceForLevel(level) + ' XP (level '
 					+ level + ').', 'ok');
+			}
+		}
+
+		, healparty: {
+			args: ''
+			, help: 'Restore the active party\'s health and stamina to full when the save loads.'
+			, run: () => {
+				// The game's own full-refill flag, as the dialog sets it: the
+				// game works out each maximum itself on load.
+				var marked = Eternity.PartyCare.heal();
+				print(marked > 0
+					? marked + ' party member(s) will be at full health and stamina '
+						+ 'when the save loads.'
+					: 'Nobody in the active party is left to heal.', 'ok');
 			}
 		}
 
@@ -383,8 +388,6 @@ var ConsoleTab = function () {
 		, {name: 'Invisible', args: '', desc: 'Makes the party invisible — enemies will '
 			+ 'not start combat with you (scripted encounters and dialogue still trigger).'}
 		, {name: 'NoFog', args: '', desc: 'Removes fog of war so the whole map is revealed.'}
-		, {name: 'HealParty', args: '', desc: 'Restores the whole party\'s health and '
-			+ 'stamina to full.'}
 		, {name: 'Kill', args: '<target>', desc: 'Instantly kills the target. Use a GUID, '
 			+ 'an object name, or the keyword "player".'}
 		, {name: 'KillAllEnemies', args: '', desc: 'Kills every hostile creature currently '

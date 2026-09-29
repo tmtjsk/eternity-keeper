@@ -27,7 +27,7 @@ DIALOGS = ["settingsDialog", "saveNameDialog", "saveChangesDialog",
            "exportCharacterDialog", "renameSaveDialog", "deleteSaveDialog",
            "convertSaveDialog", "partyManagementDialog", "stackDialog",
            "importOverwriteDialog", "currencyDialog", "portraitDialog",
-           "difficultyDialog"]
+           "difficultyDialog", "partyCareDialog"]
 
 findings = []
 

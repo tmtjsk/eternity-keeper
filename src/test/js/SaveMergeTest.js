@@ -44,6 +44,7 @@ const clone = value => JSON.parse(JSON.stringify(value));
 // A small save in the opener's own shape.
 const opened = () => ({
 	currency: 1000
+	, campingSupplies: 2
 	, achievementsDisabled: false
 	, characters: [
 		{
@@ -54,11 +55,13 @@ const opened = () => ({
 				, m_textureSmallPath: slot('portraits/phantom_sm.png', 'java.lang.String')
 			}
 			, portrait: 'PHANTOM-IMAGE'
+			, health: {m_needs_current_values: slot(false, 'java.lang.Boolean')}
 		}
 		, {
 			GUID: 'pallegina', name: 'Pallegina', inParty: true
 			, stats: {BaseMight: slot(14)}
 			, portraitPaths: {}
+			, health: {m_needs_current_values: slot(false, 'java.lang.Boolean')}
 		}
 	]
 	, globals: {
@@ -173,6 +176,31 @@ test('an unsaved currency edit is kept and a server one arrives', () => {
 	assert.strictEqual(SaveMerge.merge(base, opened(), theirs).currency, 1270);
 });
 
+// The party dialog heals by setting the game's own flag for a full refill on
+// load, and refills camping supplies: both wait for Save like the currency, so
+// an Apply elsewhere must not undo them.
+test('an unsaved heal survives an Apply elsewhere', () => {
+	const base = SaveMerge.snapshot(opened());
+	const mine = opened();
+	mine.characters[1].health.m_needs_current_values.value = true;
+
+	const merged = SaveMerge.merge(base, mine, opened());
+	assert.strictEqual(merged.characters[1].health.m_needs_current_values.value, true);
+	assert.strictEqual(merged.characters[0].health.m_needs_current_values.value, false);
+});
+
+test('unsaved camping supplies are kept and a server change arrives', () => {
+	const base = SaveMerge.snapshot(opened());
+
+	const edited = opened();
+	edited.campingSupplies = 4;
+	assert.strictEqual(SaveMerge.merge(base, edited, opened()).campingSupplies, 4);
+
+	const theirs = opened();
+	theirs.campingSupplies = 1;
+	assert.strictEqual(SaveMerge.merge(base, opened(), theirs).campingSupplies, 1);
+});
+
 test('when both changed the same value, what the user typed wins', () => {
 	const base = SaveMerge.snapshot(opened());
 	const mine = opened();
@@ -246,11 +274,20 @@ test('merging does not modify the UI\'s own copy', () => {
 test('Save sends only what it writes', () => {
 	const request = SaveMerge.writable(opened());
 
-	assert.deepStrictEqual(Object.keys(request).sort(), ['characters', 'currency', 'globals']);
+	assert.deepStrictEqual(Object.keys(request).sort(),
+		['campingSupplies', 'characters', 'currency', 'globals']);
 	assert.deepStrictEqual(Object.keys(request.characters[0]).sort(),
-		['GUID', 'portraitPaths', 'stats']);
+		['GUID', 'health', 'portraitPaths', 'stats']);
 	assert.strictEqual(request.characters[0].GUID, 'player');
 	assert.strictEqual(request.currency, 1000);
+	assert.strictEqual(request.campingSupplies, 2);
+});
+
+test('a save that records no camping supplies sends none', () => {
+	const save = opened();
+	delete save.campingSupplies;
+
+	assert.ok(!('campingSupplies' in SaveMerge.writable(save)));
 });
 
 test('every value Save sends is a string, since the server reads them as strings', () => {
@@ -261,6 +298,7 @@ test('every value Save sends is a string, since the server reads them as strings
 	assert.strictEqual(request.characters[0].portraitPaths.m_textureSmallPath.value,
 		'portraits/phantom_sm.png');
 	assert.strictEqual(request.globals.InGameGlobal.Stronghold.Prestige.value, '48');
+	assert.strictEqual(request.characters[1].health.m_needs_current_values.value, 'false');
 });
 
 test('sending a Save does not change the UI\'s own copy', () => {
@@ -272,7 +310,7 @@ test('sending a Save does not change the UI\'s own copy', () => {
 	assert.strictEqual(save.characters[0].stats.BaseMight.value, 18);
 });
 
-test('a character with nothing to write sends no stats, and no portrait it lacks', () => {
+test('a character with nothing to write sends no stats, and no portrait or health it lacks', () => {
 	const save = opened();
 	save.characters.push({GUID: 'dead:eder', name: 'Eder', isDead: true});
 

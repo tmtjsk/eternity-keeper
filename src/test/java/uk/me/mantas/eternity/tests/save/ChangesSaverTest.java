@@ -344,6 +344,83 @@ public class ChangesSaverTest extends TestHarness {
 	}
 
 	/**
+	 * Healing and resupplying ride Save as the money does. The heal is the
+	 * game's own flag, {@code Health.m_needs_current_values}: the first frame
+	 * after a load answers it by filling health and stamina to the maximum the
+	 * game works out itself, so the editor never has to. It is set only on the
+	 * characters the request names. Camping supplies are one number on the
+	 * player's inventory.
+	 */
+	@Test
+	public void aHealAndRefilledCampingSuppliesAreWritten () throws Exception {
+		final Environment mockEnvironment = mockEnvironment();
+		final File workingDirectory = EKUtils.createTempDir(PREFIX).get();
+		final File settingsFile = new File(workingDirectory, "settings.json");
+
+		FileUtils.writeStringToFile(settingsFile, "{}");
+		when(mockEnvironment.directory().settingsFile()).thenReturn(settingsFile);
+		when(mockEnvironment.directory().working()).thenReturn(workingDirectory);
+		when(mockEnvironment.factory().packetDeserializer())
+			.thenReturn(new PacketDeserializerFactory());
+		when(mockEnvironment.factory().sharpSerializer()).thenReturn(new SharpSerializerFactory());
+
+		final Settings mockSettings = mockSettings();
+		final JSONObject mockJSON = mock(JSONObject.class);
+		mockSettings.json = mockJSON;
+		doThrow(new JSONException("")).when(mockJSON).getString(anyString());
+		final File savesLocation = EKUtils.createTempDir(PREFIX).get();
+		when(mockJSON.optString(eq("savesLocation"), anyString()))
+			.thenReturn(savesLocation.getAbsolutePath());
+
+		// The 2015 fixture's world state predates the flag, so this one carries
+		// a current game's: the same party, under the same IDs.
+		final File opened = new File(EKUtils.createTempDir(PREFIX).get(), "id 0 Encampment.savegame");
+		FileUtils.copyDirectory(new File(
+			getClass().getResource("/ChangesSaverTest/id 0 Encampment.savegame").toURI()), opened);
+		FileUtils.copyFile(new File(getClass().getResource("/MobileObjects.save").toURI())
+			, new File(opened, "MobileObjects.save"));
+
+		final String calisca = "b1a7e809-0000-0000-0000-000000000000";
+		final String request = new JSONObject()
+			.put("savedYet", false)
+			.put("saveName", "RESTED")
+			.put("absolutePath", opened.getAbsolutePath())
+			.put("saveData", new JSONObject()
+				.put("characters", new org.json.JSONArray().put(new JSONObject()
+					.put("GUID", calisca)
+					.put("stats", new JSONObject())
+					.put("health", new JSONObject().put("m_needs_current_values", new JSONObject()
+						.put("type", "java.lang.Boolean").put("value", "true")))))
+				.put("currency", 1.0)
+				.put("campingSupplies", 4)
+				.put("globals", new JSONObject()
+					.put("Global", new JSONObject())
+					.put("InGameGlobal", new JSONObject())))
+			.toString();
+
+		final CefQueryCallback mockCallback = mock(CefQueryCallback.class);
+		new ChangesSaver(request, mockCallback).run();
+		verify(mockCallback).success("{\"success\":true}");
+
+		final File written =
+			new File(new File(workingDirectory, "id 0 Encampment.savegame"), "MobileObjects.save");
+		final Map<String, ObjectPersistencePacket> byId = new HashMap<>();
+		for (final Property property : new PacketDeserializer(written).deserialize().get().getPackets()) {
+			final ObjectPersistencePacket packet = unwrapPacket(property);
+			byId.put(packet.ObjectID, packet);
+		}
+
+		final ObjectPersistencePacket elwyn = byId.get("09517a0d-4fec-407c-a749-a531f3be64e0");
+		assertEquals(Boolean.TRUE, findComponent(byId.get(calisca).ComponentPackets, "Health")
+			.get().Variables.get("m_needs_current_values"));
+		assertEquals("only the characters the request names"
+			, Boolean.FALSE, findComponent(elwyn.ComponentPackets, "Health")
+				.get().Variables.get("m_needs_current_values"));
+		assertEquals(4, findComponent(elwyn.ComponentPackets, "PlayerInventory")
+			.get().Variables.get("campingSupplies"));
+	}
+
+	/**
 	 * The game's load list draws a save's party from 0.png, 1.png… inside it,
 	 * so a Save that changes a portrait redraws them in slot order: Elenor
 	 * (slot 0) with her own, Calisca (slot 1, the character this request edits)

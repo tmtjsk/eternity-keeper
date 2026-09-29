@@ -269,6 +269,12 @@ public class ChangesSaver implements Runnable {
 		// TODO: Refactor out this check for the 'player' object.
 		if (packet.ObjectName.toLowerCase().startsWith("player_")) {
 			updateCurrency((ComplexProperty) property, currency);
+
+			// Absent when the save records none, and from any request made
+			// before the party dialog could change it.
+			if (saveData.has("campingSupplies")) {
+				updateCampingSupplies((ComplexProperty) property, saveData.getInt("campingSupplies"));
+			}
 		}
 
 		if (packet.ObjectName.startsWith("Global")) {
@@ -295,6 +301,13 @@ public class ChangesSaver implements Runnable {
 							deserializer, (ComplexProperty) property, "Portrait", portraitPaths);
 				}
 
+				// A heal is the game's own flag for a full refill on the first
+				// frame after the load, on the Health component.
+				final JSONObject health = character.optJSONObject("health");
+				if (health != null) {
+					updateComponent(deserializer, (ComplexProperty) property, "Health", health);
+				}
+
 				break;
 			}
 		}
@@ -315,6 +328,22 @@ public class ChangesSaver implements Runnable {
 		}
 
 		Property.update(currencyValue.get(), "v", currency);
+	}
+
+	private static void updateCampingSupplies(final ComplexProperty root, final int count) {
+		final Optional<Property> supplies = root
+				.<SingleDimensionalArrayProperty>findProperty("ComponentPackets")
+				.flatMap(components -> findSubComponent(components, "PlayerInventory"))
+				.flatMap(playerInventory -> playerInventory.<DictionaryProperty>findProperty("Variables"))
+				.flatMap(variables -> variables.findEntry("campingSupplies"));
+
+		if (!supplies.isPresent()) {
+			logger.error("Unable to find campingSupplies when updating the player's inventory!%n");
+			return;
+		}
+
+		// An int in the save: anything else would be written as the wrong type.
+		Property.update(supplies.get(), Integer.valueOf(Math.max(0, count)));
 	}
 
 	private static void updateGlobal(

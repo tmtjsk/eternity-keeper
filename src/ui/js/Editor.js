@@ -176,6 +176,7 @@ var Editor = function () {
 			self.ImportCharacter.transition({enabled: false});
 			self.ExportCharacter.transition({enabled: false});
 			self.PartyManagement.transition({enabled: false});
+			self.PartyCare.transition({enabled: false});
 			self.Modifications.html.saveButton.hide();
 		}
 
@@ -203,6 +204,7 @@ var Editor = function () {
 			self.ImportCharacter.transition({enabled: true});
 			self.ExportCharacter.transition({enabled: true});
 			self.PartyManagement.transition({enabled: true});
+			self.PartyCare.transition({enabled: true});
 			self.SaveSearch.html.saveActions.hide();
 			self.Modifications.html.saveButton.show();
 		}
@@ -230,6 +232,7 @@ var Editor = function () {
 	self.ImportCharacter = new ImportCharacter();
 	self.ExportCharacter = new ExportCharacter();
 	self.PartyManagement = new PartyManagement();
+	self.PartyCare = new PartyCare();
 
 	// Client startup tasks go here:
 	bindDOM();

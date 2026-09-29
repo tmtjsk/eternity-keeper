@@ -5777,3 +5777,58 @@ body.theme-light .gd-bar {
 .bk-status.bk-failed {
 	color: #e8a08e;
 }
+
+/* Character -> Heal, level up and resupply (PartyCare.js). A modal, so it
+   keeps the dark chrome in both themes and has no light-mode override. The
+   rows are the Backups dialog's: what, then the controls at the right. */
+.party-care-dialog {
+	width: 620px;
+}
+
+.pc-row {
+	display: flex;
+	align-items: center;
+	padding: 12px 2px;
+	border-bottom: 1px solid #4a3c28;
+}
+
+.pc-row:first-child {
+	border-top: 1px solid #4a3c28;
+}
+
+.pc-what {
+	flex: 1 1 auto;
+	min-width: 0;
+	margin-right: 14px;
+}
+
+.pc-name {
+	font-size: 14px;
+	color: #ecd3a4;
+}
+
+.pc-details {
+	font-size: 12px;
+	line-height: 1.5;
+	color: #b9a680;
+}
+
+/* Chrome 45 has no flex gap: the select keeps its distance with a margin. */
+.pc-level.form-control {
+	flex: 0 0 auto;
+	width: 104px;
+	margin-right: 8px;
+}
+
+.pc-action {
+	flex: 0 0 auto;
+	min-width: 112px;
+}
+
+.pc-status {
+	margin: 12px 0 0 0;
+	min-height: 18px;
+	font-size: 12px;
+	line-height: 1.55;
+	color: #9cc27f;
+}

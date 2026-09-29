@@ -7,11 +7,11 @@ next. Kept next to the code so it stays honest.
 
 ## 1. Where the project actually is
 
-~27,000 lines of Java, 547 passing JUnit tests plus a node-run suite for the
+~27,000 lines of Java, 549 passing JUnit tests plus a node-run suite for the
 UI's save merge, a jQuery/Bootstrap UI running on an embedded Chromium (JCEF),
 and a save format that has been reverse-engineered far enough to mint objects
 the game accepts and to rewrite the area files as well as the world state.
-Twenty scripted UI suites drive the running editor against a real
+Twenty-one scripted UI suites drive the running editor against a real
 13-character save; see §2 for what the last full pass found.
 
 ### Shipped and verified in-game
@@ -770,7 +770,17 @@ Not requested, offered for the record.
   editor.
 - **Undo within a session.** Changes are staged then applied; an undo stack over
   the staged model is achievable.
-- **Bulk party operations** — heal all, level all, refill camping supplies.
+- ~~**Bulk party operations**~~ Done (2026-09-29): Character → Heal, level
+  up and resupply. The heal sets the game's own full-refill flag
+  (`Health.m_needs_current_values`), so the game works out every maximum
+  itself when the save loads, for the active party as its HealParty does.
+  The level-up raises everyone below a level to its experience and, unlike
+  the game's AddExperienceToLevel, lowers nobody: a hired adventurer in the
+  test saves is level 1 with 86,485 experience, and the game's command would
+  cut her to 45,000. Camping supplies refill to the difficulty's cap. Not a
+  full rest: fatigue is a status effect and spells per rest are left alone.
+  Verified in the game: the Watcher loaded at Health 1260/1260 instead of
+  1055/1260, three companions likewise, and four camping supplies for three.
 - **Search across everything** — one box that finds a character, item or global.
 - **Preset/loadout export** — share a fully-equipped character as a file.
 

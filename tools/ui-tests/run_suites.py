@@ -12,7 +12,8 @@ SUITES = sys.argv[1:] or ["smoke.py", "functional.py", "panels.py", "audit.py", 
                           "paging.py", "format_ui.py", "consistency.py", "merge_bugs.py",
                           "writes.py", "mint.py", "import_chr.py", "layout_rules.py", "look_variants.py",
                           "catalog_offer.py", "backups_ui.py", "stronghold_people.py",
-                          "quick_and_weapons.py", "responsive.py", "vendors.py"]
+                          "quick_and_weapons.py", "responsive.py", "vendors.py",
+                          "party_care.py"]
 
 
 def settings():

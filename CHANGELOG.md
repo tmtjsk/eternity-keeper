@@ -57,6 +57,11 @@ Compared with upstream Eternity Keeper 0.21a, from 2016:
   Sagani's pet.
 - **Party management** from anywhere: swap companions between the party and the
   stronghold roster.
+- **Heal, level up and resupply** the party in one place: bring everyone in the
+  party back to full health and stamina (the game works out each maximum
+  itself when the save loads, as its own HealParty does), raise everyone below
+  a level to it without lowering anyone's experience, and refill camping
+  supplies to what the difficulty allows.
 - **Console tab**: re-enable achievements, and run the save-representable
   console commands (experience, attributes, skills, money, globals,
   stronghold), with a searchable reference of the in-game-only ones.

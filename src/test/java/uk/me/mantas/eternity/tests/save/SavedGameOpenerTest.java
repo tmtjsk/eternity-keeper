@@ -345,6 +345,46 @@ public class SavedGameOpenerTest extends TestHarness {
 		assertTrue("no character carried portraitPaths", checked);
 	}
 
+	/**
+	 * Healing is the game's own flag: {@code Health.m_needs_current_values},
+	 * which the first frame after a load answers by filling health and stamina
+	 * to the maximum the game works out itself. Camping supplies are one number
+	 * on the player's inventory. Both travel in the shapes Save writes back.
+	 */
+	@Test
+	public void theOpenerShipsWhatHealingAndResupplyingNeed ()
+		throws URISyntaxException, IOException {
+
+		final File resources = new File(getClass().getResource("/").toURI());
+		final CefQueryCallback mockCallback = mock(CefQueryCallback.class);
+		final Settings mockSettings = mockSettings();
+		final JSONObject mockJSON = mock(JSONObject.class);
+		mockSettings.json = mockJSON;
+		when(mockJSON.getString("gameLocation")).thenReturn(
+			new File(resources, "SavedGameOpenerTest").getAbsolutePath());
+
+		new SavedGameOpener(resources.getAbsolutePath(), mockCallback).run();
+
+		final ArgumentCaptor<String> response = ArgumentCaptor.forClass(String.class);
+		verify(mockCallback).success(response.capture());
+		final JSONObject save = new JSONObject(response.getValue());
+
+		assertEquals(0, save.getInt("campingSupplies"));
+
+		final JSONArray characters = save.getJSONArray("characters");
+		assertEquals(2, characters.length());
+		for (int i = 0; i < characters.length(); i++) {
+			final JSONObject health = characters.getJSONObject(i).getJSONObject("health");
+
+			// Only the flag: the rest of Health is the game's to keep, and Save
+			// writes back whatever it is sent.
+			assertEquals(Collections.singleton("m_needs_current_values"), health.keySet());
+			final JSONObject flag = health.getJSONObject("m_needs_current_values");
+			assertEquals("java.lang.Boolean", flag.getString("type"));
+			assertFalse(flag.getBoolean("value"));
+		}
+	}
+
 	@Test
 	public void theOpenerListsEveryGrimoireAndWhatItHolds ()
 		throws URISyntaxException, IOException {
