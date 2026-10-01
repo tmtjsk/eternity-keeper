@@ -277,9 +277,17 @@ var AbilityEditor = function () {
 		return parts.join(' · ');
 	};
 
+	// What the finder last pointed at, for as long as it stays picked out. The
+	// rows are rebuilt whenever icons arrive, so the mark has to be part of
+	// building a row rather than a class added to one already drawn.
+	var revealed = null;   // {prefab, until}
+
 	var row = (entry, onRemove) => {
-		var line = $('<div>').addClass('abl-row');
+		var line = $('<div>').addClass('abl-row').attr('data-prefab', entry.prefab);
 		if (entry.staged) line.addClass('abl-row-staged');
+		if (revealed && revealed.prefab === entry.prefab && Date.now() < revealed.until) {
+			line.addClass('abl-row-found');
+		}
 
 		line.append(iconTile(entry));
 
@@ -771,6 +779,36 @@ var AbilityEditor = function () {
 	};
 
 	self.buildChanges = () => pending.slice();
+
+	/**
+	 * Picks out one of the character's own abilities or talents, for the
+	 * finder; the browser's rows are what could be learned, not what is had.
+	 */
+	self.reveal = prefab => {
+		var mark = revealed = {prefab: prefab, until: Date.now() + 2600};
+		self.html.abilitiesView.find('.abl-row-found').removeClass('abl-row-found');
+
+		var found = self.html.abilitiesView.find('.abl-row[data-prefab]')
+			.not('.abl-row-add')
+			.filter((i, line) => $(line).attr('data-prefab') === prefab);
+
+		if (found.length < 1) {
+			revealed = null;
+			return false;
+		}
+
+		found.addClass('abl-row-found');
+		found.get(0).scrollIntoView(false);
+		// Only this reveal's own mark: a newer one owns the highlight by then.
+		setTimeout(() => {
+			if (revealed === mark) {
+				revealed = null;
+				self.html.abilitiesView.find('.abl-row-found').removeClass('abl-row-found');
+			}
+		}, 2600);
+
+		return true;
+	};
 
 	self.init = () => {
 		self.html.ablApply.click(() => self.apply());

@@ -20,7 +20,7 @@ check("every component was constructed",
       page.eval("""['SaveSearch','SavedGame','CurrencyEditor','DifficultyEditor',
         'InventoryEditor','AbilityEditor','StrongholdEditor','GrimoireEditor',
         'PortraitPicker','ConsoleTab','Modifications','ImportCharacter',
-        'ExportCharacter','PartyManagement','VendorEditor','PartyCare']
+        'ExportCharacter','PartyManagement','VendorEditor','PartyCare','Finder']
         .every(function(n){ return !!Eternity[n]; })"""))
 
 # Editor.render used to hide the views by a hand-written list of ids, so a new

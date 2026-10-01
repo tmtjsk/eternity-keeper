@@ -57,6 +57,7 @@ var InventoryEditor = function () {
 	var weapons = {};
 	var originalWeapons = {};
 	var selected = null;      // {key, slot, itemGuid} of the item "in hand"
+	var revealed = null;      // {guid, until}: the item the finder points at
 	var stackTarget = null;   // item being edited in the quantity panel
 	var stashFilter = 0;      // ItemFilterType currently toggled on, 0 = all
 	var browseFilter = 0;
@@ -698,6 +699,13 @@ var InventoryEditor = function () {
 
 		if (!item) {
 			return tile.addClass('inv-tile-empty');
+		}
+
+		// What the finder looks for when it has to point at this item, and
+		// the mark it leaves, kept through any redraw while it lasts.
+		tile.attr('data-guid', item.guid);
+		if (revealed && revealed.guid === item.guid && Date.now() < revealed.until) {
+			tile.addClass('inv-tile-found');
 		}
 
 		var source = iconFor(item);
@@ -1860,6 +1868,83 @@ var InventoryEditor = function () {
 	};
 
 	self.setStatus = message => self.html.invStatus.text(message).show();
+
+	/**
+	 * Every item in the working copy and where it is, in SaveFind's shape. The
+	 * working copy rather than the save, so an item moved but not yet applied
+	 * is found where it now is; null until there is one to ask.
+	 */
+	self.everything = () => {
+		if (Object.keys(containers).length < 1) {
+			return null;
+		}
+
+		var found = [];
+		Object.keys(containers).forEach(key => {
+			var where = parseKey(key);
+			var component = where.component === STASH ? 'stash'
+				: where.component === QUICKBAR ? 'quick' : 'pack';
+
+			containers[key].items.forEach(item => found.push({
+				item: item, character: where.character, place: {component: component}}));
+		});
+
+		Object.keys(equipment).forEach(guid => equipment[guid].forEach((item, index) => {
+			var slot = Object.keys(SLOT_INDEX).filter(name => SLOT_INDEX[name] === index)[0];
+			if (item) {
+				found.push({item: item, character: guid, place: {component: 'worn', slot: slot}});
+			}
+		}));
+
+		Object.keys(weapons).forEach(guid => weapons[guid].forEach((item, index) => {
+			if (item) {
+				found.push({item: item, character: guid
+					, place: {component: 'weapon', set: Math.floor(index / 2) + 1}});
+			}
+		}));
+
+		return found;
+	};
+
+	/**
+	 * Points at one item on screen, with its holder already the active
+	 * character (the finder sees to that): clears whatever stash category or
+	 * search would hide it, then picks its tile out. False when it is nowhere
+	 * to be drawn.
+	 */
+	self.reveal = guid => {
+		var tile = () => self.html.inventoryView.find('.inv-tile[data-guid="' + guid + '"]');
+
+		var mark = revealed = {guid: guid, until: Date.now() + 2600};
+		self.html.inventoryView.find('.inv-tile-found').removeClass('inv-tile-found');
+
+		if (tile().length < 1) {
+			stashFilter = 0;
+			self.html.invStashSearch.val('');
+		}
+
+		redraw();
+		var found = tile().first();
+		if (found.length < 1) {
+			revealed = null;
+			return false;
+		}
+
+		var box = found.get(0).getBoundingClientRect();
+		if (box.top < 60 || box.bottom > window.innerHeight) {
+			window.scrollBy(0, box.top - window.innerHeight / 2);
+		}
+
+		// Only this reveal's own mark: a newer one owns the highlight by then.
+		setTimeout(() => {
+			if (revealed === mark) {
+				revealed = null;
+				self.html.inventoryView.find('.inv-tile-found').removeClass('inv-tile-found');
+			}
+		}, 2600);
+
+		return true;
+	};
 
 	self.init = () => {
 		self.html.invApply.click(() => self.apply());

@@ -670,12 +670,25 @@
 	<div class="container-fluid dark-theme">
 		<div class="row">
 			<div class="sidebar sidebar-width" id="sidebar" data-bound="SavedGame">
+				<!-- Find anything (Finder.js): characters, items, abilities and
+				     globals in the open save. -->
+				<div class="finder" id="finder" data-bound="Finder">
+					<div class="input-group">
+						<input type="text" class="form-control icon-left finder-input" id="finderInput"
+						       data-bound="Finder" placeholder="Find anything (Ctrl+F)"
+						       title="Characters, items, abilities, talents and global variables in this save"
+						       autocomplete="off" spellcheck="false" />
+						<span class="icon-left"><i class="fa fa-search"></i></span>
+					</div>
+				</div>
 				<ul class="characters" id="characterList" data-bound="SavedGame"></ul>
 				<button type="button" class="sidebar-toggle" id="sidebarToggle"
 				        data-bound="SavedGame" title="Hide the character list">
 					<i class="fa fa-chevron-left"></i>
 				</button>
 			</div>
+			<!-- Outside the sidebar, which clips anything wider than itself. -->
+			<div class="finder-results" id="finderResults" data-bound="Finder"></div>
 			<div class="main-panel">
 				<div class="row" id="error" data-bound="GenericError">
 					<div class="alert alert-danger alert-dismissable"></div>
@@ -1528,6 +1541,7 @@
 	<script src="js/Renderer.js"></script>
 	<script src="js/CloneFactory.js"></script>
 	<script src="js/SaveMerge.js"></script>
+	<script src="js/SaveFind.js"></script>
 
 	<script src="js/GenericError.js"></script>
 	<script src="js/Progress.js"></script>
@@ -1551,6 +1565,7 @@
 	<script src="js/ExportCharacter.js"></script>
 	<script src="js/PartyManagement.js"></script>
 	<script src="js/PartyCare.js"></script>
+	<script src="js/Finder.js"></script>
 	<script src="js/Editor.js"></script>
 
 </body>

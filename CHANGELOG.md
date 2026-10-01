@@ -57,6 +57,10 @@ Compared with upstream Eternity Keeper 0.21a, from 2016:
   Sagani's pet.
 - **Party management** from anywhere: swap companions between the party and the
   stronghold roster.
+- **Find anything** (Ctrl+F): one box above the character list that finds
+  characters, items wherever they are (packs, quick slots, worn, weapon sets,
+  the stash), abilities, talents and global variables, with or without
+  accents, and opens each on its own tab with the item or ability picked out.
 - **Heal, level up and resupply** the party in one place: bring everyone in the
   party back to full health and stamina (the game works out each maximum
   itself when the save loads, as its own HealParty does), raise everyone below

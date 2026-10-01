@@ -11,7 +11,7 @@ next. Kept next to the code so it stays honest.
 UI's save merge, a jQuery/Bootstrap UI running on an embedded Chromium (JCEF),
 and a save format that has been reverse-engineered far enough to mint objects
 the game accepts and to rewrite the area files as well as the world state.
-Twenty-one scripted UI suites drive the running editor against a real
+Twenty-two scripted UI suites drive the running editor against a real
 13-character save; see §2 for what the last full pass found.
 
 ### Shipped and verified in-game
@@ -781,7 +781,12 @@ Not requested, offered for the record.
   full rest: fatigue is a status effect and spells per rest are left alone.
   Verified in the game: the Watcher loaded at Health 1260/1260 instead of
   1055/1260, three companions likewise, and four camping supplies for three.
-- **Search across everything** — one box that finds a character, item or global.
+- ~~**Search across everything**~~ Done (2026-10-01): a Find anything box at
+  the top of the character list (Ctrl+F) searches the characters, every item
+  wherever it is, abilities and talents, and the global variables, ignoring
+  case and accents, and each result opens its tab on the right thing with the
+  item or row picked out. It sits in the sidebar because the navbar has no
+  room for it below about 1,300px. Vendors' stock is not searched.
 - **Preset/loadout export** — share a fully-equipped character as a file.
 
 ---

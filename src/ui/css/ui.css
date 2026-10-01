@@ -5832,3 +5832,162 @@ body.theme-light .gd-bar {
 	line-height: 1.55;
 	color: #9cc27f;
 }
+
+/* -------------------- Find anything (Finder.js) --------------------
+   The box tops the character list and ends where the names' highlight does
+   (the list's 12px indent, its 18px handle room and the rows' 8px margin);
+   the results are a panel of their own, fixed under the box, since the
+   sidebar clips anything wider than itself. */
+.finder {
+	padding: 0 26px 10px 12px;
+}
+
+.finder .input-group {
+	width: 100%;
+}
+
+body.sidebar-collapsed .finder {
+	display: none;
+}
+
+.finder-results {
+	display: none;
+	position: fixed;
+	z-index: 1040;
+	overflow-y: auto;
+	padding: 4px 0 6px 0;
+	color: #d6c9a8;
+	background: linear-gradient(#2e261c, #241e17);
+	border: 1px solid #0e0b08;
+	border-radius: 4px;
+	box-shadow: inset 0 0 0 1px #4d4234, 0 8px 24px rgba(0, 0, 0, .6);
+}
+
+.finder-title {
+	display: flex;
+	justify-content: space-between;
+	padding: 8px 14px 3px 14px;
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: .08em;
+	text-transform: uppercase;
+	color: #c9b47e;
+}
+
+.finder-count {
+	font-weight: 400;
+	letter-spacing: 0;
+	text-transform: none;
+}
+
+.finder-row {
+	display: flex;
+	align-items: center;
+	padding: 5px 14px;
+	cursor: pointer;
+}
+
+.finder-row.active {
+	color: #fff;
+	background-color: #17120d;
+}
+
+.finder-icon {
+	flex: 0 0 auto;
+	width: 26px;
+	height: 26px;
+	margin-right: 10px;
+}
+
+.finder-icon-empty {
+	display: inline-block;
+	background-color: rgba(0, 0, 0, .3);
+	border-radius: 3px;
+}
+
+.finder-text {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.finder-label,
+.finder-detail {
+	display: block;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.finder-label {
+	font-size: 14px;
+}
+
+.finder-label b {
+	font-weight: 600;
+	color: #fff;
+}
+
+.finder-detail {
+	font-size: 12px;
+	color: #b9a680;
+}
+
+.finder-empty {
+	padding: 10px 14px 4px 14px;
+	font-size: 13px;
+}
+
+.finder-note {
+	padding: 0 14px 6px 14px;
+	font-size: 12px;
+	color: #b9a680;
+}
+
+body.theme-light .finder-results {
+	color: #4a3c28;
+	background: #f6efdc;
+	border-color: #b8a274;
+	box-shadow: inset 0 0 0 1px #d9c99f, 0 8px 24px rgba(74, 60, 40, .35);
+}
+
+body.theme-light .finder-title {
+	color: #7a5a10;
+}
+
+body.theme-light .finder-row.active {
+	color: #1a140d;
+	background-color: #e0d2a8;
+}
+
+body.theme-light .finder-label b {
+	color: #1a140d;
+}
+
+body.theme-light .finder-detail,
+body.theme-light .finder-note {
+	color: #6b5a3c;
+}
+
+/* What a result opened onto, picked out for a moment. By id, so a quality
+   wash or the selected-tile glow written later cannot outrank it. */
+@keyframes finder-pulse {
+	50% {
+		box-shadow: 0 0 0 2px #fff3c4, 0 0 18px 6px rgba(240, 213, 138, .9);
+	}
+}
+
+#inventoryView .inv-tile.inv-tile-found {
+	border-color: #f0d58a;
+	box-shadow: 0 0 0 2px #f0d58a, 0 0 12px 2px rgba(240, 213, 138, .8);
+	animation: finder-pulse 1.3s ease-in-out 2;
+}
+
+#abilitiesView .abl-row.abl-row-found {
+	border-color: #f0d58a;
+	background: rgba(240, 213, 138, .18);
+}
+
+body.theme-light #abilitiesView .abl-row.abl-row-found {
+	border-color: #7a5a10;
+	background: rgba(122, 90, 16, .14);
+}
