@@ -1031,13 +1031,14 @@ public class SavedGameOpener implements Runnable {
 
 			name = (String) stats.get().get("OverrideName").get("value");
 		} else if (isCompanion) {
+			// Listed by who she is, but her OverrideName stays the save's: Save
+			// writes every stat back, and an empty one is what lets the game
+			// show her name in the player's own language.
 			final String mappedName = Environment.getInstance().config().companionNameMap().get(name);
 
 			if (mappedName != null) {
 				name = mappedName;
 			}
-
-			stats.get().get("OverrideName").put("value", name);
 		}
 
 		jsonObject.put("isCompanion", isCompanion);

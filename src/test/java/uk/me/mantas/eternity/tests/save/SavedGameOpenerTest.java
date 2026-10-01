@@ -351,6 +351,43 @@ public class SavedGameOpenerTest extends TestHarness {
 	 * to the maximum the game works out itself. Camping supplies are one number
 	 * on the player's inventory. Both travel in the shapes Save writes back.
 	 */
+	// Save writes every stat back as it is sent, so the stats must be what the
+	// save holds. A companion the game has not named has an empty
+	// OverrideName, and the game then shows the name in the player's own
+	// language; the opener used to fill in the English one it lists her by,
+	// and every Save wrote it into the save -- Edér came back "Eder". Found by
+	// comparing a saved save with the one it was made from.
+	@Test
+	public void aCompanionTheGameHasNotNamedIsListedByNameWithoutOneBeingWritten ()
+		throws URISyntaxException, IOException {
+
+		final File resources = new File(getClass().getResource("/").toURI());
+		final CefQueryCallback mockCallback = mock(CefQueryCallback.class);
+		final Settings mockSettings = mockSettings();
+		final JSONObject mockJSON = mock(JSONObject.class);
+		mockSettings.json = mockJSON;
+		when(mockJSON.getString("gameLocation")).thenReturn(
+			new File(resources, "SavedGameOpenerTest").getAbsolutePath());
+
+		new SavedGameOpener(resources.getAbsolutePath(), mockCallback).run();
+
+		final ArgumentCaptor<String> response = ArgumentCaptor.forClass(String.class);
+		verify(mockCallback).success(response.capture());
+		final JSONArray characters = new JSONObject(response.getValue()).getJSONArray("characters");
+
+		JSONObject calisca = null;
+		for (int i = 0; i < characters.length(); i++) {
+			if (characters.getJSONObject(i).getBoolean("isCompanion")) {
+				calisca = characters.getJSONObject(i);
+			}
+		}
+
+		assertNotNull(calisca);
+		assertEquals("listed by who she is", "Calisca", calisca.getString("name"));
+		assertEquals("but her stats are the save's", ""
+			, calisca.getJSONObject("stats").getJSONObject("OverrideName").getString("value"));
+	}
+
 	@Test
 	public void theOpenerShipsWhatHealingAndResupplyingNeed ()
 		throws URISyntaxException, IOException {
