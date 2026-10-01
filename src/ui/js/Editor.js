@@ -110,6 +110,8 @@ var Editor = function () {
 		var light = theme === 'light';
 		$('body').toggleClass('theme-light', light);
 		$('#themeToggle span').text(light ? 'Dark mode' : 'Light mode');
+		// What a narrow window's icon-only toggle says on hover.
+		$('#themeToggle').attr('title', light ? 'Dark mode' : 'Light mode');
 		$('#themeToggle i').attr('class', light ? 'fa fa-moon-o' : 'fa fa-sun-o');
 	};
 

@@ -69,6 +69,13 @@ for width, height in SIZES:
               deviceScaleFactor=1, mobile=False, fitWindow=False)
     time.sleep(1.2)
 
+    # ---- the navbar ----------------------------------------------------------
+    # The menus end at the same place whatever the width, and the theme toggle
+    # is pinned to the right edge: at 1,100 it used to sit on "Console".
+    nav = E("""(function(){ var m = $('.navbar .navbar-nav').get(0).getBoundingClientRect(),
+      t = $('#themeToggle').get(0).getBoundingClientRect(); return [m.right, t.left]; })()""")
+    check("%s navbar: the theme toggle clears the menus" % label, nav[1] >= nav[0] + 4, nav)
+
     # ---- abilities ---------------------------------------------------------
     view("ABILITIES", 3.5)
     tab = boxes("#abilitiesView")[0]

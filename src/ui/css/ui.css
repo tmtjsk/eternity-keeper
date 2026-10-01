@@ -670,6 +670,15 @@ span.danger {
 	border-color: #c9b47e;
 }
 
+/* The menus end at x=995 whatever the window, and the toggle is pinned to the
+   right edge: below this width its label would sit on "Console". The icon
+   alone fits, and the button's title still says what it does. */
+@media (max-width: 1140px) {
+	.navbar .theme-toggle span {
+		display: none;
+	}
+}
+
 /* ---------------------------------------------------------------------
  | Party Management panel (and the pm-btn family used across dialogs).
  --------------------------------------------------------------------- */
