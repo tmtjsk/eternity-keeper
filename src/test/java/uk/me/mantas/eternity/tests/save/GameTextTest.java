@@ -29,6 +29,7 @@ import uk.me.mantas.eternity.tests.TestHarness;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.Assert.*;
@@ -135,5 +136,31 @@ public class GameTextTest extends TestHarness {
 			, GameText.getInstance().lookup(StringTableType.Stronghold, 79));
 		assertEquals(Optional.of("Kestorik")
 			, GameText.getInstance().lookup(StringTableType.Characters, 1171));
+	}
+
+	// A quest has a table of its own beside the quest files, named after the
+	// quest's file: entry 0 is its title, the rest its objectives and journal
+	// entries. A save names the quest by the file the game loaded.
+	@Test
+	public void aQuestIsReadFromTheTableBesideIt () throws IOException {
+		final File game = install();
+		FileUtils.write(new File(game, "PillarsOfEternity_Data/data/localized/en/text/quests/"
+			+ "critical_path/act_4/cp_qst_confront_lka.stringtable")
+			, CHARACTERS.replace("<ID>329</ID>", "<ID>0</ID>")
+				.replace("Crucible Knight", "Memories of the Ancients")
+				.replace("<ID>1171</ID>", "<ID>4</ID>")
+				.replace("Kestorik", "Enter Sun in Shadow."), "UTF-8");
+
+		GameText.useTextAt(game);
+		final Map<Integer, String> quest =
+			GameText.getInstance().quest("data/quests/critical_path/act_4/cp_qst_confront_lka.quest");
+
+		assertEquals("Memories of the Ancients", quest.get(0));
+		assertEquals("Enter Sun in Shadow.", quest.get(4));
+		assertEquals("the same quest the save's way round", quest
+			, GameText.getInstance().quest("Data\\Quests\\critical_path\\act_4\\cp_qst_confront_lka.quest"));
+		assertTrue(GameText.getInstance().quest("data/quests/no_such_quest.quest").isEmpty());
+		assertTrue("never outside the quests folder"
+			, GameText.getInstance().quest("data/quests/../game/characters.quest").isEmpty());
 	}
 }

@@ -61,6 +61,15 @@ Compared with upstream Eternity Keeper 0.21a, from 2016:
   characters, items wherever they are (packs, quick slots, worn, weapon sets,
   the stash), abilities, talents and global variables, with or without
   accents, and opens each on its own tab with the item or ability picked out.
+- **Compare two saves** (*Compare* on the save list): what differs between
+  them, in the editor's own words — money, difficulty and game time; each
+  character's stats, health and records; items gained, lost and moved, with
+  where they went; abilities, grimoires, the stronghold, global variables,
+  quests by their journal titles with the objectives reached, and each
+  store's stock. The save picked is compared with the one it was made from,
+  so after a Save it shows exactly what the edit changed. Positions and the
+  game's timers are counted rather than listed; everything else is still
+  shown.
 - **Heal, level up and resupply** the party in one place: bring everyone in the
   party back to full health and stamina (the game works out each maximum
   itself when the save loads, as its own HealParty does), raise everyone below
@@ -102,6 +111,10 @@ Compared with upstream Eternity Keeper 0.21a, from 2016:
   items.** Anything they carry that the save already holds — an item handed to
   someone else since the export, say — comes in as a copy of its own. Before,
   the two shared an ID and the game dropped both.
+- **Saving no longer renames companions.** A companion the game had not named
+  keeps an empty name in the save, which is what lets the game show her name
+  in the player's own language. Save wrote the editor's English one in its
+  place, without its accents (Edér came back "Eder").
 - Polish and other non-ASCII save names display correctly.
 
 ### Also

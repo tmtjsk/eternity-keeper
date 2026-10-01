@@ -210,6 +210,39 @@ public class QuestTrackerBlob {
 			final int wordOffset = eventsDataOffset + 4 * (event / 32);
 			writeInt32At(wordOffset, readInt32At(wordOffset) | (1 << (event % 32)));
 		}
+
+		/** How many of the quest's events have fired: how far it has got. */
+		public int eventsFired () {
+			int fired = 0;
+			for (int event = 0; event < eventsLength; event++) {
+				if (triggeredEvent(event)) {
+					fired++;
+				}
+			}
+
+			return fired;
+		}
+	}
+
+	/** Every quest tracked, by the file the game keys it by, in the blob's order. */
+	public List<String> quests () {
+		final List<String> quests = new ArrayList<>();
+		final Object pairs = resolve(rootDictionary.members.get("KeyValuePairs"));
+		if (!(pairs instanceof List)) {
+			return quests;
+		}
+
+		for (final Object item : (List<?>) pairs) {
+			final Object entry = resolve(item);
+			if (entry instanceof ObjNode) {
+				final Object key = resolve(((ObjNode) entry).members.get("key"));
+				if (key instanceof String) {
+					quests.add((String) key);
+				}
+			}
+		}
+
+		return quests;
 	}
 
 	public Optional<Tracker> tracker (final String questPath) {

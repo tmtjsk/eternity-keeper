@@ -49,6 +49,9 @@ jobs:
       - name: UI search tests
         run: node src/test/js/SaveFindTest.js
 
+      - name: UI comparison tests
+        run: node src/test/js/SaveCompareTest.js
+
       - name: Game-data reader compiles
         run: python -m py_compile tools/gamedata/extract_gamedata.py tools/gamedata/items.py tools/gamedata/stronghold.py tools/gamedata/identity.py
 

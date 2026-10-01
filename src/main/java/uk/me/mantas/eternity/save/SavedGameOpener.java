@@ -722,7 +722,7 @@ public class SavedGameOpener implements Runnable {
 	// before Hands, the serialized array puts Hands first), and following the
 	// enum mislabels every character's gear. Index 6 is the deprecated cape
 	// slot and is always empty in real saves.
-	private static final String[] EQUIPMENT_SLOTS = {
+	static final String[] EQUIPMENT_SLOTS = {
 		"Head", "Neck", "Chest", "Hands", "RightRing", "LeftRing"
 		, "Cape", "Feet", "Waist", "Grimoire", "Pet"
 	};
@@ -816,7 +816,7 @@ public class SavedGameOpener implements Runnable {
 		return json;
 	}
 
-	private static List<String> guidList (final Object value) {
+	static List<String> guidList (final Object value) {
 		final List<String> guids = new ArrayList<>();
 		if (!(value instanceof CSharpCollection)) {
 			return guids;
@@ -1248,7 +1248,7 @@ public class SavedGameOpener implements Runnable {
 	// install. The key is HiredGlobalVariableName, which is how Restored()
 	// matches the entry back to its configured hireling, and how the editor
 	// asks for one to be dismissed.
-	private static JSONArray hirelings (final Object collection) {
+	static JSONArray hirelings (final Object collection) {
 		final JSONArray list = new JSONArray();
 		for (final Object entry : itemsOf(collection)) {
 			if (!(entry instanceof StrongholdHireling)) {
@@ -1277,7 +1277,7 @@ public class SavedGameOpener implements Runnable {
 	// Who is in the dungeon. Name and description are DatabaseStrings copied
 	// off the prisoner's StrongholdPrisoner component when they were locked up;
 	// the key is the global the same conversation set to 1.
-	private static JSONArray prisoners (final Object collection) {
+	static JSONArray prisoners (final Object collection) {
 		final JSONArray list = new JSONArray();
 		for (final Object entry : itemsOf(collection)) {
 			if (!(entry instanceof StrongholdPrisonerData)) {

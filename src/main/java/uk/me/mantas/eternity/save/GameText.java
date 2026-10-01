@@ -35,6 +35,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Locale;
@@ -63,11 +64,13 @@ import java.util.Optional;
 public class GameText {
 	private static final Logger logger = Logger.getLogger(GameText.class);
 	private static final String TABLES = "data/localized/en/text/game";
+	private static final String QUESTS = "quests";
 
 	private static GameText instance = null;
 
 	private final File directory;
 	private final Map<StringTableType, Map<Integer, String>> tables = new HashMap<>();
+	private final Map<String, Map<Integer, String>> quests = new HashMap<>();
 
 	public static synchronized GameText getInstance () {
 		if (instance == null) {
@@ -122,14 +125,38 @@ public class GameText {
 		return Optional.ofNullable(tables.computeIfAbsent(table, this::read).get(id));
 	}
 
+	/**
+	 * One quest's own table, by the quest file a save names it by
+	 * ("data/quests/critical_path/act_4/cp_qst_confront_lka.quest"): entry 0 is
+	 * the title, an objective's ID is its entry. The tables sit under
+	 * {@code text/quests}, beside {@code text/game}, in the quests' own
+	 * folders. Empty without an install, without the table, or for a name that
+	 * would reach outside that folder.
+	 */
+	public synchronized Map<Integer, String> quest (final String questFile) {
+		if (directory == null || questFile == null) {
+			return Collections.emptyMap();
+		}
+
+		String name = questFile.replace('\\', '/').toLowerCase(Locale.ROOT);
+		name = name.replaceFirst("^data/quests/", "").replaceFirst("\\.quest$", "");
+		if (name.isEmpty() || name.startsWith("/") || Arrays.asList(name.split("/")).contains("..")) {
+			return Collections.emptyMap();
+		}
+
+		return quests.computeIfAbsent(name, key ->
+			read(new File(new File(directory.getParentFile(), QUESTS), key + ".stringtable")));
+	}
+
 	private Map<Integer, String> read (final StringTableType table) {
 		if (directory == null) {
 			return Collections.emptyMap();
 		}
 
-		final File file = new File(
-			directory, table.name().toLowerCase(Locale.ROOT) + ".stringtable");
+		return read(new File(directory, table.name().toLowerCase(Locale.ROOT) + ".stringtable"));
+	}
 
+	private Map<Integer, String> read (final File file) {
 		if (!file.isFile()) {
 			return Collections.emptyMap();
 		}

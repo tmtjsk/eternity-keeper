@@ -68,6 +68,41 @@ public class QuestTrackerBlobTest {
 		assertTrue(tracker.get().failed());
 	}
 
+	// Comparing two saves walks every quest the party has met, so the blob
+	// has to say which those are: its dictionary's keys, each the quest's file.
+	@Test
+	public void listsEveryQuestItTracks () throws IOException {
+		final QuestTrackerBlob blob = QuestTrackerBlob.parse(fixture("eder-alive.bin")).get();
+		final java.util.List<String> quests = blob.quests();
+
+		assertTrue(quests.contains(EDER_QUEST));
+		assertTrue(quests.size() > 1);
+		for (final String quest : quests) {
+			assertTrue(quest, quest.startsWith("data/quests/") && quest.endsWith(".quest"));
+			assertTrue(quest, blob.tracker(quest).isPresent());
+		}
+
+		assertEquals(quests, QuestTrackerBlob.parse(fixture("eder-failed.bin")).get().quests());
+	}
+
+	// How far a quest has got, as the count of its events that have fired:
+	// Edér's death fires none of his quest's, so the count is the same.
+	@Test
+	public void countsTheEventsThatHaveFired () throws IOException {
+		final Tracker alive = QuestTrackerBlob.parse(fixture("eder-alive.bin")).get().tracker(EDER_QUEST).get();
+		final Tracker failed = QuestTrackerBlob.parse(fixture("eder-failed.bin")).get().tracker(EDER_QUEST).get();
+
+		int fired = 0;
+		for (int event = 0; event < 64; event++) {
+			if (alive.triggeredEvent(event)) {
+				fired++;
+			}
+		}
+
+		assertEquals(fired, alive.eventsFired());
+		assertEquals(alive.eventsFired(), failed.eventsFired());
+	}
+
 	@Test
 	public void readsActiveTrackerState () throws IOException {
 		final QuestTrackerBlob blob = QuestTrackerBlob.parse(fixture("eder-alive.bin")).get();

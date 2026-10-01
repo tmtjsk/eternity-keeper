@@ -7,11 +7,12 @@ next. Kept next to the code so it stays honest.
 
 ## 1. Where the project actually is
 
-~27,000 lines of Java, 549 passing JUnit tests plus a node-run suite for the
-UI's save merge, a jQuery/Bootstrap UI running on an embedded Chromium (JCEF),
+~30,000 lines of Java, 587 passing JUnit tests plus node-run suites for the
+UI's save merge, search and comparison, a jQuery/Bootstrap UI running on an
+embedded Chromium (JCEF),
 and a save format that has been reverse-engineered far enough to mint objects
 the game accepts and to rewrite the area files as well as the world state.
-Twenty-two scripted UI suites drive the running editor against a real
+Twenty-three scripted UI suites drive the running editor against a real
 13-character save; see §2 for what the last full pass found.
 
 ### Shipped and verified in-game
@@ -575,7 +576,36 @@ command — produced a change no load would keep. It now sets the skill's stored
 points for a rank, the way the Skills panel does. Worth a systematic look for
 other fields with the same shape.
 
-**3.3 Save comparison** — diff two saves and show what changed.
+**3.3 Save comparison** — *done* (2026-10-01)
+
+Compare on the save list puts two saves side by side in the editor's own
+words. `save/SaveDiff` compares the two world states object by object, by
+ObjectID, as the property trees the files hold (dictionaries by key, binary
+blobs by content); `save/SaveComparison` puts that into sections — the save,
+each character, items by where they went, abilities, grimoires, the keep,
+global variables, quests by their journal titles, areas and their stores —
+each of which *claims* the differences it explains. What none claims is
+listed under "Everything else", and what changes between any two saves of a
+playthrough is counted rather than listed: where objects stand and the timers
+and counters the game keeps updating.
+
+*Measuring first set the shape.* Two real saves fifty minutes of play apart
+differ in 3,789 values, and 3,468 of them are the party's belongings riding
+along into another area and clocks ticking. What the player did is a few
+hundred: experience, kills, health, money, items, globals, a quest's
+objectives. Two copies the editor wrote differ in exactly the edits. The game
+also makes things afresh that a byte comparison would report: it renumbers its
+clones on every load ("Companion_Sagani(Clone)_5" is "_4" next time, and
+everything she owns names her by it), re-sorts an item's enchantments, grows
+.NET lists' buffers, and gives stash stacks new IDs. Each is recognised as no
+change.
+
+*It found a bug on its first end-to-end run.* Saving a save wrote the English
+name of every companion the game had not named into the save, where the game
+shows a name in the player's own language (Edér came back "Eder"): the opener
+filled in the name it lists her by, and Save writes every stat back. Fixed;
+the UI suite now checks that a saved save differs from its original in the
+edit and nothing else.
 **3.4 Undo within a session** — an undo stack over the staged model.
 
 ---
@@ -749,8 +779,14 @@ Not requested, offered for the record.
   save into `<data>\backups` before Delete, Rename, or a Save that replaces a
   file of the same name; File → Backups restores, never over a save that is
   there. Delete also stopped accepting any path the page sent.
-- **Save comparison.** Diff two saves and show what changed — the single most
-  useful thing when working out whether an edit took effect.
+- ~~**Save comparison.**~~ Done (2026-10-01): Compare on the save list shows
+  what differs between two saves — the save picked and the one it was made
+  from, by default — in the editor's own words: a stat under its character, an
+  item by where it went, a quest by its title and the objectives reached, a
+  store by its stock. Where objects stand and the game's timers are counted,
+  not listed, and whatever the sections cannot explain is still shown, under
+  "Everything else". Two late-game saves take about two seconds. Its first
+  end-to-end run caught Save writing English names over companions' own.
 - ~~**Validation pass before writing.**~~ Done (2026-09-27):
   `serializer/PacketInvariants` checks what is about to be written — the
   leading count, an ID two objects share, an `InstanceID.Guid` that is not its

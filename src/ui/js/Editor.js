@@ -221,6 +221,7 @@ var Editor = function () {
 	self.GameData = new GameData();
 	self.Backups = new Backups();
 	self.SaveSearch = new SaveSearch();
+	self.CompareSaves = new CompareSaves();
 	self.SavedGame = new SavedGame();
 	self.CurrencyEditor = new CurrencyEditor();
 	self.DifficultyEditor = new DifficultyEditor();

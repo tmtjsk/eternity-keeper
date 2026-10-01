@@ -106,6 +106,11 @@ var SaveSearch = function () {
 		self.html.saveActions.find('button').prop(
 			'disabled', self.state.busy || self.state.opening !== false);
 
+		// A save on its own has nothing to be compared with.
+		if (self.state.saves.length < 2) {
+			$('#saveActionCompare').prop('disabled', true);
+		}
+
 		if (self.state.searching) {
 			self.html.searchForSavedGames.prop('disabled', true);
 			self.html.searchForSavedGames.find('i').css('display', 'inline-block');

@@ -4814,6 +4814,202 @@ body.theme-light .save-warning-note {
 	color: #a2937a;
 }
 
+/* Compare saves (CompareSaves.js). A modal, so the dark chrome in both
+   themes and no light-mode override. */
+.compare-dialog {
+	width: 980px;
+	max-width: calc(100% - 32px);
+}
+
+.cmp-pickers {
+	display: flex;
+	align-items: flex-end;
+	margin-bottom: 14px;
+}
+
+.cmp-picker {
+	flex: 1 1 0;
+	min-width: 0;
+	margin: 0;
+	font-weight: normal;
+}
+
+.cmp-picker span {
+	display: block;
+	margin-bottom: 4px;
+	font-size: 11px;
+	letter-spacing: .08em;
+	text-transform: uppercase;
+	color: #a2937a;
+}
+
+.cmp-swap {
+	flex: 0 0 auto;
+	height: 34px;
+	margin: 0 10px;
+	padding: 0 12px;
+}
+
+/* The results scroll inside the dialog, under the pickers. */
+.cmp-results {
+	min-height: 120px;
+	max-height: calc(100vh - 290px);
+	overflow-y: auto;
+	padding-right: 6px;
+}
+
+.cmp-summary p {
+	margin: 0 0 6px 0;
+	font-size: 13px;
+	line-height: 1.5;
+	color: #c8bda4;
+}
+
+.cmp-summary .cmp-headline {
+	color: #e8dcbc;
+	font-weight: 600;
+}
+
+.cmp-summary .cmp-warning {
+	color: #e2b45a;
+}
+
+.cmp-problem {
+	color: #d98b6e;
+}
+
+.cmp-summary .cmp-leftout {
+	font-size: 12px;
+	color: #9b8a6c;
+}
+
+.cmp-reading {
+	color: #a2937a;
+}
+
+.cmp-section {
+	margin-top: 18px;
+}
+
+.cmp-section-title {
+	margin-bottom: 8px;
+	padding-bottom: 4px;
+	border-bottom: 1px solid #4d4234;
+	font-size: 12px;
+	letter-spacing: .1em;
+	text-transform: uppercase;
+	color: #d3a86e;
+}
+
+.cmp-section-toggle {
+	cursor: pointer;
+}
+
+.cmp-section-toggle:hover {
+	color: #f0c98a;
+}
+
+.cmp-count {
+	margin-left: 4px;
+	letter-spacing: 0;
+	color: #9b8a6c;
+}
+
+.cmp-group {
+	margin: 0 0 12px 0;
+}
+
+.cmp-group-title {
+	margin-bottom: 2px;
+	font-size: 14px;
+	color: #ecd3a4;
+}
+
+.cmp-group-note {
+	margin-left: 6px;
+	font-size: 12px;
+	color: #9b8a6c;
+}
+
+.cmp-table {
+	width: 100%;
+	table-layout: fixed;
+	border-collapse: collapse;
+}
+
+.cmp-table col.cmp-c-label {
+	width: 34%;
+}
+
+.cmp-table col.cmp-c-value {
+	width: 25%;
+}
+
+.cmp-table col.cmp-c-arrow {
+	width: 26px;
+}
+
+.cmp-table col.cmp-c-change {
+	width: 13%;
+}
+
+.cmp-table td {
+	padding: 3px 6px;
+	font-size: 13px;
+	line-height: 1.45;
+	vertical-align: top;
+	color: #d6c9a8;
+	word-wrap: break-word;
+}
+
+.cmp-table tr + tr td {
+	border-top: 1px solid rgba(77, 66, 52, .55);
+}
+
+.cmp-table .cmp-label {
+	color: #cdbb98;
+}
+
+.cmp-table .cmp-arrow {
+	text-align: center;
+	color: #7d6f59;
+}
+
+.cmp-table .cmp-change {
+	text-align: right;
+	white-space: nowrap;
+	color: #9cc27f;
+}
+
+.cmp-table .cmp-change.cmp-down {
+	color: #d98b6e;
+}
+
+.cmp-table .cmp-none {
+	color: #7d6f59;
+}
+
+.cmp-table .cmp-note {
+	font-style: italic;
+	color: #a2937a;
+}
+
+.cmp-table tr.cmp-row-note td {
+	padding-top: 0;
+	border-top: none;
+	font-size: 12px;
+	color: #a2937a;
+}
+
+.cmp-icon {
+	width: 20px;
+	height: 20px;
+	margin: -2px 6px 0 0;
+	vertical-align: middle;
+	background: #17120d;
+	border: 1px solid #3a3024;
+}
+
 /* -------------------- The panel action bar -------------------- */
 
 /* Every view gets the same header: what this panel is on the left, Revert and

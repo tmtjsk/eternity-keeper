@@ -290,6 +290,44 @@
 		</div>
 	</div>
 
+	<!-- Two saves of the list side by side (CompareSaves.js, SaveCompare.js;
+	     handlers/CompareSaves, save/SaveComparison). Modals keep the dark
+	     chrome in both themes, so nothing here has a light-mode override. -->
+	<div class="modal fade" id="compareSavesDialog" role="dialog" data-bound="CompareSaves">
+		<div class="modal-dialog modal-lg compare-dialog">
+			<div class="modal-content">
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal">
+						<span>&times;</span>
+					</button>
+					<h4 class="modal-title">Compare saves</h4>
+				</div>
+				<div class="modal-body">
+					<div class="cmp-pickers">
+						<label class="cmp-picker" for="compareBefore">
+							<span>Before</span>
+							<select class="form-control" id="compareBefore" data-bound="CompareSaves"></select>
+						</label>
+						<button type="button" class="pm-btn cmp-swap" id="compareSwap" data-bound="CompareSaves"
+						        title="Swap the two saves">
+							<i class="fa fa-exchange"></i>
+						</button>
+						<label class="cmp-picker" for="compareAfter">
+							<span>After</span>
+							<select class="form-control" id="compareAfter" data-bound="CompareSaves"></select>
+						</label>
+					</div>
+					<div class="cmp-results" id="compareResults" data-bound="CompareSaves"></div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="pm-btn pm-btn-dialog" data-dismiss="modal">
+						<i>&#10094;</i> Close <i>&#10095;</i>
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
 	<div class="modal fade" id="partyManagementDialog" role="dialog" data-bound="PartyManagement">
 		<div class="modal-dialog pm-dialog">
 			<div class="modal-content pm-content">
@@ -1494,6 +1532,10 @@
 		<button type="button" id="saveActionRename" class="pm-btn" data-bound="SaveSearch">
 			<i>&#10094;</i> Rename <i>&#10095;</i>
 		</button>
+		<button type="button" id="saveActionCompare" class="pm-btn" data-bound="CompareSaves"
+		        title="What differs between this save and another">
+			<i>&#10094;</i> Compare <i>&#10095;</i>
+		</button>
 		<button type="button" id="saveActionConvert" class="pm-btn" data-bound="SaveSearch">
 			<i>&#10094;</i> Format <i>&#10095;</i>
 		</button>
@@ -1542,6 +1584,7 @@
 	<script src="js/CloneFactory.js"></script>
 	<script src="js/SaveMerge.js"></script>
 	<script src="js/SaveFind.js"></script>
+	<script src="js/SaveCompare.js"></script>
 
 	<script src="js/GenericError.js"></script>
 	<script src="js/Progress.js"></script>
@@ -1549,6 +1592,7 @@
 	<script src="js/GameData.js"></script>
 	<script src="js/Backups.js"></script>
 	<script src="js/SaveSearch.js"></script>
+	<script src="js/CompareSaves.js"></script>
 	<script src="js/SavedGame.js"></script>
 	<script src="js/CurrencyEditor.js"></script>
 	<script src="js/DifficultyEditor.js"></script>

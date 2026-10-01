@@ -53,6 +53,7 @@ public class JSHandlers {
 		handlers.put("renameSavedGame", new RenameSavedGame());
 		handlers.put("deleteSavedGame", new DeleteSavedGame());
 		handlers.put("convertSave", new ConvertSave());
+		handlers.put("compareSaves", new CompareSaves());
 		handlers.put("backups", new Backups());
 
 		// Writing.
