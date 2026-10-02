@@ -1140,6 +1140,7 @@ var InventoryEditor = function () {
 		renderBrowseTargets();
 		renderStatus(message);
 		self.html.invApply.prop('disabled', !!self.state.working);
+		renderLoadoutButtons();
 	};
 
 	// ---- the "every item in the game" browser --------------------------------
@@ -1869,6 +1870,151 @@ var InventoryEditor = function () {
 
 	self.setStatus = message => self.html.invStatus.text(message).show();
 
+	// ---- loadouts -----------------------------------------------------------
+
+	// What the character on the doll wears, holds and keeps in quick slots,
+	// to a file and back onto anyone (save/Loadout). Both read and change the
+	// save as it is, so they wait for the tab's own changes to be applied or
+	// reverted: those would be read past, and lost when the reply comes back.
+	var loadoutFile = null;
+
+	var loadoutRequest = extra => JSON.stringify($.extend({
+		GUID: self.state.character
+		, absolutePath: Eternity.SavedGame.state.info.absolutePath
+		// An Apply or a Save moves the save's current state out of the
+		// directory the list opened.
+		, savedYet: Eternity.Modifications.state.savedYet
+	}, extra || {}));
+
+	var renderLoadoutButtons = () => {
+		var staged = self.buildChanges().length > 0;
+		[self.html.invSaveLoadout, self.html.invPutLoadout].forEach(button => {
+			if (button.data('title') === undefined) {
+				button.data('title', button.attr('title'));
+			}
+
+			button.prop('disabled', !!self.state.working || staged || !self.state.character)
+				.attr('title', staged ? 'Apply or revert the changes first' : button.data('title'));
+		});
+	};
+
+	self.saveLoadout = () => {
+		var name = characterName(self.state.character);
+		window.exportLoadout({
+			request: loadoutRequest({name: name})
+			, onSuccess: response => {
+				var saved = JSON.parse(response);
+				redraw('Saved ' + name + '’s loadout, ' + saved.items
+					+ (saved.items === 1 ? ' item' : ' items') + ', to ' + saved.file + '.');
+			}
+			, onFailure: (code, message) => {
+				if (message !== 'CANCELLED') {
+					redraw(message);
+				}
+			}
+		});
+	};
+
+	self.readLoadout = () => {
+		window.readLoadout({
+			request: loadoutRequest()
+			, onSuccess: response => self.showLoadout(JSON.parse(response))
+			, onFailure: (code, message) => {
+				if (message !== 'CANCELLED') {
+					redraw(message);
+				}
+			}
+		});
+	};
+
+	// While it goes on the dialog cannot be closed: the reply is adopted
+	// whatever becomes of the dialog, so a Cancel then would not cancel.
+	var loadoutBusy = busy => {
+		self.state.working = busy;
+		self.html.loadoutDialog.find('[data-dismiss="modal"]').prop('disabled', busy);
+		self.html.loadoutConfirm.prop('disabled', busy).html(busy
+			? '<i class="fa fa-spinner fa-pulse"></i> Working&hellip;'
+			: '<i>&#10094;</i> Put it on <i>&#10095;</i>');
+	};
+
+	// The plan, item by item, before anything changes.
+	self.showLoadout = plan => {
+		var target = characterName(self.state.character);
+		loadoutFile = plan.file;
+		self.html.loadoutSubject.text(plan.from + '’s gear'
+			+ (plan.className ? ' (' + plan.className.toLowerCase() + ')' : '') + ', onto ' + target);
+
+		var list = self.html.loadoutList.empty();
+		var row = (iconData, name, place, outcome, kind) => {
+			var icon = $('<span class="ld-icon">');
+			if (iconData) {
+				icon.append($('<img alt="">').attr('src', 'data:image/png;base64,' + iconData));
+			}
+
+			list.append($('<div class="ld-row">').addClass(kind || '').append(icon
+				, $('<span class="ld-what">').append(
+					$('<span class="ld-name">').text(name), $('<span class="ld-place">').text(place))
+				, $('<span class="ld-outcome">').text(outcome)));
+		};
+
+		(plan.items || []).forEach(item => row(item.icon ? (plan.icons || {})[item.icon] : null
+			, item.name + (item.stack > 1 ? ' ×' + item.stack : '')
+			, item.place
+			, !item.fits ? 'Left out: ' + item.reason
+				: item.replaces ? 'Replaces ' + item.replaces : 'Into an empty slot'
+			, item.fits ? '' : 'ld-skipped'));
+
+		(plan.cleared || []).forEach(item =>
+			row(null, item.name, 'comes off its weapon set', 'To the stash', 'ld-cleared'));
+
+		var none = plan.fitting < 1;
+		loadoutBusy(false);
+		self.html.loadoutStatus.text(none ? 'None of it can go on ' + target + '.' : '')
+			.toggleClass('ld-failed', none).toggle(none);
+		self.html.loadoutConfirm.prop('disabled', none);
+		self.html.loadoutDialog.modal({backdrop: 'static', keyboard: false});
+	};
+
+	self.putLoadout = () => {
+		var target = self.state.character;
+		var name = characterName(target);
+		if (!loadoutFile || !target) {
+			return;
+		}
+
+		loadoutBusy(true);
+		self.html.loadoutStatus.text('Putting it on…').removeClass('ld-failed').show();
+		window.applyLoadout({
+			request: JSON.stringify({
+				oldSave: Eternity.SavedGame.state.info.absolutePath
+				, savedYet: Eternity.Modifications.state.savedYet
+				, GUID: target
+				, file: loadoutFile
+			})
+			, onSuccess: response => {
+				loadoutBusy(false);
+				self.html.loadoutDialog.modal('hide');
+				var updated = Eternity.SavedGame.adopt(JSON.parse(response));
+				self.reset();
+				self.state.working = false;
+				Eternity.Modifications.transition({modifications: true});
+				Eternity.SavedGame.render({
+					saveData: updated
+					, info: Eternity.SavedGame.state.info
+					, activeCharacter: Eternity.SavedGame.state.activeCharacter
+					, view: Eternity.SavedGame.views.INVENTORY
+				});
+
+				self.setStatus('Put the loadout on ' + name + '; whatever it replaced is in the stash. '
+					+ 'Save to write it to a file.');
+			}
+			, onFailure: (code, message) => {
+				loadoutBusy(false);
+				self.html.loadoutStatus.text(message).addClass('ld-failed').show();
+			}
+		});
+	};
+
 	/**
 	 * Every item in the working copy and where it is, in SaveFind's shape. The
 	 * working copy rather than the save, so an item moved but not yet applied
@@ -1948,6 +2094,9 @@ var InventoryEditor = function () {
 
 	self.init = () => {
 		self.html.invApply.click(() => self.apply());
+		self.html.invSaveLoadout.click(() => self.saveLoadout());
+		self.html.invPutLoadout.click(() => self.readLoadout());
+		self.html.loadoutConfirm.click(() => self.putLoadout());
 		self.html.invRevert.click(() => {
 			buildWorkingCopy();
 			redraw('Reverted to the save’s current contents.');

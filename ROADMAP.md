@@ -7,12 +7,12 @@ next. Kept next to the code so it stays honest.
 
 ## 1. Where the project actually is
 
-~30,000 lines of Java, 587 passing JUnit tests plus node-run suites for the
+~30,000 lines of Java, 609 passing JUnit tests plus node-run suites for the
 UI's save merge, search and comparison, a jQuery/Bootstrap UI running on an
 embedded Chromium (JCEF),
 and a save format that has been reverse-engineered far enough to mint objects
 the game accepts and to rewrite the area files as well as the world state.
-Twenty-three scripted UI suites drive the running editor against a real
+Twenty-four scripted UI suites drive the running editor against a real
 13-character save; see §2 for what the last full pass found.
 
 ### Shipped and verified in-game
@@ -35,6 +35,7 @@ Twenty-three scripted UI suites drive the running editor against a real
 | Light/dark themes | Both audited |
 | Save format conversion | Rewritten as a byte pass and finally reachable from the UI (see §4.3) |
 | **Vendors tab** | Every store's stock, read from the area files; take out what you pick (§2.1) |
+| Loadouts (`.loadout`) | One character's gear to a file and onto anyone, as copies (§5) |
 
 ### Known limitations, stated plainly
 
@@ -823,7 +824,18 @@ Not requested, offered for the record.
   case and accents, and each result opens its tab on the right thing with the
   item or row picked out. It sits in the sidebar because the navbar has no
   room for it below about 1,300px. Vendors' stock is not searched.
-- **Preset/loadout export** — share a fully-equipped character as a file.
+- ~~**Preset/loadout export**~~ Done (2026-10-02): the Inventory tab saves
+  what a character wears, holds and keeps in quick slots to a `.loadout`
+  file and puts one on anyone, in this save or another playthrough. Every
+  item goes on as a copy under an ID of its own, its enchantment and pet
+  links cleared so the game makes its own; whatever a copy replaces goes to
+  the stash, and the plan says item by item what goes where and what is left
+  out and why: a slot the character lacks, gear for another class, a
+  soulbound item bound to someone else. The game knows the main character
+  and every companion by the same ID in every playthrough, so the Watcher's
+  soulbound sword goes on the Watcher of another one. Verified in the game:
+  the copies' enchantments and the abilities they grant, a pet summoned for
+  a copied pet item, and the replaced gear in the stash.
 
 ---
 

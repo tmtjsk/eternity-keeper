@@ -77,6 +77,9 @@ public class JSHandlers {
 		// Characters in and out of .chr files.
 		handlers.put("exportCharacter", new ExportCharacter());
 		handlers.put("importCharacter", new ImportCharacter());
+		handlers.put("exportLoadout", new ExportLoadout());
+		handlers.put("readLoadout", new ReadLoadout());
+		handlers.put("applyLoadout", new ApplyLoadout());
 
 		// Read-only lookups into the game's own data.
 		handlers.put("getGameStructures", new GetGameStructures());

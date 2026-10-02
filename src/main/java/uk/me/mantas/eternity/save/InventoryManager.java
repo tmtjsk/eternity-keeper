@@ -131,6 +131,14 @@ public class InventoryManager {
 		/** Set only when adding a brand new item from the catalog. */
 		public String newItemPrefab = null;
 		public String newItemPath = null;
+		/**
+		 * Set only when bringing in an item whole, with every component it
+		 * has -- a loadout's copy. Its ID must already be {@link #itemGuid},
+		 * in the tree and in its mirror; its parent and area become its new
+		 * holder's. {@link #newItemPath}, when set, is its inventory entry's
+		 * prefab path.
+		 */
+		public Property carried = null;
 
 		public Change (
 			final String character
@@ -264,6 +272,16 @@ public class InventoryManager {
 			if (!owner.isPresent()) {
 				logger.error("No character '%s' in target save.%n", change.character);
 				return false;
+			}
+
+			// An item brought in whole, enchantments and all: a loadout's.
+			if (change.carried != null) {
+				if (!addCarriedItem(packets, owner.get(), change)) {
+					return false;
+				}
+
+				packetsChanged = true;
+				continue;
 			}
 
 			// Adding an item that isn't in the save yet: it needs its own
@@ -704,7 +722,7 @@ public class InventoryManager {
 	 * player's own, or a companion's in the save's language), then the
 	 * registry's, then the one inside the object name.
 	 */
-	private static String characterName (final Property character) {
+	static String characterName (final Property character) {
 		final Optional<String> override = PartyManager.findComponentProperty(character, "CharacterStats")
 			.<DictionaryProperty>flatMap(c -> c.findProperty("Variables"))
 			.flatMap(v -> v.<Property>findEntry("OverrideName"))
@@ -936,24 +954,107 @@ public class InventoryManager {
 			return false;
 		}
 
-		final Optional<ComplexProperty> entryTemplate = findAnyInventoryEntry(packets);
-		if (!entryTemplate.isPresent()) {
-			logger.error("This save has no InventoryItem to model a new entry on.%n");
+		final Optional<ComplexProperty> entry = newEntry(packets, change.newItemPath
+			, freeSlot(itemList.get(), change.destSlot, -1), change.stackSize);
+		if (!entry.isPresent()) {
 			return false;
 		}
 
-		final ComplexProperty entry = new ComplexProperty(null, entryTemplate.get().type);
-		for (final Property field : entryTemplate.get().properties) {
+		itemList.get().items.add(entry.get());
+		addGuid(serializedList.get(), guid);
+		packets.add(packet.get());
+
+		return true;
+	}
+
+	/**
+	 * Brings in an item whole -- a loadout's copy, with its enchantments, its
+	 * soulbinding and a grimoire's spells -- rather than a bare prefab. It
+	 * goes into the holder's container like any new item, and takes the
+	 * holder's area and name as its parent, in the tree and in its mirror,
+	 * since the rest of this class finds objects through the mirror.
+	 */
+	private boolean addCarriedItem (
+		final List<Property> packets, final Property owner, final Change change) {
+
+		final Optional<CollectionProperty> itemList =
+			findList(owner, change.destComponent, "ItemList");
+		final Optional<CollectionProperty> serializedList =
+			findList(owner, change.destComponent, "SerializedItemList");
+
+		if (!itemList.isPresent() || !serializedList.isPresent()
+			|| !(change.carried instanceof ComplexProperty)
+			|| !(change.carried.obj instanceof ObjectPersistencePacket)) {
+
+			logger.error("No room in '%s' for an item brought in whole.%n", change.destComponent);
+			return false;
+		}
+
+		final ObjectPersistencePacket holder = (ObjectPersistencePacket) owner.obj;
+		final ObjectPersistencePacket mirror = (ObjectPersistencePacket) change.carried.obj;
+		if (!change.itemGuid.equalsIgnoreCase(mirror.ObjectID)) {
+			logger.error("An item brought in as '%s' is '%s'.%n", change.itemGuid, mirror.ObjectID);
+			return false;
+		}
+
+		final ComplexProperty packet = (ComplexProperty) change.carried;
+		final Optional<Property> parent = packet.findProperty("Parent");
+		final Optional<Property> level = packet.findProperty("LevelName");
+		if (!parent.isPresent() || !level.isPresent()
+			|| !Property.update(parent.get(), holder.ObjectName)
+			|| !Property.update(level.get(), holder.LevelName)) {
+
+			logger.error("An item brought in whole has no Parent or LevelName to set.%n");
+			return false;
+		}
+
+		mirror.Parent = holder.ObjectName;
+		mirror.LevelName = holder.LevelName;
+
+		touch(holder.ObjectID, change.destComponent, change.itemGuid);
+		request(holder.ObjectID, change.destComponent, change.itemGuid, change.destSlot);
+		packets.add(packet);
+
+		final Optional<String> baseItem = change.newItemPath != null
+			? Optional.of(change.newItemPath) : prefabPathOf(packets, change.itemGuid);
+		final Optional<ComplexProperty> entry = baseItem.isPresent()
+			? newEntry(packets, baseItem.get(), freeSlot(itemList.get(), change.destSlot, -1), change.stackSize)
+			: Optional.empty();
+
+		if (!entry.isPresent()) {
+			return false;
+		}
+
+		itemList.get().items.add(entry.get());
+		addGuid(serializedList.get(), change.itemGuid);
+		return true;
+	}
+
+	/**
+	 * A fresh {@code InventoryItem} entry, its type strings copied from one
+	 * this save already holds, so it is written exactly as the game would.
+	 */
+	private static Optional<ComplexProperty> newEntry (
+		final List<Property> packets, final String baseItem, final int uiSlot, final int stackSize) {
+
+		final Optional<ComplexProperty> template = findAnyInventoryEntry(packets);
+		if (!template.isPresent()) {
+			logger.error("This save has no InventoryItem to model a new entry on.%n");
+			return Optional.empty();
+		}
+
+		final ComplexProperty entry = new ComplexProperty(null, template.get().type);
+		for (final Property field : template.get().properties) {
 			if (!(field instanceof SimpleProperty) || field.name == null) {
 				continue;
 			}
 
 			final Object value;
 			switch (field.name) {
-				case "BaseItem":        value = change.newItemPath; break;
-				case "uiSlot":          value = freeSlot(itemList.get(), change.destSlot, -1); break;
-				case "StackSize":       value = Math.max(1, change.stackSize); break;
-				case "stackSize":       value = Math.max(1, change.stackSize); break;
+				case "BaseItem":        value = baseItem; break;
+				case "uiSlot":          value = uiSlot; break;
+				case "StackSize":       value = Math.max(1, stackSize); break;
+				case "stackSize":       value = Math.max(1, stackSize); break;
 				case "Original":        value = false; break;
 				case "AreaLootSource":  value = false; break;
 				default:                value = ((SimpleProperty) field).value; break;
@@ -965,11 +1066,7 @@ public class InventoryManager {
 			entry.properties.add(copy);
 		}
 
-		itemList.get().items.add(entry);
-		addGuid(serializedList.get(), guid);
-		packets.add(packet.get());
-
-		return true;
+		return Optional.of(entry);
 	}
 
 	/** Any existing item packet, used purely for its type information. */

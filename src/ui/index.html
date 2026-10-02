@@ -290,6 +290,38 @@
 		</div>
 	</div>
 
+	<!-- A loadout file against one character, item by item, before anything is
+	     changed (InventoryEditor.js; handlers/ReadLoadout, ApplyLoadout). A
+	     modal, so the dark chrome in both themes. -->
+	<div class="modal fade" id="loadoutDialog" role="dialog" data-bound="InventoryEditor">
+		<div class="modal-dialog loadout-dialog">
+			<div class="modal-content">
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal">
+						<span>&times;</span>
+					</button>
+					<h4 class="modal-title">Put on a loadout</h4>
+				</div>
+				<div class="modal-body">
+					<p class="pm-dialog-subject" id="loadoutSubject" data-bound="InventoryEditor"></p>
+					<p class="ld-intro">Each item goes on as a copy, so the originals stay where they
+						are. Whatever it replaces goes to the stash.</p>
+					<div class="ld-list" id="loadoutList" data-bound="InventoryEditor"></div>
+					<p class="ld-status" id="loadoutStatus" data-bound="InventoryEditor"></p>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="pm-btn pm-btn-dialog" data-dismiss="modal">
+						<i>&#10094;</i> Cancel <i>&#10095;</i>
+					</button>
+					<button type="button" id="loadoutConfirm" class="pm-btn pm-btn-dialog"
+					        data-bound="InventoryEditor">
+						<i>&#10094;</i> Put it on <i>&#10095;</i>
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
 	<!-- Two saves of the list side by side (CompareSaves.js, SaveCompare.js;
 	     handlers/CompareSaves, save/SaveComparison). Modals keep the dark
 	     chrome in both themes, so nothing here has a light-mode override. -->
@@ -997,6 +1029,21 @@
 								<div class="inv-weapon-sets" id="invWeaponSets"
 								     data-bound="InventoryEditor"></div>
 							</div>
+						</div>
+						<!-- What this character wears, holds and keeps in quick
+						     slots, to a file and back onto anyone (Loadout.java). -->
+						<div class="inv-loadout">
+							<span class="inv-sub-label">Loadout</span>
+							<button type="button" class="pm-btn inv-loadout-btn" id="invSaveLoadout"
+							        data-bound="InventoryEditor"
+							        title="Save what this character wears, holds and keeps in quick slots to a file">
+								Save to a file&hellip;
+							</button>
+							<button type="button" class="pm-btn inv-loadout-btn" id="invPutLoadout"
+							        data-bound="InventoryEditor"
+							        title="Put gear saved from anyone, in this save or another, on this character">
+								Put one on&hellip;
+							</button>
 						</div>
 					</div>
 

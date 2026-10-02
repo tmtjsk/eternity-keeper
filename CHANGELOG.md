@@ -80,6 +80,14 @@ Compared with upstream Eternity Keeper 0.21a, from 2016:
   stronghold), with a searchable reference of the in-game-only ones.
 - Difficulty, Expert Mode, Trial of Iron and turn-based mode, and party money.
 - Import and export characters as `.chr` files.
+- **Loadouts**: save what a character wears, holds and keeps in quick slots
+  to a `.loadout` file from the Inventory tab, and put it on anyone, in the
+  same save or another playthrough. Each item goes on as a copy with its
+  enchantments, so the originals stay where they are, and whatever it
+  replaces goes to the stash. Before anything changes, the plan says item
+  by item where each piece goes and what is left out and why: a slot the
+  character does not have, gear for another class, or a soulbound item
+  bound to someone else.
 - Revert and Apply on every panel. Save shows the exact file name and folder it
   will write.
 

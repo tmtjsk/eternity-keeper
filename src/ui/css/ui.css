@@ -1671,6 +1671,31 @@ body.theme-light #referenceTable td.reference-command {
 	margin-bottom: 4px;
 }
 
+/* The doll's loadout row: this character's gear to a file and back onto
+   anyone (InventoryEditor.js, save/Loadout). */
+.inv-loadout {
+	display: flex;
+	align-items: center;
+	margin-top: 10px;
+	padding-top: 8px;
+	border-top: 1px solid rgba(201, 180, 126, .22);
+}
+
+.inv-loadout .inv-sub-label {
+	flex: 1 1 auto;
+	margin: 0;
+}
+
+.inv-loadout-btn {
+	flex: 0 0 auto;
+	padding: 3px 10px;
+	font-size: 12px;
+}
+
+.inv-loadout-btn + .inv-loadout-btn {
+	margin-left: 6px;
+}
+
 /* Three to a row, as the game has them. */
 .inv-quick-slots {
 	font-size: 0;
@@ -4812,6 +4837,98 @@ body.theme-light .save-warning-note {
 
 .cnv-reading {
 	color: #a2937a;
+}
+
+/* Put on a loadout: the plan, item by item (InventoryEditor.js). A modal, so
+   the dark chrome in both themes and no light-mode override. The rows are the
+   Backups dialog's: what, then the outcome at the right. */
+.loadout-dialog {
+	width: 640px;
+	max-width: calc(100% - 32px);
+}
+
+.ld-intro {
+	margin: 0 0 10px 0;
+	font-size: 13px;
+	line-height: 1.55;
+	color: #cdbb98;
+}
+
+.ld-list {
+	max-height: 420px;
+	overflow-y: auto;
+	border-top: 1px solid #4a3c28;
+}
+
+.ld-row {
+	display: flex;
+	align-items: center;
+	padding: 6px 2px;
+	border-bottom: 1px solid #4a3c28;
+}
+
+.ld-icon {
+	flex: 0 0 auto;
+	width: 28px;
+	height: 28px;
+	margin-right: 10px;
+	background: #17120d;
+	border: 1px solid #3a3024;
+}
+
+.ld-icon img {
+	display: block;
+	width: 26px;
+	height: 26px;
+}
+
+.ld-what {
+	flex: 1 1 auto;
+	min-width: 0;
+	margin-right: 12px;
+}
+
+.ld-name {
+	display: block;
+	font-size: 14px;
+	color: #ecd3a4;
+}
+
+.ld-place {
+	display: block;
+	font-size: 12px;
+	color: #b9a680;
+}
+
+.ld-outcome {
+	flex: 0 1 auto;
+	max-width: 45%;
+	font-size: 12px;
+	text-align: right;
+	color: #9cc27f;
+}
+
+.ld-skipped .ld-name {
+	color: #b9a680;
+}
+
+.ld-skipped .ld-outcome {
+	color: #e8a08e;
+}
+
+.ld-cleared .ld-outcome {
+	color: #d3a86e;
+}
+
+.ld-status {
+	margin: 10px 0 0 0;
+	font-size: 12px;
+	line-height: 1.55;
+	color: #9cc27f;
+}
+
+.ld-status.ld-failed {
+	color: #e8a08e;
 }
 
 /* Compare saves (CompareSaves.js). A modal, so the dark chrome in both

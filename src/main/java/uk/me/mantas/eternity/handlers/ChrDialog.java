@@ -28,7 +28,8 @@ import java.util.Vector;
 import java.util.function.Consumer;
 
 /**
- * Choosing a character file, which importing and exporting both start with.
+ * Choosing a character or loadout file, which importing and exporting both
+ * start with.
  *
  * <p>The dialog is CEF's own, opened from the worker pool so it never holds up
  * the mutation queue; what is done with the chosen file runs on that queue
@@ -38,6 +39,8 @@ public final class ChrDialog {
 	private ChrDialog () {}
 
 	/**
+	 * A {@code .chr} file.
+	 *
 	 * @param cancelled what the client is told when no file was chosen
 	 * @param chosen    given the chosen path, on the mutation worker
 	 */
@@ -49,11 +52,29 @@ public final class ChrDialog {
 		, final String cancelled
 		, final Consumer<String> chosen) {
 
+		choose(browser, mode, title, "chr", "", callback, cancelled, chosen);
+	}
+
+	/**
+	 * A file of the given extension.
+	 *
+	 * @param suggested the file name a save dialog starts with, or empty
+	 */
+	public static void choose (
+		final CefBrowser browser
+		, final FileDialogMode mode
+		, final String title
+		, final String extension
+		, final String suggested
+		, final CefQueryCallback callback
+		, final String cancelled
+		, final Consumer<String> chosen) {
+
 		final Vector<String> filters = new Vector<>();
-		filters.add(".chr");
+		filters.add("." + extension);
 
 		Environment.getInstance().workers().execute(() -> browser.runFileDialog(
-			mode, title, "", filters, 0, (selectedFilter, files) -> {
+			mode, title, suggested, filters, 0, (selectedFilter, files) -> {
 				if (files == null || files.isEmpty() || files.get(0).isEmpty()) {
 					callback.failure(-1, cancelled);
 					return;
@@ -66,7 +87,12 @@ public final class ChrDialog {
 
 	/** The name typed into a save dialog, with {@code .chr} on the end unless it has it. */
 	public static String withChrExtension (final String filename) {
-		return EKUtils.getExtension(filename).filter("chr"::equals).isPresent()
-			? filename : filename + ".chr";
+		return withExtension(filename, "chr");
+	}
+
+	/** The name typed into a save dialog, with {@code extension} on the end unless it has it. */
+	public static String withExtension (final String filename, final String extension) {
+		return EKUtils.getExtension(filename).filter(extension::equalsIgnoreCase).isPresent()
+			? filename : filename + "." + extension;
 	}
 }
