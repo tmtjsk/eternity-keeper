@@ -115,7 +115,9 @@ var ImportCharacter = function () {
 	};
 
 	self.importCharacter = () => {
-		if (self.state.importing) {
+		// An import reopens the save, and a draft staged in a tab against the
+		// old one would be dropped or applied to the wrong thing.
+		if (self.state.importing || Eternity.EditHistory.refused()) {
 			return;
 		}
 

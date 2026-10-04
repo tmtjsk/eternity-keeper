@@ -71,7 +71,8 @@ var InventoryEditor = function () {
 	// over the same click.
 	var sellMode = false;
 	var forSale = {};         // itemGuid -> true, across every pack and the stash
-	var sales = [];           // the history steps that put this draft's sales in the purse
+	var sold = {units: 0, total: 0};   // what this draft has sold: paid when it is applied
+	var dropped = '';         // why a staged draft is gone, said until something is done here
 
 	var saveData = () => Eternity.SavedGame.state.saveData || {};
 	var inventory = () => saveData().inventory || {};
@@ -289,9 +290,19 @@ var InventoryEditor = function () {
 			return;
 		}
 
+		// Only what has a price is sold; the rest is simply removed. Something
+		// added here from the catalog has none -- the save never held it, so
+		// there is nothing to be paid for -- which is also why money owed
+		// always comes with something for Apply to take out of the save.
 		var total = 0;
+		var units = 0;
 		items.forEach(item => {
-			total += sellValueOf(item);
+			var price = sellValueOf(item);
+			if (price > 0) {
+				total += price;
+				units += Math.max(1, item.stackSize || 1);
+			}
+
 			var key = null;
 			sellableContainers().forEach(candidate => {
 				if (containers[candidate].items.indexOf(item) >= 0) key = candidate;
@@ -302,26 +313,23 @@ var InventoryEditor = function () {
 			}
 		});
 
-		// The purse rides the normal save path, the same as the currency
-		// editor's own edits, so nothing new has to reach the server for it.
-		// It is a step of the history of its own, which Revert takes back with
-		// the items: the money was only ever the price of this draft.
-		var units = unitsIn(items);
-		var sale = Eternity.EditHistory.labelled(
-			'Sell ' + units + (units === 1 ? ' item' : ' items') + ' for ' + total + ' cp', () => {
-				saveData().currency = (saveData().currency || 0) + total;
-				Eternity.Modifications.transition({modifications: true});
-			});
-
-		if (sale) {
-			sales.push(sale);
-		}
+		// A sale is part of the draft like every other change here: the items
+		// leave the save on Apply, and the money goes into the purse when that
+		// Apply succeeds (apply, below). Paid at once, as it used to be, the
+		// purse -- which Save writes -- held money for items the save still
+		// had, and every way of dropping or keeping the draft had to remember
+		// to take it back.
+		sold.units += units;
+		sold.total += total;
 
 		forSale = {};
 		sellMode = false;
-		redraw('Sold ' + unitsIn(items) + ' item(s) for ' + total
-			+ ' cp. Apply changes to write it to the save.');
+		redraw(total > 0 ? undefined
+			: 'Nothing picked has a price to sell it at, so it was removed for nothing.');
 	};
+
+	var saleWords = () =>
+		sold.units + (sold.units === 1 ? ' item' : ' items') + ' for ' + sold.total + ' cp';
 
 	var lookupCharacter = guid => {
 		var match = (saveData().characters || []).filter(c => c.GUID === guid);
@@ -349,7 +357,11 @@ var InventoryEditor = function () {
 	var partyFingerprint = () =>
 		(inventory().characters || []).map(c => c.guid).sort().join(',');
 
+	// Builds the draft again from the save, which throws away whatever was
+	// staged, a sale included: nothing of a draft has reached the save or the
+	// purse until its Apply.
 	var buildWorkingCopy = () => {
+		sold = {units: 0, total: 0};
 		containers = {};
 		original = {};
 		equipment = {};
@@ -1125,14 +1137,21 @@ var InventoryEditor = function () {
 			+ 'who they belong to.';
 	};
 
+	// A staged sale is the one staged change with nothing left on screen to
+	// show for it, so the status line keeps saying it until it is applied.
+	var saleNote = () => sold.units < 1 ? null
+		: 'Sold ' + saleWords() + '. Apply changes takes '
+			+ (sold.units === 1 ? 'it' : 'them') + ' out of the save and adds the money.';
+
 	var renderStatus = message => {
 		var warning = identityWarning();
-		var text = message || warning;
+		var staged = message ? null : saleNote();
+		var text = message || staged || warning;
 
 		if (text) {
 			self.html.invStatus.text(text)
-				.toggleClass('inv-status-on', !!message)
-				.toggleClass('inv-status-warn', !message && !!warning)
+				.toggleClass('inv-status-on', !!message || !!staged)
+				.toggleClass('inv-status-warn', !message && !staged && !!warning)
 				.show();
 
 			return;
@@ -1142,7 +1161,7 @@ var InventoryEditor = function () {
 			.removeClass('inv-status-on inv-status-warn').hide();
 	};
 
-	var redraw = message => {
+	var draw = message => {
 		renderDoll();
 		renderCarry();
 		renderPacks();
@@ -1151,7 +1170,18 @@ var InventoryEditor = function () {
 		renderBrowseTargets();
 		renderStatus(message);
 		self.html.invApply.prop('disabled', !!self.state.working);
+		// The reply replaces the draft, so anything staged while an Apply is
+		// on its way would be lost without a word.
+		self.html.inventoryView.toggleClass('view-working', !!self.state.working);
 		renderLoadoutButtons();
+	};
+
+	// Whatever is done in the tab draws it again. A note that the draft was
+	// dropped stays until then: one save-view render follows another, and said
+	// once it was gone before it could be read.
+	var redraw = message => {
+		dropped = '';
+		draw(message);
 	};
 
 	// ---- the "every item in the game" browser --------------------------------
@@ -1877,11 +1907,15 @@ var InventoryEditor = function () {
 		builtFor = '';
 		sellMode = false;
 		forSale = {};
-		sales = [];
+		sold = {units: 0, total: 0};
+		dropped = '';
 	};
 
 	/** Whether anything is staged that Apply has not written yet. */
 	self.unapplied = () => self.buildChanges().length > 0;
+
+	/** What the draft has sold and is owed for it: {units, total, words}. */
+	self.stagedSale = () => ({units: sold.units, total: sold.total, words: saleWords()});
 
 	// An item's name as the save last had it, wherever it was: a removed one
 	// is no longer in the working copy.
@@ -1900,8 +1934,21 @@ var InventoryEditor = function () {
 		return found ? found.displayName : '';
 	};
 
-	/** How Undo names an Apply: the one item and what became of it, or how many. */
+	/**
+	 * How Undo names an Apply: the one item and what became of it, or how
+	 * many; a sale as the sale it was.
+	 */
 	self.describeChanges = changes => {
+		if (sold.units < 1) {
+			return describeMoves(changes);
+		}
+
+		return changes.every(change => change.stackSize <= 0)
+			? 'Sell ' + saleWords()
+			: describeMoves(changes) + ', selling ' + saleWords();
+	};
+
+	var describeMoves = changes => {
 		var whose = [];
 		changes.forEach(change => whose.push(change.character, change.destCharacter));
 		if (changes.length !== 1) {
@@ -2161,19 +2208,7 @@ var InventoryEditor = function () {
 		self.html.invPutLoadout.click(() => self.readLoadout());
 		self.html.loadoutConfirm.click(() => self.putLoadout());
 		self.html.invRevert.click(() => {
-			// A sale is staged like the rest, but its money went into the
-			// purse at once: taking the items back takes the money back too.
-			// (It used to stay, so Revert after a sale was free money.)
-			var refund = sales.length > 0;
-			sales.slice().reverse().forEach(step => Eternity.EditHistory.discard(step));
-			sales = [];
-
 			buildWorkingCopy();
-			if (refund) {
-				Eternity.CurrencyEditor.render({enabled: true, amount: saveData().currency});
-				Eternity.Modifications.transition({modifications: true});
-			}
-
 			redraw('Reverted to the save’s current contents.');
 		});
 
@@ -2270,7 +2305,14 @@ var InventoryEditor = function () {
 		if (Object.keys(containers).length < 1
 			|| partyFingerprint() !== builtFor) {
 
+			// Whatever changes the party waits for a draft to be applied or
+			// reverted first (EditHistory.refused), so there should be nothing
+			// to lose here; if something gets past that, at least say so.
+			var lost = Object.keys(containers).length > 0 && self.unapplied();
 			buildWorkingCopy();
+			if (lost) {
+				dropped = 'The party changed, so the changes staged here were dropped.';
+			}
 		}
 
 		// Every save-view render transitions us, but drawing a few hundred
@@ -2286,7 +2328,7 @@ var InventoryEditor = function () {
 			}
 		}
 
-		redraw();
+		draw(dropped || undefined);
 
 		// The catalog doesn't depend on the save, so it's only fetched once.
 		if (browseTotal < 1 && browseItems.length < 1) {
@@ -2298,6 +2340,7 @@ var InventoryEditor = function () {
 InventoryEditor.prototype.apply = function () {
 	var self = this;
 	var changes = self.buildChanges();
+	var sale = self.stagedSale();
 
 	if (changes.length < 1) {
 		self.setStatus('No inventory changes to apply.');
@@ -2316,7 +2359,20 @@ InventoryEditor.prototype.apply = function () {
 			, changes: changes
 		})
 		, onSuccess: response => {
-			var updated = Eternity.SavedGame.adopt(JSON.parse(response), label);
+			// A sale is paid when the Apply that takes its items out succeeds.
+			// The purse is the page's to hold -- Save writes whatever the page
+			// has -- so the money goes in here rather than on the server, into
+			// the page's copy before the reply is adopted: the merge keeps
+			// what differs from the file as the user's, which this is. The
+			// step carries the amount, for Undo to take out again
+			// (SaveHistory.moveCredit).
+			if (sale.total > 0) {
+				var data = Eternity.SavedGame.state.saveData;
+				data.currency = (Number(data.currency) || 0) + sale.total;
+			}
+
+			var updated = Eternity.SavedGame.adopt(
+				JSON.parse(response), label, {credit: sale.total});
 
 			self.reset();
 			self.state.working = false;
@@ -2330,7 +2386,8 @@ InventoryEditor.prototype.apply = function () {
 
 			// Said the way every other tab says it; the redraw above would
 			// otherwise leave a successful Apply looking like nothing happened.
-			self.setStatus('Inventory updated. Save to write it to a file.');
+			self.setStatus((sale.units > 0 ? 'Inventory updated: sold ' + sale.words + '.'
+				: 'Inventory updated.') + ' Save to write it to a file.');
 		}
 		, onFailure: (code, message) => {
 			self.transition({working: false, character: self.state.character});

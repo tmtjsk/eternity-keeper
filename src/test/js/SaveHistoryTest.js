@@ -278,6 +278,67 @@ test('a redo still on its way when something was typed is still undone in its tu
 	assert.deepStrictEqual(history.undo.map(s => s.kind), ['values', 'applied']);
 });
 
+// ---- an Apply that also moved the purse ------------------------------------------
+//
+// A sale's items leave the save on the Inventory tab's Apply, and its money
+// goes into the purse when that Apply succeeds: one step, not two. The purse is
+// a value the page holds (Save writes it), so the step carries the amount, and
+// undoing it takes that much out again.
+
+test('an Apply that sold something carries the sale\'s money as part of the step', () => {
+	const {save, history} = fresh();
+	save.currency = 1120;
+	history.applied(9, 'Sell 3 items for 120 cp', save, {credit: 120});
+
+	assert.strictEqual(history.notice(save, {at: 0}), null, 'the money is no step of its own');
+	assert.strictEqual(history.undo.length, 1);
+	assert.strictEqual(history.nextUndo().credit, 120);
+});
+
+test('undoing that Apply takes the money out again, and redoing puts it back', () => {
+	const {save, history} = fresh();
+	save.currency = 1120;
+	history.applied(9, 'Sell 3 items for 120 cp', save, {credit: 120});
+
+	const step = history.nextUndo();
+	SaveHistory.moveCredit(save, step, true);
+	history.settle(step, true, save);
+	assert.strictEqual(save.currency, 1000);
+	assert.strictEqual(history.notice(save, {at: 1}), null, 'taking it out is not itself a change');
+
+	const again = history.nextRedo();
+	SaveHistory.moveCredit(save, again, false);
+	history.settle(again, false, save);
+	assert.strictEqual(save.currency, 1120);
+	assert.strictEqual(history.notice(save, {at: 2}), null);
+});
+
+test('the money moves by its amount, so whatever else changed the purse stays changed', () => {
+	const {save, history} = fresh();
+	save.currency = 1120;
+	history.applied(9, 'Sell 3 items for 120 cp', save, {credit: 120});
+
+	// Typed while the undo was on its way to the server.
+	const step = history.nextUndo();
+	const asked = history.ask();
+	save.currency = 1220;
+	history.notice(save, {at: 5});
+
+	SaveHistory.moveCredit(save, step, true);
+	history.settle(step, true, save, asked);
+	assert.strictEqual(save.currency, 1100, 'the hundred typed since is still there');
+});
+
+test('an Apply that sold nothing moves no money', () => {
+	const {save, history} = fresh();
+	history.applied(4, 'Inventory: 2 changes', save);
+	const step = history.nextUndo();
+
+	SaveHistory.moveCredit(save, step, true);
+	assert.strictEqual(save.currency, 1000);
+	assert.strictEqual('credit' in step, false);
+});
+
 // ---- saying what a step is -----------------------------------------------------
 
 test('a step says what changed, in the words the editor uses', () => {

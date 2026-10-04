@@ -95,11 +95,30 @@ var EditHistory = function () {
 		return null;
 	};
 
+	// On screen long enough to read: a refusal that gives its reason runs to a
+	// sentence, where "Undone: ..." is a glance.
 	var toast = (text, warning) => {
 		self.html.historyToast.text(text).toggleClass('history-toast-warning', !!warning)
 			.addClass('show');
 		clearTimeout(toastTimer);
-		toastTimer = setTimeout(() => self.html.historyToast.removeClass('show'), 2600);
+		toastTimer = setTimeout(() => self.html.historyToast.removeClass('show')
+			, Math.max(2600, text.length * 60));
+	};
+
+	/**
+	 * For whatever is about to rewrite the save from outside the tabs -- a
+	 * resurrection, an import, a party change. Like an undo, it reopens the
+	 * save, and a draft staged against the old one would be dropped or applied
+	 * to the wrong thing: so it waits too. Says why and returns true when it
+	 * must not go ahead.
+	 */
+	self.refused = () => {
+		var reason = self.blocked();
+		if (reason) {
+			toast(reason + '.', true);
+		}
+
+		return !!reason;
 	};
 
 	var paint = () => {
@@ -165,9 +184,13 @@ var EditHistory = function () {
 		return made;
 	};
 
-	/** An Apply's reply, adopted as {@code merged}: one step. */
-	self.applied = (step, label, merged) => {
-		history.applied(step, label || 'Applied changes', merged);
+	/**
+	 * An Apply's reply, adopted as {@code merged}: one step. {@code extra} is
+	 * what the page itself did as the Apply succeeded and must undo with it:
+	 * {credit} for a sale's money.
+	 */
+	self.applied = (step, label, merged, extra) => {
+		history.applied(step, label || 'Applied changes', merged, extra);
 		expected = merged;
 		paint();
 	};
@@ -176,23 +199,6 @@ var EditHistory = function () {
 	self.opened = save => {
 		history.reset(save);
 		expected = null;
-		paint();
-	};
-
-	/**
-	 * Takes a step out of the history as if it had not happened: the inventory
-	 * reverting a sale takes back the money the sale credited.
-	 */
-	self.discard = step => {
-		var index = history.undo.indexOf(step);
-		if (index >= 0) {
-			SaveHistory.revert(saveData(), step);
-			history.undo.splice(index, 1);
-		} else if (history.redo.indexOf(step) >= 0) {
-			history.redo.splice(history.redo.indexOf(step), 1);
-		}
-
-		history.rebase(saveData());
 		paint();
 	};
 
@@ -247,6 +253,8 @@ var EditHistory = function () {
 				}
 
 				var merged = Eternity.SavedGame.adopt(JSON.parse(response));
+				// A sale's money came in with its Apply and goes out with it.
+				SaveHistory.moveCredit(merged, step, undoing);
 				history.settle(step, undoing, merged, asked);
 				expected = merged;
 

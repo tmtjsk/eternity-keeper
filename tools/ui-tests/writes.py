@@ -88,7 +88,12 @@ time.sleep(1.0)
 summary_text = E("$('#invSellSummary').text()")
 E("$('#invSellConfirm').click()")
 time.sleep(1.0)
-expect["currency"] = float(E("%s.currency" % D))
+# The sale is paid when its Apply succeeds, on top of the console's money,
+# which is still unsaved at that point.
+owed = float(E("Eternity.InventoryEditor.stagedSale().total"))
+check("a staged sale is owed its price, and the purse has not moved",
+      owed > 0 and float(E("%s.currency" % D)) == money + 1234, (owed, E("%s.currency" % D)))
+expect["currency"] = money + 1234 + owed
 E("$('#invApply').click()")
 page.wait_for("!Eternity.InventoryEditor.state.working", 300, "the inventory Apply")
 time.sleep(2.0)
@@ -96,8 +101,8 @@ stash_after = E("%s.inventory.stash.items.map(function(i){ return i.guid; })" % 
 sold = sorted(set(stash_before) - set(stash_after))
 print("   sold: %s (%d stash items gone)" % (summary_text, len(sold)))
 check("selling junk removes items from the stash", len(sold) > 0, len(sold))
-check("and the unsaved money survives the Apply", float(E("%s.currency" % D)) == expect["currency"],
-      E("%s.currency" % D))
+check("and the Apply pays for them on top of the unsaved money",
+      float(E("%s.currency" % D)) == expect["currency"], E("%s.currency" % D))
 expect["sold"] = sold
 
 # ---- abilities: add a talent, Apply -----------------------------------------

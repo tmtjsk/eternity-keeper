@@ -629,9 +629,20 @@ reopens the save and the draft would be built on one no longer there. The
 toast says which tab. *Save is a checkpoint*: past it, what Save wrote is in
 the same files an undo would put back, and the save that was opened is still
 in the list. Building it found three older faults: the inventory's Revert left
-a staged sale's money in the purse, the sheet's Revert put a portrait's paths
+a staged sale's money in the purse (see below), the sheet's Revert put a portrait's paths
 back but left the new picture on screen, and the achievements toggle bypassed
 the merge every other Apply goes through.
+
+*A sale is paid when it is applied.* Its items leave the save on the
+Inventory tab's Apply, and its money used to go into the purse at Confirm —
+and the purse is what Save writes, so a Save in between wrote the money beside
+every item it was paid for. Making Save refuse and every draft-dropping path
+refund was tried first, and review found six paths it missed. The money now
+goes in when the Apply succeeds, as part of that one step: undoing it brings
+the items back and takes exactly that much out again. A resurrection, an
+import and a party change, which reopen the save under a tab's draft, wait
+for the draft as Undo does; and a tab takes no clicks while its Apply is on
+its way, since the reply replaces the draft.
 
 ---
 

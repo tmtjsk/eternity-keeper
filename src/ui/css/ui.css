@@ -691,7 +691,13 @@ span.danger {
 	transform: translateY(0);
 }
 
-/* What Undo or Redo just did, or why it could not. */
+/* A tab whose Apply is on its way takes no clicks: the reply replaces its
+   draft, and anything staged in the meantime would be lost without a word. */
+.view-working {
+	pointer-events: none;
+}
+
+/* What Undo or Redo just did, or why something that has to wait could not. */
 .history-toast {
 	max-width: 520px;
 	font-weight: 500;

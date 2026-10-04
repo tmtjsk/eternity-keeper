@@ -1137,16 +1137,18 @@ SavedGame.prototype.written = function () {
  * put back in (invariant 12). Every Apply goes through here rather than
  * merging the reply its own way; `theirs` is the parsed reply and is modified.
  * An Apply's reply names its step of the history, and `label` says what it
- * was, for Undo; an undo's reply names none.
+ * was, for Undo; an undo's reply names none. `extra` is what the caller did to
+ * the page's own values as the Apply succeeded, to be undone with the step
+ * (EditHistory.applied).
  */
-SavedGame.prototype.adopt = function (theirs, label) {
+SavedGame.prototype.adopt = function (theirs, label, extra) {
 	var self = this;
 	var onDisk = SaveMerge.snapshot(theirs);
 	var merged = SaveMerge.merge(self.serverCopy, self.state.saveData, theirs);
 	self.serverCopy = onDisk;
 
 	if (theirs.historyStep) {
-		Eternity.EditHistory.applied(theirs.historyStep, label, merged);
+		Eternity.EditHistory.applied(theirs.historyStep, label, merged, extra);
 	}
 
 	return merged;
@@ -1159,6 +1161,13 @@ SavedGame.prototype.switchCharacter = function (guid) {
 
 SavedGame.prototype.resurrect = function (guid) {
 	var self = this;
+
+	// A resurrection reopens the save with someone new in it, and a draft
+	// staged in a tab against the old one would be dropped.
+	if (Eternity.EditHistory.refused()) {
+		return;
+	}
+
 	var name = ((self.state.saveData.characters || []).filter(c => c.GUID === guid)[0] || {}).name
 		|| 'a companion';
 	var button = self.html.character.find('.resurrect-btn');

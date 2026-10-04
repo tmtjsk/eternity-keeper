@@ -200,21 +200,27 @@ undo_applied("Redone")
 check("redone: every item is where the Apply put it", E(WHERE) == after)
 check("the save validates clean", E("((%s.validation || {}).problems || []).length" % D) == 0)
 
-# ---- a staged sale, reverted ------------------------------------------------------
+# ---- a staged sale is a draft like any other: no step, no money, until Apply ---------
 money = E(MONEY)
+so_far = steps()["undo"]
 E("$('#invSellMode').click()")
 time.sleep(0.4)
 E("$('#invSellJunk').click()")
 time.sleep(0.4)
 E("$('#invSellConfirm').click()")
 time.sleep(0.8)
-sold = E(MONEY) - money
-check("a sale is a step of its own", sold > 0 and steps()["undo"][0].startswith("Sell "), steps()["undo"][:1])
+owed = E("Eternity.InventoryEditor.stagedSale().total")
+check("a staged sale is owed its price but is no step yet", owed > 0 and E(MONEY) == money
+      and steps()["undo"] == so_far, (owed, E(MONEY), steps()["undo"][:1]))
+E("$('#historyToast').removeClass('show').text('')")
+key(90)
+check("and holds Undo back like any other draft",
+      toast() == "Apply or revert the changes in the Inventory tab first." and steps()["undo"] == so_far, toast())
 E("$('#invRevert').click()")
 time.sleep(0.8)
-check("Revert takes the sale's money back with the items", E(MONEY) == money, (money, E(MONEY)))
-check("and the sale is gone from the history", not any(s.startswith("Sell ") for s in steps()["undo"]),
-      steps()["undo"][:3])
+check("Revert drops it with nothing to take back", E(MONEY) == money
+      and E("Eternity.InventoryEditor.stagedSale().total") == 0 and steps()["undo"] == so_far,
+      (money, E(MONEY)))
 
 # ---- a stronghold Apply: the server changed Prestige ------------------------------
 view("STRONGHOLD", 2.5)

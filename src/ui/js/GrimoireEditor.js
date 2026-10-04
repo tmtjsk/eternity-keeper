@@ -548,6 +548,9 @@ var GrimoireEditor = function () {
 		drawBrowse();
 
 		self.html.grmApply.prop('disabled', !!self.state.working || !dirty());
+		// The reply replaces the draft, so anything staged while an Apply is
+		// on its way would be lost without a word.
+		self.html.grimoireView.toggleClass('view-working', !!self.state.working);
 		self.html.grmRevert.prop('disabled', !!self.state.working || !dirty());
 		self.html.grmStatus.text(status || '');
 		self.html.grmStatus.toggle(!!status);

@@ -352,6 +352,9 @@ var VendorEditor = function () {
 
 		self.html.vndShowUnvisited.prop('checked', showUnvisited);
 		self.html.vndApply.prop('disabled', !!self.state.working || !dirty());
+		// The reply replaces the draft, so anything staged while an Apply is
+		// on its way would be lost without a word.
+		self.html.vendorsView.toggleClass('view-working', !!self.state.working);
 		self.html.vndRevert.prop('disabled', !!self.state.working || !dirty());
 		self.html.vndSelectEverywhere.prop('disabled', !ready || !!self.state.working);
 

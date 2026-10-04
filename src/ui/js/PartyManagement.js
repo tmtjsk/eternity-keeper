@@ -139,6 +139,13 @@ var PartyManagement = function () {
 	};
 
 	self.open = () => {
+		// A party change reopens the save, and a draft staged in a tab against
+		// the old one would be dropped: the Inventory tab's is rebuilt whenever
+		// the party changes.
+		if (Eternity.EditHistory.refused()) {
+			return;
+		}
+
 		staged = {};
 		characters().forEach(c => staged[c.GUID] = !!c.inParty);
 		rebuild();

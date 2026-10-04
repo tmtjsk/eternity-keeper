@@ -372,6 +372,9 @@ var AbilityEditor = function () {
 
 		self.html.ablStatus.text(status);
 		self.html.ablApply.prop('disabled', pending.length < 1 || !!self.state.working);
+		// The reply replaces the draft, so anything staged while an Apply is
+		// on its way would be lost without a word.
+		self.html.abilitiesView.toggleClass('view-working', !!self.state.working);
 		self.html.ablRevert.prop('disabled', pending.length < 1 || !!self.state.working);
 		self.html.ablPending.text(pending.length < 1
 			? '' : pending.length + ' staged change(s)');

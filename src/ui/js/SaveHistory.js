@@ -152,6 +152,20 @@ var SaveHistory = (function () {
 	var revert = (save, step) => step.changes.forEach(c => write(save, c.path, c.before));
 	var reapply = (save, step) => step.changes.forEach(c => write(save, c.path, c.after));
 
+	/**
+	 * Moves the purse by what an applied step credited: out again when the
+	 * step has been undone, back in when it has been redone. By the amount
+	 * rather than to a figure, so whatever else changed the purse since stays
+	 * changed. A step that credited nothing moves nothing.
+	 */
+	var moveCredit = (save, step, undone) => {
+		if (!step.credit) {
+			return;
+		}
+
+		save.currency = (Number(save.currency) || 0) + (undone ? -step.credit : step.credit);
+	};
+
 	// ---- saying what a step is ---------------------------------------------
 
 	var nameOf = (save, guid) => {
@@ -351,10 +365,20 @@ var SaveHistory = (function () {
 		return step;
 	};
 
-	/** An Apply's reply has arrived and been adopted: one step, by its id. */
-	History.prototype.applied = function (step, label, save) {
+	/**
+	 * An Apply's reply has arrived and been adopted: one step, by its id.
+	 * {@code extra.credit} is what the step put into the purse as it
+	 * succeeded -- a sale's money. The purse is the page's to hold (Save
+	 * writes it), so the step carries the amount for {@link moveCredit}.
+	 */
+	History.prototype.applied = function (step, label, save, extra) {
 		this.last = values(save);
-		this.push({kind: 'applied', step: step, label: label});
+		var entry = {kind: 'applied', step: step, label: label};
+		if (extra && extra.credit) {
+			entry.credit = extra.credit;
+		}
+
+		this.push(entry);
 	};
 
 	History.prototype.push = function (step) {
@@ -408,6 +432,7 @@ var SaveHistory = (function () {
 		, write: write
 		, revert: revert
 		, reapply: reapply
+		, moveCredit: moveCredit
 		, describe: describe
 	};
 })();

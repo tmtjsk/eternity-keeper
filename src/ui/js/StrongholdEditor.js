@@ -591,6 +591,9 @@ var StrongholdEditor = function () {
 			+ turns + (turns === 1 ? ' turn available' : ' turns available'));
 
 		self.html.shApply.prop('disabled', !!self.state.working || !dirty());
+		// The reply replaces the draft, so anything staged while an Apply is
+		// on its way would be lost without a word.
+		self.html.strongholdView.toggleClass('view-working', !!self.state.working);
 		self.html.shRevert.prop('disabled', !!self.state.working || !dirty());
 	};
 

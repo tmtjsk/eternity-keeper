@@ -96,8 +96,12 @@ Compared with upstream Eternity Keeper 0.21a, from 2016:
   what was typed and what an Apply wrote: undoing an Apply puts the save back
   exactly as it was before it. A tab’s staged changes have their own Revert,
   and Undo waits until they are applied or reverted.
-- The inventory’s Revert now takes back the money a staged sale put in the
-  party’s purse, along with the items.
+- Selling items in the Inventory tab is staged like every other change there:
+  the money is added when Apply takes the items out of the save, as one step
+  that Undo takes back whole. It used to be added at once, so Revert left it
+  behind and a Save before Apply wrote the money beside the items.
+- A resurrection, an import and a party change wait while a tab has changes
+  that are not applied yet, and say which tab, instead of dropping them.
 - The character sheet’s Revert puts back the portrait picture as well as the
   portrait’s paths.
 
