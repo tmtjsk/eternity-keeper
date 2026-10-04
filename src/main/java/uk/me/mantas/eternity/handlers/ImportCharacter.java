@@ -27,11 +27,13 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import uk.me.mantas.eternity.Logger;
 import uk.me.mantas.eternity.environment.Environment;
+import uk.me.mantas.eternity.environment.WorkingSave;
 import uk.me.mantas.eternity.save.CharacterImporter;
 import uk.me.mantas.eternity.save.CharacterImporter.ImportConflict;
 import uk.me.mantas.eternity.save.SavedGameOpener;
 import uk.me.mantas.eternity.serializer.WriteRefusedException;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Optional;
@@ -131,16 +133,34 @@ public class ImportCharacter extends CefMessageRouterHandlerAdapter {
 		, final String chrFile
 		, final boolean overwrite) {
 
+		final WorkingSave working = Environment.getInstance().state().workingSave();
+		boolean recording = false;
 		try {
 			final CharacterImporter importer = new CharacterImporter(request, chrFile);
+
+			// An import is a step of the save's history like any Apply, kept
+			// against the directory it edits: the private copy, made now if
+			// this is the session's first edit.
+			final JSONObject json = new JSONObject(request);
+			working.history().begin(working.forEditing(
+				new File(json.getString("oldSave")), json.getBoolean("savedYet")));
+			recording = true;
+
 			final boolean success = overwrite
 				? importer.overwriteCharacter()
 				: importer.importCharacter();
 
 			if (success) {
+				final long step = working.history().commit();
+				recording = false;
+
 				final SavedGameOpener opener = new SavedGameOpener(
 					importer.saveFile().getAbsolutePath()
 					, callback);
+
+				if (step > 0) {
+					opener.with("historyStep", step);
+				}
 
 				opener.run();
 			} else {
@@ -161,6 +181,11 @@ public class ImportCharacter extends CefMessageRouterHandlerAdapter {
 		} catch (IOException e) {
 			logger.error("%s%n", e.getMessage());
 			callback.failure(-1, "Error modifying temporary MobileObjects.save");
+		} finally {
+			// Refused or failed: whatever it wrote goes back.
+			if (recording) {
+				working.history().abort();
+			}
 		}
 	}
 }

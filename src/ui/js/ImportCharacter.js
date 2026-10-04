@@ -29,6 +29,8 @@ var ImportCharacter = function () {
 
 	// The path of the CHR file awaiting overwrite confirmation.
 	var pendingChrPath = null;
+	// Who is being overwritten, for Undo to name.
+	var overwriting = null;
 
 	var setBusy = busy => {
 		self.state.importing = busy;
@@ -59,6 +61,7 @@ var ImportCharacter = function () {
 			pendingChrPath = response.confirmOverwrite.chrPath;
 
 			var name = response.confirmOverwrite.characterName;
+			overwriting = name;
 			var message = response.confirmOverwrite.isMainCharacter
 				? 'Importing "' + name + '" will overwrite the existing main character in this'
 					+ ' save file, including their stats and equipment.'
@@ -70,10 +73,18 @@ var ImportCharacter = function () {
 			return;
 		}
 
+		// Whom Undo would take back out: the newcomer, or whoever was
+		// overwritten.
+		var known = (Eternity.SavedGame.state.saveData.characters || []).map(c => c.GUID);
+		var arrived = (response.characters || []).filter(c => known.indexOf(c.GUID) < 0)[0];
+		var label = arrived ? 'Import ' + arrived.name
+			: overwriting ? 'Import ' + overwriting + ' over the one in the save' : 'Import a character';
+		overwriting = null;
+
 		// The importer modified the extracted save, so the save view is drawn
 		// again from the reply -- with unsaved edits to everyone else kept.
 		Eternity.SavedGame.render({
-			saveData: Eternity.SavedGame.adopt(response)
+			saveData: Eternity.SavedGame.adopt(response, label)
 			, info: Eternity.SavedGame.state.info
 		});
 

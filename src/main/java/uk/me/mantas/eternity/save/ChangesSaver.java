@@ -136,6 +136,10 @@ public class ChangesSaver implements Runnable {
 			final List<Property> written = updateMobileObjects(saveDirectory, saveData);
 			redrawPartyThumbnails(saveDirectory, written);
 			packageSaveGame(saveDirectory);
+
+			// Undo reaches back to here: what this wrote is in the files an
+			// Apply's undo would put back, and would go with them.
+			working.history().clear();
 			callback.success("{\"success\":true}");
 		} catch (final JSONException e) {
 			callback.failure(-1, SaveChanges.jsonError());

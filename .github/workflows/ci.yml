@@ -52,6 +52,9 @@ jobs:
       - name: UI comparison tests
         run: node src/test/js/SaveCompareTest.js
 
+      - name: UI undo history tests
+        run: node src/test/js/SaveHistoryTest.js
+
       - name: Game-data reader compiles
         run: python -m py_compile tools/gamedata/extract_gamedata.py tools/gamedata/items.py tools/gamedata/stronghold.py tools/gamedata/identity.py
 

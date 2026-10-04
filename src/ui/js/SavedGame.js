@@ -1120,24 +1120,35 @@ var SavedGame = function () {
 SavedGame.prototype.open = function (saveData, info) {
 	var self = this;
 	self.serverCopy = SaveMerge.snapshot(saveData);
+	// A new history for a new save: nothing before it can be undone.
+	Eternity.EditHistory.opened(saveData);
 	self.render({saveData: saveData, info: info});
 };
 
 SavedGame.prototype.written = function () {
 	var self = this;
 	self.serverCopy = SaveMerge.snapshot(self.state.saveData);
+	// Undo reaches back to here: past it, what Save wrote would go with it.
+	Eternity.EditHistory.opened(self.state.saveData);
 };
 
 /**
  * A save a manager just rewrote and reopened, with the user's unsaved edits
  * put back in (invariant 12). Every Apply goes through here rather than
  * merging the reply its own way; `theirs` is the parsed reply and is modified.
+ * An Apply's reply names its step of the history, and `label` says what it
+ * was, for Undo; an undo's reply names none.
  */
-SavedGame.prototype.adopt = function (theirs) {
+SavedGame.prototype.adopt = function (theirs, label) {
 	var self = this;
 	var onDisk = SaveMerge.snapshot(theirs);
 	var merged = SaveMerge.merge(self.serverCopy, self.state.saveData, theirs);
 	self.serverCopy = onDisk;
+
+	if (theirs.historyStep) {
+		Eternity.EditHistory.applied(theirs.historyStep, label, merged);
+	}
+
 	return merged;
 };
 
@@ -1148,6 +1159,8 @@ SavedGame.prototype.switchCharacter = function (guid) {
 
 SavedGame.prototype.resurrect = function (guid) {
 	var self = this;
+	var name = ((self.state.saveData.characters || []).filter(c => c.GUID === guid)[0] || {}).name
+		|| 'a companion';
 	var button = self.html.character.find('.resurrect-btn');
 	button.prop('disabled', true)
 		.html('<i class="fa fa-spinner fa-pulse"></i> Resurrecting&hellip;');
@@ -1166,7 +1179,7 @@ SavedGame.prototype.resurrect = function (guid) {
 		// The synthetic "dead:" entry is gone from the re-opened save;
 		// falling back to the default selection re-picks the main character.
 		self.render({
-			saveData: self.adopt(response)
+			saveData: self.adopt(response, 'Resurrect ' + name)
 			, info: self.state.info
 			, view: self.state.view
 		});

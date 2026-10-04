@@ -90,6 +90,16 @@ Compared with upstream Eternity Keeper 0.21a, from 2016:
   bound to someone else.
 - Revert and Apply on every panel. Save shows the exact file name and folder it
   will write.
+- **Undo and Redo** beside the Save button (Ctrl+Z, Ctrl+Y): everything changed
+  since the save was opened or last saved, one step at a time, each said in
+  words (“Phantom’s Might, 18 to 25”, “Stronghold: 1 change”). That covers
+  what was typed and what an Apply wrote: undoing an Apply puts the save back
+  exactly as it was before it. A tab’s staged changes have their own Revert,
+  and Undo waits until they are applied or reverted.
+- The inventory’s Revert now takes back the money a staged sale put in the
+  party’s purse, along with the items.
+- The character sheet’s Revert puts back the portrait picture as well as the
+  portrait’s paths.
 
 ### Safety
 

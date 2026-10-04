@@ -88,6 +88,17 @@ var PanelChanges = function () {
 		return changed;
 	};
 
+	// The sheet draws the picture, not the paths: putting the paths back
+	// without it left the new face on screen beside the old paths.
+	var restorePortrait = (data, baseline) => {
+		var changed = restoreValues(data.portraitPaths, baseline.portraitPaths);
+		if (changed > 0 && baseline.portrait !== undefined) {
+			data.portrait = baseline.portrait;
+		}
+
+		return changed;
+	};
+
 	var countDifferences = (bag, baseline) => {
 		var count = 0;
 		Object.keys(baseline || {}).forEach(key => {
@@ -157,6 +168,7 @@ var PanelChanges = function () {
 			characters[character.GUID] = {
 				stats: valuesOf(character.stats)
 				, portraitPaths: valuesOf(character.portraitPaths)
+				, portrait: character.portrait
 			};
 		});
 
@@ -175,6 +187,7 @@ var PanelChanges = function () {
 				characters[character.GUID] = {
 					stats: valuesOf(character.stats)
 					, portraitPaths: valuesOf(character.portraitPaths)
+					, portrait: character.portrait
 				};
 			}
 		});
@@ -216,8 +229,13 @@ var PanelChanges = function () {
 			return 0;
 		}
 
-		var changed = restoreValues(data.stats, baseline.stats)
-			+ restoreValues(data.portraitPaths, baseline.portraitPaths);
+		// A revert is a step of the history like any change, so Undo can
+		// bring back what it threw away.
+		var changed = 0;
+		Eternity.EditHistory.labelled('Revert ' + data.name + '’s changes', () => {
+			changed = restoreValues(data.stats, baseline.stats)
+				+ restorePortrait(data, baseline);
+		});
 
 		// The sheet reads its numbers straight out of saveData, so redrawing
 		// it is what makes the revert visible.
@@ -236,6 +254,7 @@ var PanelChanges = function () {
 		characters[guid] = {
 			stats: valuesOf(data.stats)
 			, portraitPaths: valuesOf(data.portraitPaths)
+			, portrait: data.portrait
 		};
 
 		self.refresh();
@@ -243,7 +262,11 @@ var PanelChanges = function () {
 	};
 
 	self.revertGlobals = () => {
-		var changed = walkGlobals(saveData().globals, globals, true);
+		var changed = 0;
+		Eternity.EditHistory.labelled('Revert the global variables', () => {
+			changed = walkGlobals(saveData().globals, globals, true);
+		});
+
 		Eternity.SavedGame.transition({});
 		self.refresh();
 		return changed;
@@ -257,14 +280,16 @@ var PanelChanges = function () {
 	};
 
 	self.revertEverything = () => {
-		var changed = walkGlobals(saveData().globals, globals, true);
-		Object.keys(characters).forEach(guid => {
-			var data = characterOf(guid);
-			if (data) {
-				changed += restoreValues(data.stats, characters[guid].stats);
-				changed += restoreValues(
-					data.portraitPaths, characters[guid].portraitPaths);
-			}
+		var changed = 0;
+		Eternity.EditHistory.labelled('Revert every unconfirmed change', () => {
+			changed = walkGlobals(saveData().globals, globals, true);
+			Object.keys(characters).forEach(guid => {
+				var data = characterOf(guid);
+				if (data) {
+					changed += restoreValues(data.stats, characters[guid].stats);
+					changed += restorePortrait(data, characters[guid]);
+				}
+			});
 		});
 
 		Eternity.SavedGame.transition({});

@@ -51,6 +51,12 @@ public class WorkingSave {
 	private File opened = null;
 	private File copy = null;
 	private File written = null;
+	private final EditHistory history = new EditHistory();
+
+	/** What the Applies since the save was opened or last written changed. */
+	public EditHistory history () {
+		return history;
+	}
 
 	/** The directory to read the open save's current state from. */
 	public synchronized File forReading (final File opened, final boolean savedYet) {
@@ -113,6 +119,7 @@ public class WorkingSave {
 
 	/** A save is being opened from the list: nothing of the last one carries over. */
 	public synchronized void opening () {
+		history.clear();
 		discardCopy();
 		written = null;
 	}

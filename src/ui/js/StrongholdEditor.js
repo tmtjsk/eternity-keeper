@@ -145,6 +145,9 @@ var StrongholdEditor = function () {
 		Object.keys(pending).length > 0 || Object.keys(numbers).length > 0
 		|| Object.keys(dismissed).length > 0 || Object.keys(released).length > 0;
 
+	/** Whether anything is staged that Apply has not written yet. */
+	self.unapplied = () => dirty();
+
 	// ---- the upgrade list ---------------------------------------------------
 
 	var FILTERS = [
@@ -687,8 +690,8 @@ var StrongholdEditor = function () {
 
 				// The new Prestige and Security arrive; unsaved edits made
 				// elsewhere in the editor are kept.
-				Eternity.SavedGame.transition(
-					{saveData: Eternity.SavedGame.adopt(JSON.parse(response))});
+				Eternity.SavedGame.transition({saveData: Eternity.SavedGame.adopt(JSON.parse(response)
+					, appliedLabel('Stronghold', changes.length))});
 				markDirty();
 				redraw('Stronghold updated. Save to write it to a file.');
 			}

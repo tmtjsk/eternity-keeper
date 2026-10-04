@@ -104,3 +104,22 @@ function unavailableSlotsNow (character, serverList) {
 
 	return out;
 }
+
+/**
+ * How Undo names an Apply: "Inventory: 3 changes", "Abilities for Aloth:
+ * 1 change". `whose` lists the GUIDs of the characters the changes were
+ * for; two or more names are left out rather than run on.
+ */
+function appliedLabel (what, count, whose) {
+	var characters = ((Eternity.SavedGame.state.saveData || {}).characters || []);
+	var names = [];
+	(whose || []).forEach(guid => {
+		var character = characters.filter(c => c.GUID === guid)[0];
+		if (character && character.name && names.indexOf(character.name) < 0) {
+			names.push(character.name);
+		}
+	});
+
+	return what + (names.length === 1 ? ' for ' + names[0] : '')
+		+ ': ' + count + (count === 1 ? ' change' : ' changes');
+}

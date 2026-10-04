@@ -21,6 +21,7 @@ package uk.me.mantas.eternity.serializer;
 
 import uk.me.mantas.eternity.Logger;
 import uk.me.mantas.eternity.environment.Environment;
+import uk.me.mantas.eternity.environment.State;
 import uk.me.mantas.eternity.factory.SharpSerializerFactory;
 import uk.me.mantas.eternity.serializer.properties.Property;
 import uk.me.mantas.eternity.serializer.properties.SimpleProperty;
@@ -177,6 +178,10 @@ public class DeserializedPackets {
 				throw new IOException("Nothing was written for " + target.getName());
 			}
 
+			// An Apply being recorded keeps what it replaces, so it can be
+			// undone; one that cannot be kept is not written.
+			keepForUndo(target);
+
 			try {
 				Files.move(writing.toPath(), target.toPath()
 					, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
@@ -187,6 +192,20 @@ public class DeserializedPackets {
 			if (writing.exists() && !writing.delete()) {
 				writing.deleteOnExit();
 			}
+		}
+	}
+
+	private static void keepForUndo (final File target) throws IOException {
+		final State state = Environment.getInstance().state();
+		if (state == null) {
+			return;
+		}
+
+		try {
+			state.workingSave().history().keep(target);
+		} catch (final IOException e) {
+			throw new IOException("Could not keep a copy of " + target.getName()
+				+ " to undo this change with, so nothing was written: " + e.getMessage(), e);
 		}
 	}
 

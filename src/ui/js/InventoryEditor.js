@@ -71,6 +71,7 @@ var InventoryEditor = function () {
 	// over the same click.
 	var sellMode = false;
 	var forSale = {};         // itemGuid -> true, across every pack and the stash
+	var sales = [];           // the history steps that put this draft's sales in the purse
 
 	var saveData = () => Eternity.SavedGame.state.saveData || {};
 	var inventory = () => saveData().inventory || {};
@@ -303,8 +304,18 @@ var InventoryEditor = function () {
 
 		// The purse rides the normal save path, the same as the currency
 		// editor's own edits, so nothing new has to reach the server for it.
-		saveData().currency = (saveData().currency || 0) + total;
-		Eternity.Modifications.transition({modifications: true});
+		// It is a step of the history of its own, which Revert takes back with
+		// the items: the money was only ever the price of this draft.
+		var units = unitsIn(items);
+		var sale = Eternity.EditHistory.labelled(
+			'Sell ' + units + (units === 1 ? ' item' : ' items') + ' for ' + total + ' cp', () => {
+				saveData().currency = (saveData().currency || 0) + total;
+				Eternity.Modifications.transition({modifications: true});
+			});
+
+		if (sale) {
+			sales.push(sale);
+		}
 
 		forSale = {};
 		sellMode = false;
@@ -1866,6 +1877,55 @@ var InventoryEditor = function () {
 		builtFor = '';
 		sellMode = false;
 		forSale = {};
+		sales = [];
+	};
+
+	/** Whether anything is staged that Apply has not written yet. */
+	self.unapplied = () => self.buildChanges().length > 0;
+
+	// An item's name as the save last had it, wherever it was: a removed one
+	// is no longer in the working copy.
+	var nameInSave = guid => {
+		var inventory = saveData().inventory || {};
+		var items = ((inventory.stash || {}).items || []).slice();
+		(inventory.characters || []).forEach(character => {
+			items.push.apply(items, (character.pack || {}).items || []);
+			items.push.apply(items, (character.quickbar || {}).items || []);
+			((character.equipment || {}).slots || []).forEach(slot => slot.item && items.push(slot.item));
+			((character.equipment || {}).weaponSets || []).forEach(set =>
+				['primary', 'secondary'].forEach(hand => set[hand] && items.push(set[hand])));
+		});
+
+		var found = items.filter(item => item.guid === guid)[0];
+		return found ? found.displayName : '';
+	};
+
+	/** How Undo names an Apply: the one item and what became of it, or how many. */
+	self.describeChanges = changes => {
+		var whose = [];
+		changes.forEach(change => whose.push(change.character, change.destCharacter));
+		if (changes.length !== 1) {
+			return appliedLabel('Inventory', changes.length, whose);
+		}
+
+		var change = changes[0];
+		var found = findItem(change.itemGuid);
+		var name = (found && found.item.displayName) || nameInSave(change.itemGuid) || 'an item';
+
+		if (change.newItemPrefab) {
+			return 'Inventory: add ' + name;
+		}
+
+		if (change.stackSize <= 0) {
+			return 'Inventory: remove ' + name;
+		}
+
+		if (change.destCharacter !== change.character || change.destComponent !== change.component) {
+			return 'Inventory: ' + name + ' to ' + (change.destComponent === STASH
+				? 'the stash' : characterName(change.destCharacter));
+		}
+
+		return 'Inventory: ' + name;
 	};
 
 	self.setStatus = message => self.html.invStatus.text(message).show();
@@ -1877,6 +1937,7 @@ var InventoryEditor = function () {
 	// save as it is, so they wait for the tab's own changes to be applied or
 	// reverted: those would be read past, and lost when the reply comes back.
 	var loadoutFile = null;
+	var loadoutFrom = '';
 
 	var loadoutRequest = extra => JSON.stringify($.extend({
 		GUID: self.state.character
@@ -1941,6 +2002,7 @@ var InventoryEditor = function () {
 	self.showLoadout = plan => {
 		var target = characterName(self.state.character);
 		loadoutFile = plan.file;
+		loadoutFrom = plan.from;
 		self.html.loadoutSubject.text(plan.from + '’s gear'
 			+ (plan.className ? ' (' + plan.className.toLowerCase() + ')' : '') + ', onto ' + target);
 
@@ -1994,7 +2056,8 @@ var InventoryEditor = function () {
 			, onSuccess: response => {
 				loadoutBusy(false);
 				self.html.loadoutDialog.modal('hide');
-				var updated = Eternity.SavedGame.adopt(JSON.parse(response));
+				var updated = Eternity.SavedGame.adopt(JSON.parse(response)
+					, 'Put ' + loadoutFrom + '’s loadout on ' + name);
 				self.reset();
 				self.state.working = false;
 				Eternity.Modifications.transition({modifications: true});
@@ -2098,7 +2161,19 @@ var InventoryEditor = function () {
 		self.html.invPutLoadout.click(() => self.readLoadout());
 		self.html.loadoutConfirm.click(() => self.putLoadout());
 		self.html.invRevert.click(() => {
+			// A sale is staged like the rest, but its money went into the
+			// purse at once: taking the items back takes the money back too.
+			// (It used to stay, so Revert after a sale was free money.)
+			var refund = sales.length > 0;
+			sales.slice().reverse().forEach(step => Eternity.EditHistory.discard(step));
+			sales = [];
+
 			buildWorkingCopy();
+			if (refund) {
+				Eternity.CurrencyEditor.render({enabled: true, amount: saveData().currency});
+				Eternity.Modifications.transition({modifications: true});
+			}
+
 			redraw('Reverted to the save’s current contents.');
 		});
 
@@ -2229,6 +2304,8 @@ InventoryEditor.prototype.apply = function () {
 		return;
 	}
 
+	// Named now, while the working copy still knows each item by name.
+	var label = self.describeChanges(changes);
 	self.transition({working: true, character: self.state.character});
 	self.setStatus('Applying ' + changes.length + ' change(s)…');
 
@@ -2239,7 +2316,7 @@ InventoryEditor.prototype.apply = function () {
 			, changes: changes
 		})
 		, onSuccess: response => {
-			var updated = Eternity.SavedGame.adopt(JSON.parse(response));
+			var updated = Eternity.SavedGame.adopt(JSON.parse(response), label);
 
 			self.reset();
 			self.state.working = false;

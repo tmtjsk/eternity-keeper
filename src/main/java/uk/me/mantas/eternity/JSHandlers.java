@@ -81,6 +81,9 @@ public class JSHandlers {
 		handlers.put("readLoadout", new ReadLoadout());
 		handlers.put("applyLoadout", new ApplyLoadout());
 
+		// Undo and Redo for what the Applies above wrote.
+		handlers.put("changeHistory", new ChangeHistory());
+
 		// Read-only lookups into the game's own data.
 		handlers.put("getGameStructures", new GetGameStructures());
 		handlers.put("getIdentityEffects", new GetIdentityEffects());

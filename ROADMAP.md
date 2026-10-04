@@ -7,12 +7,12 @@ next. Kept next to the code so it stays honest.
 
 ## 1. Where the project actually is
 
-~30,000 lines of Java, 609 passing JUnit tests plus node-run suites for the
-UI's save merge, search and comparison, a jQuery/Bootstrap UI running on an
+~30,000 lines of Java, 628 passing JUnit tests plus node-run suites for the
+UI's save merge, search, comparison and undo history, a jQuery/Bootstrap UI running on an
 embedded Chromium (JCEF),
 and a save format that has been reverse-engineered far enough to mint objects
 the game accepts and to rewrite the area files as well as the world state.
-Twenty-four scripted UI suites drive the running editor against a real
+Twenty-five scripted UI suites drive the running editor against a real
 13-character save; see §2 for what the last full pass found.
 
 ### Shipped and verified in-game
@@ -36,6 +36,7 @@ Twenty-four scripted UI suites drive the running editor against a real
 | Save format conversion | Rewritten as a byte pass and finally reachable from the UI (see §4.3) |
 | **Vendors tab** | Every store's stock, read from the area files; take out what you pick (§2.1) |
 | Loadouts (`.loadout`) | One character's gear to a file and onto anyone, as copies (§5) |
+| Undo and Redo | Everything since the save was opened or last written, typed or applied (§3.4) |
 
 ### Known limitations, stated plainly
 
@@ -607,7 +608,30 @@ shows a name in the player's own language (Edér came back "Eder"): the opener
 filled in the name it lists her by, and Save writes every stat back. Fixed;
 the UI suite now checks that a saved save differs from its original in the
 edit and nothing else.
-**3.4 Undo within a session** — an undo stack over the staged model.
+**3.4 Undo within a session** — *done* (2026-10-04)
+
+Undo and Redo sit beside Save (and on Ctrl+Z, Ctrl+Y), over one history of
+everything changed since the save was opened or last written. The two halves
+of the editor needed different machinery. A typed change — a stat, a
+portrait, a global, money — is the page's to undo: the history compares the
+values Save writes against the last ones it saw whenever anything arms the
+Save button, which every editor already had to do, so nothing new has to
+report its edits; keystrokes into one field are one step. An Apply wrote files,
+so its undo is the server's: every writer goes through
+`DeserializedPackets.replace`, which now keeps the file it replaces (a hard
+link, so it costs nothing) while the Apply's step is open, and undoing the
+step swaps the files back — byte for byte, which the tests check. A refused
+or failed Apply puts back whatever it had already written.
+
+*Drafts are not steps.* A tab's staged changes stay its own, with its own
+Revert; while one has any, nothing is undone, because undoing an Apply
+reopens the save and the draft would be built on one no longer there. The
+toast says which tab. *Save is a checkpoint*: past it, what Save wrote is in
+the same files an undo would put back, and the save that was opened is still
+in the list. Building it found three older faults: the inventory's Revert left
+a staged sale's money in the purse, the sheet's Revert put a portrait's paths
+back but left the new picture on screen, and the achievements toggle bypassed
+the merge every other Apply goes through.
 
 ---
 
@@ -805,8 +829,10 @@ Not requested, offered for the record.
   Imported objects get IDs of their own now (`save/GuidRemap`, shared with
   resurrection), and `import_chr.py` drives one such import through the
   editor.
-- **Undo within a session.** Changes are staged then applied; an undo stack over
-  the staged model is achievable.
+- ~~**Undo within a session.**~~ Done (2026-10-04): Undo and Redo beside
+  Save, over everything typed or applied since the save was opened or last
+  written (§3.4). An Apply's undo puts back, byte for byte, the files it
+  replaced; a typed change goes back into the slot the page holds.
 - ~~**Bulk party operations**~~ Done (2026-09-29): Character → Heal, level
   up and resupply. The heal sets the game's own full-refill flag
   (`Health.m_needs_current_values`), so the game works out every maximum

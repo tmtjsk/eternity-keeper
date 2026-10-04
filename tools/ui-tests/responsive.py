@@ -103,14 +103,14 @@ for width, height in SIZES:
     check("%s abilities: nothing spills out of a panel" % label,
           spills("#abilitiesView .abl-panel, #abilitiesView .abl-browser-panel, #abilitiesView .abl-browse-list") == 0,
           spills("#abilitiesView .abl-panel, #abilitiesView .abl-browser-panel, #abilitiesView .abl-browse-list"))
-    # The floating Save button stays put while this tab does not scroll, so
-    # a panel under it would stay under it.
-    fab = E("""(function(){ var e = $('#saveButton:visible')[0]; if (!e) return null;
+    # The floating Undo, Redo and Save stay put while this tab does not
+    # scroll, so a panel under them would stay under them.
+    fab = E("""(function(){ var e = $('#saveButton:visible')[0] ? $('#fabRow')[0] : null; if (!e) return null;
       var b = e.getBoundingClientRect(); return [b.left, b.top, b.right, b.bottom]; })()""")
     if fab:
         under = [p for p in first_line
                  if not (p["r"] <= fab[0] or fab[2] <= p["l"] or p["b"] <= fab[1] or fab[3] <= p["t"])]
-        check("%s abilities: no panel runs under the Save button" % label, not under,
+        check("%s abilities: no panel runs under the Undo, Redo and Save buttons" % label, not under,
               "button %s, panels %s" % (fab, [(p["r"], p["b"]) for p in under]))
 
     pager = E("""(function(){
@@ -159,10 +159,10 @@ for width, height in SIZES:
           (tab["r"], body["r"]))
     check("%s vendors: both columns end inside the window" % label,
           max(rail["b"], body["b"]) <= inner, "%s of %s" % (max(rail["b"], body["b"]), inner))
-    fab = E("""(function(){ var e = $('#saveButton:visible')[0]; if (!e) return null;
+    fab = E("""(function(){ var e = $('#saveButton:visible')[0] ? $('#fabRow')[0] : null; if (!e) return null;
       var b = e.getBoundingClientRect(); return [b.left, b.top, b.right, b.bottom]; })()""")
     if fab:
-        check("%s vendors: nothing runs under the Save button" % label,
+        check("%s vendors: nothing runs under the Undo, Redo and Save buttons" % label,
               body["r"] <= fab[0] or body["b"] <= fab[1], "button %s, stock %s" % (fab, body))
     check("%s vendors: nothing spills out of a column" % label,
           spills(".vnd-rail, .vnd-body") == 0, spills(".vnd-rail, .vnd-body"))

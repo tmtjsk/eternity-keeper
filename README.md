@@ -56,6 +56,7 @@ edited save in the game.
 - Import and export characters as `.chr` files.
 - Save what a character wears, holds and keeps to hand as a `.loadout` file,
   and put it on anyone, in this save or another playthrough, as copies.
+- Undo and Redo for everything changed since the save was opened or saved.
 - Convert a save for Steam and GOG builds older than the 2017 Unity update.
 
 The **Raw** tab shows every stored number on a character. Most of them have

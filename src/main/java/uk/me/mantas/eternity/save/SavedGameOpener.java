@@ -76,6 +76,16 @@ public class SavedGameOpener implements Runnable {
 		packetDeserializer = Environment.getInstance().factory().packetDeserializer();
 	}
 
+	// What a handler adds about how the save came to be as it is: an Apply's
+	// historyStep. Beside the save, never inside a scope Save writes back.
+	private final Map<String, Object> besides = new LinkedHashMap<>();
+
+	/** Puts {@code value} into the reply under {@code key}, beside the save. */
+	public SavedGameOpener with (final String key, final Object value) {
+		besides.put(key, value);
+		return this;
+	}
+
 	@Override
 	public void run() {
 		final File savedgame = new File(saveGameLocation);
@@ -1139,6 +1149,7 @@ public class SavedGameOpener implements Runnable {
 		final JSONArray charactersArray = new JSONArray(jsonCharacters);
 		deadCompanions.forEach(charactersArray::put);
 		json.put("characters", charactersArray);
+		besides.forEach(json::put);
 
 		callback.success(json.toString());
 	}

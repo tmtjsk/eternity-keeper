@@ -180,6 +180,7 @@ var Editor = function () {
 			self.PartyManagement.transition({enabled: false});
 			self.PartyCare.transition({enabled: false});
 			self.Finder.transition({enabled: false});
+			self.EditHistory.transition({enabled: false});
 			self.Modifications.html.saveButton.hide();
 		}
 
@@ -209,6 +210,7 @@ var Editor = function () {
 			self.PartyManagement.transition({enabled: true});
 			self.PartyCare.transition({enabled: true});
 			self.Finder.transition({enabled: true});
+			self.EditHistory.transition({enabled: true});
 			self.SaveSearch.html.saveActions.hide();
 			self.Modifications.html.saveButton.show();
 		}
@@ -234,6 +236,7 @@ var Editor = function () {
 	self.PanelChanges = new PanelChanges();
 	self.ConsoleTab = new ConsoleTab();
 	self.Modifications = new Modifications();
+	self.EditHistory = new EditHistory();
 	self.ImportCharacter = new ImportCharacter();
 	self.ExportCharacter = new ExportCharacter();
 	self.PartyManagement = new PartyManagement();

@@ -24,6 +24,7 @@ import org.cef.handler.CefMessageRouterHandlerAdapter;
 import org.json.JSONException;
 import org.json.JSONObject;
 import uk.me.mantas.eternity.Logger;
+import uk.me.mantas.eternity.environment.EditHistory;
 import uk.me.mantas.eternity.environment.Environment;
 import uk.me.mantas.eternity.save.SavedGameOpener;
 import uk.me.mantas.eternity.serializer.WriteRefusedException;
@@ -37,8 +38,11 @@ import java.io.IOException;
  * <p>Every one of them takes {@code {oldSave, savedYet, ...}} and does the same
  * thing around its edit: runs on the mutation worker (invariant 9 — two edits
  * can never write the same file at once), asks {@code WorkingSave} which copy
- * of the save to edit, refuses one that is not there, and reopens it through
- * {@link SavedGameOpener} so the UI gets exactly what opening it would give.
+ * of the save to edit, refuses one that is not there, records the edit as a
+ * step of the save's {@link EditHistory} (what it replaces is kept, so the page
+ * can undo it; a refused or failed edit puts back whatever it wrote), and
+ * reopens the save through {@link SavedGameOpener} so the UI gets exactly what
+ * opening it would give, with the step's id as {@code historyStep}.
  * Subclasses supply only {@link #mutate}.
  *
  * <p>These were seven copies of the same fifty lines, kept consistent only by
@@ -60,6 +64,15 @@ public abstract class SaveMutationHandler extends CefMessageRouterHandlerAdapter
 	 *         left it contradicting itself -- reaches them as it stands.
 	 */
 	protected abstract String mutate (File save, JSONObject request) throws IOException;
+
+	/**
+	 * Whether the edit is a step of the save's history, to be undone. Only
+	 * undoing and redoing are not: they move along the history rather than
+	 * adding to it.
+	 */
+	protected boolean recorded () {
+		return true;
+	}
 
 	@Override
 	public final boolean onQuery (
@@ -93,7 +106,10 @@ public abstract class SaveMutationHandler extends CefMessageRouterHandlerAdapter
 			return;
 		}
 
+		final EditHistory history = Environment.getInstance().state().workingSave().history();
 		File save = opened;
+		long step = 0;
+		boolean recording = false;
 		try {
 			// Never the directory the list unpacked: an edit the user goes on
 			// to discard must not be there when they open the save again.
@@ -103,10 +119,21 @@ public abstract class SaveMutationHandler extends CefMessageRouterHandlerAdapter
 				return;
 			}
 
+			// What the edit replaces is kept, so the page can undo it.
+			if (recorded()) {
+				history.begin(save);
+				recording = true;
+			}
+
 			final String problem = mutate(save, json);
 			if (problem != null) {
 				callback.failure(-1, problem);
 				return;
+			}
+
+			if (recording) {
+				step = history.commit();
+				recording = false;
 			}
 		} catch (final JSONException e) {
 			logger.error("Error reading request %s: %s%n", request, e.getMessage());
@@ -123,8 +150,18 @@ public abstract class SaveMutationHandler extends CefMessageRouterHandlerAdapter
 			logger.error("Editing %s failed: %s%n", save.getAbsolutePath(), e.getMessage());
 			callback.failure(-1, "Could not write the save: " + e.getMessage());
 			return;
+		} finally {
+			// Refused, or failed part of the way: whatever it wrote goes back.
+			if (recording) {
+				history.abort();
+			}
 		}
 
-		new SavedGameOpener(save.getAbsolutePath(), callback).run();
+		final SavedGameOpener opener = new SavedGameOpener(save.getAbsolutePath(), callback);
+		if (step > 0) {
+			opener.with("historyStep", step);
+		}
+
+		opener.run();
 	}
 }

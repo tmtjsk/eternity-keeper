@@ -81,6 +81,9 @@ var VendorEditor = function () {
 	var totalMarked = () => (vendors || []).reduce((sum, v) => sum + markedCount(v), 0);
 	var dirty = () => totalMarked() > 0;
 
+	/** Whether anything is picked that Apply has not taken out yet. */
+	self.unapplied = () => dirty();
+
 	var byKey = key => (vendors || []).filter(v => keyOf(v) === key)[0] || null;
 	var current = () => byKey(selected);
 
@@ -500,8 +503,9 @@ var VendorEditor = function () {
 				self.state.working = false;
 				marked = {};
 
-				Eternity.SavedGame.transition(
-					{saveData: Eternity.SavedGame.adopt(JSON.parse(response))});
+				Eternity.SavedGame.transition({saveData: Eternity.SavedGame.adopt(JSON.parse(response)
+					, 'Vendors: took ' + number(count) + (count === 1 ? ' item' : ' items') + ' out of '
+						+ removals.length + (removals.length === 1 ? ' vendor’s' : ' vendors’') + ' stock')});
 				markDirty();
 				load('Took ' + number(count) + (count === 1 ? ' item' : ' items') + ' out of '
 					+ removals.length + (removals.length === 1 ? ' vendor’s' : ' vendors’')

@@ -31,6 +31,7 @@ import uk.me.mantas.eternity.EKUtils;
 import uk.me.mantas.eternity.Logger;
 import uk.me.mantas.eternity.Settings;
 import uk.me.mantas.eternity.environment.Environment;
+import uk.me.mantas.eternity.environment.WorkingSave;
 import uk.me.mantas.eternity.factory.PacketDeserializerFactory;
 import uk.me.mantas.eternity.factory.SharpSerializerFactory;
 import uk.me.mantas.eternity.game.*;
@@ -553,6 +554,60 @@ public class ChangesSaverTest extends TestHarness {
 		assertTrue("the Apply reached the written save"
 			, new File(saveDirectory, "applied.marker").isFile());
 		assertFalse("and the opened save never saw it", new File(opened, "applied.marker").exists());
+	}
+
+	/**
+	 * Undo reaches back to the last Save. Past it the scalar edits Save wrote
+	 * are in the same files an Apply would take back, so a file put back would
+	 * take them back too -- and the save that was opened is still in the list.
+	 */
+	@Test
+	public void aSaveStartsTheHistoryAgain () throws Exception {
+		final Environment mockEnvironment = mockEnvironment();
+		final File workingDirectory = EKUtils.createTempDir(PREFIX).get();
+		final File settingsFile = new File(workingDirectory, "settings.json");
+
+		FileUtils.writeStringToFile(settingsFile, "{}");
+		when(mockEnvironment.directory().settingsFile()).thenReturn(settingsFile);
+		when(mockEnvironment.directory().working()).thenReturn(workingDirectory);
+		when(mockEnvironment.factory().packetDeserializer())
+			.thenReturn(new PacketDeserializerFactory());
+		when(mockEnvironment.factory().sharpSerializer()).thenReturn(new SharpSerializerFactory());
+
+		final Settings mockSettings = mockSettings();
+		final JSONObject mockJSON = mock(JSONObject.class);
+		mockSettings.json = mockJSON;
+		doThrow(new JSONException("")).when(mockJSON).getString(anyString());
+		when(mockJSON.optString(eq("savesLocation"), anyString()))
+			.thenReturn(EKUtils.createTempDir(PREFIX).get().getAbsolutePath());
+
+		final File opened = new File(
+			getClass().getResource("/ChangesSaverTest/id 0 Encampment.savegame").toURI());
+		final WorkingSave working = mockEnvironment.state().workingSave();
+		final File applied = working.forEditing(opened, false);
+		final File marker = new File(applied, "applied.marker");
+		FileUtils.writeStringToFile(marker, "before", "UTF-8");
+
+		working.history().begin(applied);
+		working.history().keep(marker);
+		FileUtils.writeStringToFile(marker, "an Apply", "UTF-8");
+		assertTrue(working.history().commit() > 0);
+
+		final CefQueryCallback mockCallback = mock(CefQueryCallback.class);
+		new ChangesSaver(new JSONObject()
+			.put("savedYet", false)
+			.put("saveName", "AFTER APPLY")
+			.put("absolutePath", opened.getAbsolutePath())
+			.put("saveData", new JSONObject()
+				.put("characters", new org.json.JSONArray())
+				.put("currency", 1.0)
+				.put("globals", new JSONObject()
+					.put("Global", new JSONObject())
+					.put("InGameGlobal", new JSONObject())))
+			.toString(), mockCallback).run();
+
+		verify(mockCallback).success("{\"success\":true}");
+		assertTrue(working.history().undoable().isEmpty());
 	}
 
 	private enum Enum {ONE, TWO}

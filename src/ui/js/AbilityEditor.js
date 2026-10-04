@@ -773,6 +773,9 @@ var AbilityEditor = function () {
 		browsedFor = null;
 	};
 
+	/** Whether anything is staged that Apply has not written yet. */
+	self.unapplied = () => pending.length > 0;
+
 	self.setStatus = message => {
 		status = message;
 		self.html.ablStatus.text(message);
@@ -892,7 +895,8 @@ AbilityEditor.prototype.apply = function () {
 			, changes: changes
 		})
 		, onSuccess: response => {
-			var updated = Eternity.SavedGame.adopt(JSON.parse(response));
+			var updated = Eternity.SavedGame.adopt(JSON.parse(response)
+				, appliedLabel('Abilities', changes.length, changes.map(change => change.character)));
 
 			self.reset();
 			self.state.working = false;

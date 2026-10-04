@@ -235,7 +235,10 @@ var PartyCare = function () {
 
 	self.init = () => {
 		self.html.partyCareHeal.click(() => {
-			var marked = self.heal();
+			var marked = 0;
+			Eternity.EditHistory.labelled('Heal the party', () => {
+				marked = self.heal();
+			});
 			self.state.status = marked > 0
 				? 'Marked ' + plural(marked, 'party member', 'party members')
 					+ ' for full health and stamina. Save to write it to a file.'
@@ -250,7 +253,10 @@ var PartyCare = function () {
 
 		self.html.partyCareLevelUp.click(() => {
 			var level = parseInt(self.html.partyCareLevel.val(), 10);
-			var raised = self.levelTo(level);
+			var raised = [];
+			Eternity.EditHistory.labelled('Level up to ' + level, () => {
+				raised = self.levelTo(level);
+			});
 			self.state.status = raised.length > 0
 				? 'Raised ' + raised.map(c => c.name).join(', ') + ' to level ' + level
 					+ '’s experience. Save to write it to a file.'
@@ -259,7 +265,12 @@ var PartyCare = function () {
 		});
 
 		self.html.partyCareRefill.click(() => {
-			self.state.status = self.refill()
+			var refilled = false;
+			Eternity.EditHistory.labelled('Refill camping supplies', () => {
+				refilled = self.refill();
+			});
+
+			self.state.status = refilled
 				? 'Camping supplies refilled. Save to write it to a file.'
 				: '';
 			self.renderRows();

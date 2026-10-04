@@ -224,6 +224,9 @@ var GrimoireEditor = function () {
 		return contents[grimoire.guid] !== undefined && now !== was;
 	});
 
+	/** Whether anything is staged that Apply has not written yet. */
+	self.unapplied = () => dirty();
+
 	var chapterOf = (guid, level) =>
 		spellsOf(guid).filter(spell => spell.spellLevel === level);
 
@@ -614,8 +617,9 @@ var GrimoireEditor = function () {
 				self.state.working = false;
 				contents = {};
 
-				Eternity.SavedGame.transition(
-					{saveData: Eternity.SavedGame.adopt(JSON.parse(response))});
+				var changed = payload.length;
+				Eternity.SavedGame.transition({saveData: Eternity.SavedGame.adopt(JSON.parse(response)
+					, 'Grimoire: ' + changed + (changed === 1 ? ' book' : ' books') + ' changed')});
 				markDirty();
 				redraw('Grimoire updated. Save to write it to a file.');
 			}

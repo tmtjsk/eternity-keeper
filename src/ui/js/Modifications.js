@@ -66,10 +66,14 @@ var Modifications = function () {
 
 		// Every editor that changes saveData comes through here to arm the
 		// Save button -- seventeen call sites across ten files -- so this is
-		// the one place the panel bars can be recounted without each of them
-		// having to remember to say so.
+		// the one place the panel bars can be recounted, and the change made
+		// a step of the history, without each of them having to remember to.
 		if (Eternity.PanelChanges) {
 			Eternity.PanelChanges.refresh();
+		}
+
+		if (Eternity.EditHistory) {
+			Eternity.EditHistory.notice();
 		}
 	};
 };

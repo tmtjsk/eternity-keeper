@@ -610,7 +610,9 @@ var ConsoleTab = function () {
 		}
 
 		if (command) {
-			command.run(parts.slice(1));
+			// A command that changes the save is one step of the history,
+			// named as it was typed.
+			Eternity.EditHistory.labelled(trimmed, () => command.run(parts.slice(1)));
 		} else {
 			print('Unknown command \'' + parts[0] + '\'. Type \'help\' for the list. Commands '
 				+ 'that only exist at runtime (God, NoFog, teleports…) cannot be emulated '
@@ -662,26 +664,14 @@ ConsoleTab.prototype.toggleAchievements = function () {
 			return;
 		}
 
-		// Update the UI's copy IN PLACE rather than replacing saveData with
-		// the fresh re-read: replacing it would silently discard unsaved
-		// edits. Only the toggle's footprint is synced — the flag itself and
-		// the achievement-lock marker in the globals copy, so a later Save
-		// writes the new value back instead of reverting it.
-		var saveData = Eternity.SavedGame.state.saveData;
-		saveData.achievementsDisabled = response.achievementsDisabled;
-		['Global', 'InGameGlobal'].forEach(root => {
-			var fresh = response.globals
-				&& response.globals[root]
-				&& response.globals[root].AchievementTracker
-				&& response.globals[root].AchievementTracker.m_disableAchievements;
-			var mine = saveData.globals
-				&& saveData.globals[root]
-				&& saveData.globals[root].AchievementTracker
-				&& saveData.globals[root].AchievementTracker.m_disableAchievements;
-			if (fresh && mine) {
-				mine.value = fresh.value;
-			}
-		});
+		// Through adopt like every other Apply: the three-way merge keeps
+		// unsaved edits made elsewhere, the flag and its marker in the globals
+		// arrive from the reply, and Undo can put them back. (This used to
+		// copy the two values in place, which left the merge's idea of what
+		// the file held behind, so an undo would have kept the new flag as if
+		// the user had typed it.)
+		Eternity.SavedGame.transition({saveData: Eternity.SavedGame.adopt(response
+			, enable ? 'Turn achievements back on' : 'Turn achievements off')});
 
 		finish();
 		Eternity.Modifications.transition({modifications: true});

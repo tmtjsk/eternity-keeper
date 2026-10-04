@@ -1591,13 +1591,25 @@
 		</button>
 	</div>
 
-	<button type="button" class="btn btn-success save-fab" id="saveButton" data-bound="Modifications"
-	        disabled>
-		<i class="fa fa-floppy-o"></i> Save
-	</button>
+	<!-- Undo, Redo and Save act on the same thing -- everything changed since
+	     the save was opened or last written -- so they sit together
+	     (EditHistory.js, Modifications.js). -->
+	<div class="fab-row" id="fabRow">
+		<button type="button" class="history-fab" id="undoButton" data-bound="EditHistory" disabled>
+			<i class="fa fa-undo"></i> Undo
+		</button>
+		<button type="button" class="history-fab" id="redoButton" data-bound="EditHistory" disabled>
+			<i class="fa fa-repeat"></i> Redo
+		</button>
+		<button type="button" class="btn btn-success save-fab" id="saveButton" data-bound="Modifications"
+		        disabled>
+			<i class="fa fa-floppy-o"></i> Save
+		</button>
+	</div>
 	<div class="save-toast" id="saveToast" data-bound="Modifications">
 		<i class="fa fa-check-circle"></i> Changes saved successfully.
 	</div>
+	<div class="save-toast history-toast" id="historyToast" data-bound="EditHistory"></div>
 
 	<div id="progress" data-bound="Progress">
 		<div></div>
@@ -1630,6 +1642,7 @@
 	<script src="js/Renderer.js"></script>
 	<script src="js/CloneFactory.js"></script>
 	<script src="js/SaveMerge.js"></script>
+	<script src="js/SaveHistory.js"></script>
 	<script src="js/SaveFind.js"></script>
 	<script src="js/SaveCompare.js"></script>
 
@@ -1652,6 +1665,7 @@
 	<script src="js/PanelChanges.js"></script>
 	<script src="js/ConsoleTab.js"></script>
 	<script src="js/Modifications.js"></script>
+	<script src="js/EditHistory.js"></script>
 	<script src="js/ImportCharacter.js"></script>
 	<script src="js/ExportCharacter.js"></script>
 	<script src="js/PartyManagement.js"></script>

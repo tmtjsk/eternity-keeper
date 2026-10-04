@@ -602,12 +602,51 @@ span.danger {
 
 /* -------------------- Floating save button and toast -------------------- */
 
-.save-fab {
-	display: none;
+/* Undo, Redo and Save in one row at the corner. Chrome 45 has no flex gap. */
+.fab-row {
 	position: fixed;
 	right: 28px;
 	bottom: 28px;
 	z-index: 1035;
+	display: flex;
+	align-items: stretch;
+}
+
+.fab-row > * + * {
+	margin-left: 8px;
+}
+
+/* Undo and Redo: the same dark plate as Save, quieter, in both themes. */
+.history-fab {
+	display: none;
+	padding: 6px 14px;
+	font-size: 14px;
+	font-weight: 600;
+	color: #e1d2b0;
+	background: linear-gradient(#2e271e, #1b1610);
+	border: 2px solid #0e0b08;
+	box-shadow: inset 0 0 0 1px #6a5638, 0 4px 14px rgba(0, 0, 0, .45);
+	border-radius: 4px;
+}
+
+.history-fab:hover,
+.history-fab:focus {
+	color: #fff;
+	background: linear-gradient(#3a3125, #221c14);
+	box-shadow: inset 0 0 0 1px #c9b47e, 0 4px 14px rgba(0, 0, 0, .45);
+	outline: none;
+}
+
+.history-fab[disabled] {
+	opacity: .45;
+}
+
+.history-fab .fa {
+	margin-right: 4px;
+}
+
+.save-fab {
+	display: none;
 	padding: 10px 28px;
 	font-size: 17px;
 	font-weight: 600;
@@ -650,6 +689,18 @@ span.danger {
 .save-toast.show {
 	opacity: 1;
 	transform: translateY(0);
+}
+
+/* What Undo or Redo just did, or why it could not. */
+.history-toast {
+	max-width: 520px;
+	font-weight: 500;
+}
+
+.history-toast.history-toast-warning {
+	color: #f3dfb8;
+	background: linear-gradient(#4a3920, #2c2112);
+	box-shadow: inset 0 0 0 1px #d3a86e, 0 4px 14px rgba(0, 0, 0, .45);
 }
 
 /* -------------------- Theme toggle -------------------- */

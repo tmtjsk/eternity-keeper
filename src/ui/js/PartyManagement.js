@@ -195,8 +195,12 @@ var PartyManagement = function () {
 				return;
 			}
 
+			// "Party: Edér in, Aloth out", for Undo.
+			var moved = characters().filter(c => changes.hasOwnProperty(c.GUID))
+				.map(c => c.name + (changes[c.GUID] ? ' in' : ' out'));
+
 			Eternity.SavedGame.render({
-				saveData: Eternity.SavedGame.adopt(response)
+				saveData: Eternity.SavedGame.adopt(response, 'Party: ' + moved.join(', '))
 				, info: Eternity.SavedGame.state.info
 			});
 
