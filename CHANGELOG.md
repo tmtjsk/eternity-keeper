@@ -14,8 +14,8 @@ Compared with upstream Eternity Keeper 0.21a, from 2016:
   files and asks for no administrator rights: it installs for your user, adds a
   Start menu entry and an entry under Installed apps, upgrades an older version
   in place, and its uninstaller leaves your settings and save backups alone.
-  Every build of it is installed, started and uninstalled on a clean Windows
-  machine before it is offered.
+  The release workflow installs, starts and uninstalls every build of it on a
+  clean Windows machine before attaching it to a release.
 - **The save list opens at once.** A search used to unpack every save whole
   (5.8 s and 767 MB of temporary files for twelve saves, at every start); it
   now unpacks only what a tile is drawn from, and the rest of a save when it

@@ -817,7 +817,12 @@ the updater's jar lists and dead platform helpers deleted; README rewritten;
 moved into `tools/ui-tests`; GitHub Actions for tests and tagged releases; a
 bug-report form that asks for `eternity.log`.
 
-### 4.6 An installer, and a clean machine to test it on — *done, 2026-10-05*
+### 4.6 An installer, and a clean machine to test it on — *written 2026-10-05; first built by the Package workflow*
+
+Inno Setup is not installed on the development machine, so the installer script
+and its test were written and read through there but **not yet compiled or
+run**: the `Package` workflow does both on its first push. Everything else in
+the table was measured on the zip.
 
 | What | How |
 |---|---|
