@@ -19,6 +19,16 @@
 
 package uk.me.mantas.eternity.save;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import uk.me.mantas.eternity.serializer.properties.CollectionProperty;
 import uk.me.mantas.eternity.serializer.properties.ComplexProperty;
 import uk.me.mantas.eternity.serializer.properties.DictionaryProperty;
@@ -49,6 +59,67 @@ import java.util.UUID;
  */
 public final class GuidRemap {
 	private GuidRemap () {}
+
+	private static final Pattern ID = Pattern.compile(
+		"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
+
+	/**
+	 * Which of {@code ids} an area file of the save in {@code saveDirectory}
+	 * already holds an object under, in lower case.
+	 *
+	 * <p>The world state is not the only file with objects in it. What a
+	 * companion held in their quick slots when they died is left in the area
+	 * they died in, as objects of that area under the IDs it always had; what
+	 * the party sold is in the store's area. The same objects brought back
+	 * from another save under those IDs are in the save twice, and the game
+	 * says so when that area loads ("Packet is in both Mobile and Persistence
+	 * object lists!"). So what comes in is checked against the areas as well.
+	 *
+	 * <p>An object's ID is written as text, so the files are searched for the
+	 * text rather than read: a couple of hundred of them, 110 MB in a late
+	 * save. Anything else spelt like one of the IDs counts too, which costs an
+	 * incoming object a fresh ID it did not strictly need.
+	 */
+	public static Set<String> heldByAreas (final File saveDirectory, final Collection<String> ids)
+		throws IOException {
+
+		final Set<String> wanted = new HashSet<>();
+		for (final String id : ids) {
+			if (id != null) {
+				wanted.add(id.toLowerCase());
+			}
+		}
+
+		final File[] areas = saveDirectory.listFiles(
+			(folder, name) -> name.toLowerCase().endsWith(".lvl"));
+
+		if (wanted.isEmpty() || areas == null || areas.length < 1) {
+			return Collections.emptySet();
+		}
+
+		final Set<String> held = ConcurrentHashMap.newKeySet();
+		try {
+			Arrays.stream(areas).parallel().forEach(area -> {
+				try {
+					final Matcher found = ID.matcher(new String(
+						Files.readAllBytes(area.toPath()), StandardCharsets.ISO_8859_1));
+
+					while (found.find()) {
+						final String id = found.group().toLowerCase();
+						if (wanted.contains(id)) {
+							held.add(id);
+						}
+					}
+				} catch (final IOException e) {
+					throw new UncheckedIOException(e);
+				}
+			});
+		} catch (final UncheckedIOException e) {
+			throw e.getCause();
+		}
+
+		return held;
+	}
 
 	/**
 	 * Rewrites every occurrence of the IDs {@code remap} names, in the given

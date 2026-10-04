@@ -263,9 +263,26 @@ public class Resurrector {
 			if (p.obj instanceof ObjectPersistencePacket) {
 				final String id = ((ObjectPersistencePacket) p.obj).ObjectID;
 				if (id != null) {
-					deadIDs.add(id);
+					deadIDs.add(id.toLowerCase());
 				}
 			}
+		}
+
+		// And what an area still holds. Dying, a companion leaves what was in
+		// their quick slots in the area they died in, as objects of that area
+		// under the ids it always had; the donor brings the same objects. Left
+		// alone, each was in the save twice, and the game said so the moment
+		// that area loaded: "Packet is in both Mobile and Persistence object
+		// lists!" for three potions Edér came back holding.
+		final List<String> incomingIDs = new ArrayList<>();
+		for (final Property p : incoming) {
+			incomingIDs.add(((ObjectPersistencePacket) p.obj).ObjectID);
+		}
+
+		final Set<String> inAreas = GuidRemap.heldByAreas(saveDirectory, incomingIDs);
+		if (!inAreas.isEmpty()) {
+			logger.info("%d incoming objects are still in an area file under the same id.%n", inAreas.size());
+			deadIDs.addAll(inAreas);
 		}
 
 		final Map<String, UUID> remap = new LinkedHashMap<>();
@@ -275,7 +292,7 @@ public class Resurrector {
 			}
 
 			final String id = ((ObjectPersistencePacket) p.obj).ObjectID;
-			if (id != null && deadIDs.contains(id)) {
+			if (id != null && deadIDs.contains(id.toLowerCase())) {
 				remap.put(id, UUID.randomUUID());
 			}
 		}

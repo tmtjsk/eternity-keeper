@@ -305,6 +305,48 @@ public class CharacterImporterTest extends TestHarness {
 		assertTrue("Elwyn's pack names the ring the file brought", elwyns.contains(brought.ObjectID.toLowerCase()));
 	}
 
+	// The same, for something that left the world state altogether: sold, it
+	// is an object of the store's area, under the ID the file still has for it.
+	@Test
+	public void anItemSoldSinceTheExportComesBackUnderAnIdOfItsOwn () throws Exception {
+		final String ring = "c4b7033d-c452-4946-a9ba-9998cb411201";
+		final File workingDir = tempDir();
+		final File saveDir = new File(workingDir, "target.savegame");
+		assertTrue(saveDir.mkdir());
+		FileUtils.copyFileToDirectory(new File(resourceDirectory(), "MobileObjects.save"), saveDir);
+
+		final File chrFile = new File(workingDir, "player.chr");
+		assertTrue(new CharacterExporter(
+			resourceDirectory().getAbsolutePath(), PLAYER_GUID, chrFile.getAbsolutePath()).export());
+
+		// The store's area holds the ring now.
+		final DeserializedPackets world = deserialize(new File(saveDir, "MobileObjects.save"));
+		final List<Property> sold = world.getPackets().stream()
+			.filter(property -> ring.equals(((ObjectPersistencePacket) property.obj).ObjectID))
+			.collect(Collectors.toList());
+		assertEquals(1, sold.size());
+		Property.update(world.getCount(), 1);
+		final File area = new File(saveDir, "AR_0003_Dyrford_Store.lvl");
+		assertTrue(area.createNewFile());
+		new DeserializedPackets(new java.util.ArrayList<>(sold), world.getCount()).reserialize(area);
+
+		final CharacterImporter importer =
+			new CharacterImporter(requestJSON(saveDir), chrFile.getAbsolutePath());
+		assertTrue(importer.overwriteCharacter());
+
+		final DeserializedPackets modified =
+			deserialize(new File(importer.saveFile(), "MobileObjects.save"));
+		assertFalse("the ring the file brought has an ID of its own", modified.getPackets().stream()
+			.anyMatch(property -> ring.equals(((ObjectPersistencePacket) property.obj).ObjectID)));
+
+		final ObjectPersistencePacket elwyn = findByObjectID(modified.getPackets(), PLAYER_GUID);
+		final List<String> elwyns = listed(elwyn, "PlayerInventory");
+		assertFalse(elwyns.contains(ring));
+		assertEquals("and Elwyn's pack still holds as many things as the file had"
+			, listed(findByObjectID(deserialize(chrFile).getPackets(), PLAYER_GUID), "PlayerInventory").size()
+			, elwyns.size());
+	}
+
 	// The GUIDs a character's container lists, in lower case.
 	private static List<String> listed (final ObjectPersistencePacket character, final String component) {
 		final Optional<uk.me.mantas.eternity.game.ComponentPersistencePacket> found =

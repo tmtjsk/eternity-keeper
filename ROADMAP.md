@@ -147,6 +147,7 @@ Measured first, then fixed; each has a test that failed before.
 | `updateSaveInfo` failed on an empty array when the summary could not be parsed | Reading | It throws an `IOException` that says so |
 | `ChrDialogTest` raced the pool it waited on | It began failing | It waits for the choice itself |
 | A game-data read that was stopped left its half-built `gamedata.new` folder behind | Stopping one in the release and looking | `GameDataExtraction` removes it after a run that did not succeed |
+| A resurrected companion's quick-slot items existed twice under one ID: the game leaves them in the area the companion died in, and the donor brings the same objects. The game logged three exceptions on loading that area | Reading Player.log after loading an edited save in the game | `GuidRemap.heldByAreas`: resurrection and import also give fresh IDs to what an area file of the save still holds (35 objects on the test save). Loaded again in the game: no exception |
 | The sheet's totals did not follow a typed attribute or skill; the sidebar did not follow the name box; Tidy merged nothing in the stash when a stack was over the item's cap (it divided by the cap; the stash has none) and the stash count ignored the filter | `checklist.py`, written to walk the manual checklist | `SavedGame.refreshSheet`/`refreshName`; Tidy treats the stash as unlimited; "12 of 226 items" |
 
 Checked and found sound: no HTML sink in the page takes text from a save (the

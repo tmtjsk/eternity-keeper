@@ -228,6 +228,15 @@ public class CharacterImporter {
 			}
 		}
 
+		// The save's areas hold objects too: something of theirs sold since the
+		// export is in the store's area under the ID the file still has for it.
+		final List<String> brought = new ArrayList<>();
+		for (final Property object : chrObjects) {
+			brought.add(((ObjectPersistencePacket) object.obj).ObjectID);
+		}
+
+		taken.addAll(GuidRemap.heldByAreas(editing, brought));
+
 		final Map<String, UUID> remap = new LinkedHashMap<>();
 		for (final Property object : chrObjects) {
 			final String id = ((ObjectPersistencePacket) object.obj).ObjectID;

@@ -320,6 +320,59 @@ public class ResurrectorTest extends TestHarness {
 			, countOwned(packets, calisca.ObjectName));
 	}
 
+	// Not everything a dead companion carried stays in the world state: what
+	// was in their quick slots is left in the area they died in, as objects of
+	// that area, under the ids it always had. The donor brings the same
+	// objects, and under the same ids each was in the save twice -- the game
+	// said so on loading the area (Player.log, 2026-10-05, three potions).
+	@Test
+	public void whatTheGameLeftInAnAreaComesBackUnderAnIdOfItsOwn () throws Exception {
+		final File deadDir = setupSave("cadena 0 Dead.savegame");
+		removeCompanion(deadDir, PREFIX_CALISCA, false);
+		DeadCompanionsTest.setGlobalFlag(deadDir, "b_Eder_Dead", 1);
+
+		// The area she died in still holds two of the things she carried.
+		final File donorDir = setupSave("cadena 5 Donor.savegame");
+		final DeserializedPackets donor = deserialize(new File(donorDir, "MobileObjects.save"));
+		final String donorRootName = findByPrefix(donor.getPackets(), PREFIX_CALISCA).get().ObjectName;
+		final int carried = countOwned(donor.getPackets(), donorRootName);
+		final List<Property> left = new ArrayList<>();
+		for (final Property p : donor.getPackets()) {
+			if (left.size() < 2 && donorRootName.equals(((ObjectPersistencePacket) p.obj).Parent)
+				&& ((ObjectPersistencePacket) p.obj).ObjectID != null) {
+
+				left.add(p);
+			}
+		}
+
+		assertEquals(2, left.size());
+		final Set<String> leftIDs = new HashSet<>();
+		left.forEach(p -> leftIDs.add(((ObjectPersistencePacket) p.obj).ObjectID.toLowerCase()));
+		Property.update(donor.getCount(), left.size());
+		final File area = new File(deadDir, "AR_0701_Encampment.lvl");
+		assertTrue(area.createNewFile());
+		new DeserializedPackets(left, donor.getCount()).reserialize(area);
+		final byte[] areaBefore = FileUtils.readFileToByteArray(area);
+
+		assertTrue(new Resurrector(deadDir).transplant(
+			new File(donorDir, "MobileObjects.save"), PREFIX_CALISCA, "b_Eder_Dead"
+			, Collections.emptyList(), null, null));
+
+		final List<Property> packets = deserialize(new File(deadDir, "MobileObjects.save")).getPackets();
+		for (final Property p : packets) {
+			final String id = ((ObjectPersistencePacket) p.obj).ObjectID;
+			assertFalse("the world state holds " + id + ", which the area holds too"
+				, id != null && leftIDs.contains(id.toLowerCase()));
+		}
+
+		// She has everything the donor had all the same, two of them renamed...
+		final ObjectPersistencePacket calisca = findByPrefix(packets, PREFIX_CALISCA).get();
+		assertEquals(carried, countOwned(packets, calisca.ObjectName));
+
+		// ...and the area is as the game left it.
+		assertArrayEquals(areaBefore, FileUtils.readFileToByteArray(area));
+	}
+
 	// A max-level donor save usually has most companions dismissed to the
 	// stronghold roster — AIPackageController instead of PartyMemberAI. The
 	// transplant must perform the recruit-time component swap.

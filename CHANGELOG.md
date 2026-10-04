@@ -137,6 +137,12 @@ Compared with upstream Eternity Keeper 0.21a, from 2016:
   never met could end the work behind a spinner without a word, and the spinner
   then turned for ever (one changed byte in a real save did it). Every request
   the page makes now gets an answer, and a failed edit is taken back.
+- **A resurrected companion no longer brings back items the game still
+  keeps elsewhere.** What a companion held in their quick slots when they died
+  stays in the area they died in; the resurrection brought the same items back
+  under the same IDs, and the game reported an error for each when that area
+  loaded. They now come back as items of their own, and so does anything an
+  imported character carries that the save has since sold to a store.
 - **Saving never takes the name of a file already in the saves folder.** The
   number in a new save's name was the first one free among the saves the list
   had read; a file put there since (a backup restored, a save the list could
