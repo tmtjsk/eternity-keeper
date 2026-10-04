@@ -30,6 +30,7 @@ import org.cef.handler.CefAppHandlerAdapter;
 import org.json.JSONObject;
 import uk.me.mantas.eternity.environment.AppPaths;
 import uk.me.mantas.eternity.environment.Environment;
+import uk.me.mantas.eternity.environment.TempSweep;
 
 import javax.swing.*;
 import java.awt.*;
@@ -151,6 +152,9 @@ public class EternityKeeper extends JFrame {
 
 		Settings.initialise();
 		rolloverLogFile(paths.logFile());
+
+		// A copy of a save for every editor that crashed or was killed.
+		TempSweep.inBackground(Environment.getInstance().directory().working());
 
 		final Optional<File> ui = paths.ui();
 		if (!ui.isPresent()) {

@@ -87,14 +87,17 @@ public class SaveGameInfo {
 				"Save folder name was malformed: %s%n"
 				, saveFolder.getName());
 
-			throw new SaveFileInfoException();
+			throw new SaveFileInfoException(
+				"its file name is not one the game gives a save"
+					+ " (a session, a number and an area, with spaces between)");
 		}
 
-		boolean success = parseSaveInfoXML(infoFiles.get("saveinfo.xml"));
-		success = success && encodeImageData(infoFiles);
+		if (!parseSaveInfoXML(infoFiles.get("saveinfo.xml"))) {
+			throw new SaveFileInfoException("its saveinfo.xml could not be read");
+		}
 
-		if (!success) {
-			throw new SaveFileInfoException();
+		if (!encodeImageData(infoFiles)) {
+			throw new SaveFileInfoException("its screenshot or a portrait could not be read");
 		}
 	}
 
@@ -157,11 +160,16 @@ public class SaveGameInfo {
 			String timestampText = xml.find("Simple[name='RealTimestamp']").attr("value");
 			timestamp = dateFormatter.parseDateTime(timestampText);
 			return true;
-		} catch (DOMException e) {
+		} catch (RuntimeException e) {
+			// Text that is not XML, a field that is missing, a date that is not
+			// one: whatever is wrong with one save's summary costs that save
+			// its tile and nothing else. Only a DOMException used to be caught
+			// here, and a summary without a Chapter took the whole list down
+			// with a NullPointerException.
 			logger.error(
 				"Error parsing %s: %s%n"
-				, saveInfoXML.getAbsolutePath()
-				, e.getMessage());
+				, saveInfoXML == null ? "saveinfo.xml" : saveInfoXML.getAbsolutePath()
+				, e.toString());
 		} catch (IOException e) {
 			logger.error(
 				"Error reading %s: %s%n"
@@ -172,9 +180,10 @@ public class SaveGameInfo {
 		return false;
 	}
 
+	/** Why a save has no tile, in words that finish "… is not listed, because". */
 	public static class SaveFileInfoException extends Exception {
-		SaveFileInfoException () {
-			super();
+		SaveFileInfoException (final String reason) {
+			super(reason);
 		}
 	}
 
@@ -246,14 +255,21 @@ public class SaveGameInfo {
 			transformer.transform(
 					new DOMSource(xml.document()), new StreamResult(newContentsStream));
 		} catch (DOMException | TransformerException e) {
-
+			// Said as an error the caller reports. It used to be logged and
+			// passed over, and the line below then failed on an empty array.
 			logger.error(
 					"Error parsing copied saveinfo '%s': %s%n"
 					, saveinfoXML.getAbsolutePath()
 					, e.getMessage());
+
+			throw new IOException("saveinfo.xml could not be rewritten: " + e.getMessage(), e);
 		}
 
 		byte[] newContentsBytes = newContentsStream.toByteArray();
+		if (newContentsBytes.length == 0) {
+			throw new IOException("saveinfo.xml could not be rewritten: nothing was produced.");
+		}
+
 		if (newContentsBytes[0] != -17) {
 			newContentsBytes = EKUtils.addBOM(newContentsBytes);
 		}

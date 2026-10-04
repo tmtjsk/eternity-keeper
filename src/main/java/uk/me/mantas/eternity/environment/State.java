@@ -27,7 +27,10 @@ public class State {
 
 	public boolean closing = false;
 
-	private final WorkingSave workingSave = new WorkingSave();
+	private final UnpackedSaves unpacked = new UnpackedSaves();
+	public UnpackedSaves unpacked () { return unpacked; }
+
+	private final WorkingSave workingSave = new WorkingSave(unpacked);
 	public WorkingSave workingSave () { return workingSave; }
 
 	private SaveInfoLister currentSaveLister = null;

@@ -99,7 +99,7 @@ public class PacketDeserializer {
 		final Optional<Property> header;
 		try {
 			header = deserializer.deserialize();
-		} catch (final RuntimeException e) {
+		} catch (final RuntimeException | StackOverflowError e) {
 			logger.error(e, "%s does not start with an object count: %s%n", file.getName(), e);
 			return Optional.empty();
 		}
@@ -120,9 +120,12 @@ public class PacketDeserializer {
 			final long before = deserializer.position();
 			final Optional<Property> packet;
 
+			// A stack that ran out counts with the rest: damage can nest
+			// objects without end, and the error would end this thread with
+			// the page still waiting on it.
 			try {
 				packet = deserializer.deserialize();
-			} catch (final RuntimeException e) {
+			} catch (final RuntimeException | StackOverflowError e) {
 				logger.error(e, "%s: object %d of %d could not be read: %s%n"
 					, file.getName(), i + 1, declared, e);
 
@@ -142,6 +145,16 @@ public class PacketDeserializer {
 			}
 		}
 
-		return Optional.of(new DeserializedPackets(packets, count, file.getName(), declared));
+		// Every object read, and still not something to hand on: damage can
+		// leave a tree that reads to its end and holds what nothing expects --
+		// an entry with no key, a value where an object belongs -- and the look
+		// DeserializedPackets takes at what it was given trips over it. That is
+		// a file the editor cannot make sense of, and one it must not write.
+		try {
+			return Optional.of(new DeserializedPackets(packets, count, file.getName(), declared));
+		} catch (final RuntimeException | StackOverflowError e) {
+			logger.error(e, "%s was read but cannot be made sense of: %s%n", file.getName(), e);
+			return Optional.empty();
+		}
 	}
 }

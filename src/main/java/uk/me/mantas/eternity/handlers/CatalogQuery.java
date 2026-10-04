@@ -55,7 +55,7 @@ public abstract class CatalogQuery extends CefMessageRouterHandlerAdapter {
 		, final boolean persistent
 		, final CefQueryCallback callback) {
 
-		Environment.getInstance().workers().execute(() -> respond(request, callback));
+		Environment.getInstance().workers().execute(Answered.to(callback, () -> respond(request, callback)));
 		return true;
 	}
 

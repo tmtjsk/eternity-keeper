@@ -44,9 +44,18 @@ public class Deserializer {
 
 	private Map<Integer, ReferenceTargetProperty> propertyCache = new HashMap<>();
 
+	// How many bytes the file has from where this read began: nothing in it
+	// is longer than that.
+	private final long available;
+
 	public Deserializer(DataInput stream, SharpSerializer parent) {
+		this(stream, parent, Integer.MAX_VALUE);
+	}
+
+	public Deserializer(DataInput stream, SharpSerializer parent, long available) {
 		this.stream = stream;
 		this.parent = parent;
+		this.available = available;
 
 		try {
 			readHeader(names, Function.identity());
@@ -105,10 +114,23 @@ public class Deserializer {
 
 	private String readCSharpString() throws IOException {
 		int length = read7BitEncodedInt();
-		byte[] buffer = new byte[length];
+		byte[] buffer = new byte[sane(length)];
 		stream.readFully(buffer);
 
 		return new String(buffer, "UTF-8");
+	}
+
+	// A length is a few bytes like any others, and in a damaged file they say
+	// anything: less than nothing, or two gigabytes -- and asking for those
+	// is not an exception but an OutOfMemoryError, which ended the thread the
+	// page was waiting on. Nothing in a file is longer than the file.
+	private int sane(int length) throws IOException {
+		if (length < 0 || length > available) {
+			throw new IOException(String.format(
+				"a length of %d where at most %d bytes are left", length, available));
+		}
+
+		return length;
 	}
 
 	private int read7BitEncodedInt()
@@ -369,7 +391,7 @@ public class Deserializer {
 					return null;
 				}
 
-				byte[] buffer = new byte[length];
+				byte[] buffer = new byte[sane(length)];
 				stream.readFully(buffer);
 
 				return boxBytes(buffer);

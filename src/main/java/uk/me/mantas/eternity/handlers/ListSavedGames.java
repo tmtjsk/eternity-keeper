@@ -26,7 +26,6 @@ import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import org.json.JSONStringer;
 import uk.me.mantas.eternity.Logger;
 import uk.me.mantas.eternity.Settings;
 import uk.me.mantas.eternity.environment.Environment;
@@ -34,6 +33,7 @@ import uk.me.mantas.eternity.save.SaveGameExtractor;
 import uk.me.mantas.eternity.save.SaveGameInfo;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 
 public class ListSavedGames extends CefMessageRouterHandlerAdapter {
@@ -58,7 +58,7 @@ public class ListSavedGames extends CefMessageRouterHandlerAdapter {
 		// lock up the UI.
 		final SaveInfoLister lister = new SaveInfoLister(request, callback);
 		environment.state().currentSaveLister(lister);
-		environment.workers().execute(lister);
+		environment.workers().execute(Answered.to(callback, lister));
 
 		return true;
 	}
@@ -80,26 +80,50 @@ public class ListSavedGames extends CefMessageRouterHandlerAdapter {
 
 		@Override
 		public void run () {
-			Environment.getInstance().directory().emptyWorking();
-			extractor = new SaveGameExtractor(
-				savesLocation
-				, Environment.getInstance().directory().working());
+			// Whatever happens, the page gets an answer: it waits for one with
+			// its Search button disabled, and one that never came left it
+			// saying "Searching..." until the editor was closed.
+			try {
+				Environment.getInstance().directory().emptyWorking();
+				Environment.getInstance().state().unpacked().forgetAll();
+				extractor = new SaveGameExtractor(
+					savesLocation
+					, Environment.getInstance().directory().working());
 
-			unpackAllSaves(extractor);
+				unpackAllSaves(extractor);
+			} catch (final RuntimeException e) {
+				logger.error(e, "Unable to search '%s'.%n", savesLocation);
+				failed(callback, e);
+			}
 		}
 
 		private void unpackAllSaves (final SaveGameExtractor extractor) {
 			final Optional<SaveGameInfo[]> info = extractor.unpackAllSaves();
+			final JSONArray unreadable = unreadableToJSON(extractor.unreadable());
 			if (!info.isPresent() || info.get().length < 1) {
-				notFound(callback);
+				notFound(callback, unreadable);
 				return;
 			}
 
-			callback.success(saveInfoToJSON(info.get()));
+			callback.success(new JSONObject()
+				.put("saves", saveInfoToJSON(info.get()))
+				.put("unreadable", unreadable)
+				.toString());
 		}
 	}
 
-	private static String saveInfoToJSON (final SaveGameInfo[] info) {
+	// The files in the folder that are not in the list, each with the reason:
+	// a save that is simply missing leaves its owner looking for it.
+	private static JSONArray unreadableToJSON (final List<SaveGameExtractor.Unreadable> unreadable) {
+		final JSONArray json = new JSONArray();
+		for (final SaveGameExtractor.Unreadable file : unreadable) {
+			json.put(new JSONObject().put("name", file.name).put("reason", file.reason));
+		}
+
+		return json;
+	}
+
+	private static JSONArray saveInfoToJSON (final SaveGameInfo[] info) {
 		final JSONObject[] infoJSONObjects = Arrays.stream(info).map(
 			saveInfo -> new JSONObject()
 				.put("guid", saveInfo.guid)
@@ -116,16 +140,21 @@ public class ListSavedGames extends CefMessageRouterHandlerAdapter {
 				.put("portraits", saveInfo.portraits)
 		).toArray(JSONObject[]::new);
 
-		return new JSONArray(infoJSONObjects).toString();
+		return new JSONArray(infoJSONObjects);
 	}
 
-	private static void notFound (final CefQueryCallback callback) {
-		final String json = new JSONStringer()
-			.object()
-				.key("error").value("NO_RESULTS")
-			.endObject()
-			.toString();
+	private static void notFound (final CefQueryCallback callback, final JSONArray unreadable) {
+		callback.success(new JSONObject()
+			.put("error", "NO_RESULTS")
+			.put("unreadable", unreadable)
+			.toString());
+	}
 
-		callback.success(json);
+	private static void failed (final CefQueryCallback callback, final RuntimeException reason) {
+		callback.success(new JSONObject()
+			.put("error", "LIST_ERR")
+			.put("msg", "The saves folder could not be searched: " + reason
+				+ ". eternity.log has the details.")
+			.toString());
 	}
 }

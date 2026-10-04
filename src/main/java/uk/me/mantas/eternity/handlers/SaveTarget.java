@@ -99,7 +99,7 @@ public class SaveTarget extends CefMessageRouterHandlerAdapter {
 			return true;
 		}
 
-		Environment.getInstance().workers().execute(() -> preview(oldSave, callback));
+		Environment.getInstance().workers().execute(Answered.to(callback, () -> preview(oldSave, callback)));
 		return true;
 	}
 

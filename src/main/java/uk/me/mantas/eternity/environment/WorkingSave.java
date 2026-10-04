@@ -52,6 +52,16 @@ public class WorkingSave {
 	private File copy = null;
 	private File written = null;
 	private final EditHistory history = new EditHistory();
+	private final UnpackedSaves unpacked;
+
+	public WorkingSave () {
+		this(new UnpackedSaves());
+	}
+
+	/** @param unpacked which of the folders the save list made hold a whole save */
+	public WorkingSave (final UnpackedSaves unpacked) {
+		this.unpacked = unpacked;
+	}
 
 	/** What the Applies since the save was opened or last written changed. */
 	public EditHistory history () {
@@ -64,7 +74,21 @@ public class WorkingSave {
 			return written;
 		}
 
-		return isCopyOf(opened) ? copy : opened;
+		if (isCopyOf(opened)) {
+			return copy;
+		}
+
+		// Opening a save unpacks the rest of it, and the page names the save it
+		// opened; this is for the day something names another. One that cannot
+		// be completed is handed back as it is, and the reader reports the
+		// file it does not find.
+		try {
+			unpacked.complete(opened);
+		} catch (final IOException e) {
+			logger.error("%s%n", e.getMessage());
+		}
+
+		return opened;
 	}
 
 	/**
@@ -91,6 +115,8 @@ public class WorkingSave {
 			return opened;
 		}
 
+		// A copy of a save the list only drew would be a save of eight pictures.
+		unpacked.complete(opened);
 		discardCopy();
 		final File made = new File(
 			Files.createTempDirectory("EK-editing-").toFile(), opened.getName());

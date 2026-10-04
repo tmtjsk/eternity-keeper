@@ -6017,6 +6017,56 @@ html {
 	transition: width .4s ease-out;
 }
 
+/* The files in the saves folder that are not in the list (SaveSearch.js).
+   Drawn only when there is one. On the page, so it has a light-mode override. */
+.unreadable-saves {
+	display: none;
+	margin: 12px 0 0 0;
+	padding: 10px 14px 11px;
+	max-width: 900px;
+	background: rgba(120, 40, 20, .22);
+	border: 1px solid #9c4b3a;
+	border-left-width: 3px;
+	border-radius: 3px;
+	font-size: 12px;
+	line-height: 1.55;
+	color: #b9a680;
+}
+
+.unreadable-saves .us-head {
+	font-size: 13px;
+	color: #e8c0b4;
+	margin-bottom: 4px;
+}
+
+.unreadable-saves .us-file {
+	word-wrap: break-word;
+}
+
+.unreadable-saves .us-file b {
+	font-weight: normal;
+	color: #e3b8b8;
+}
+
+.unreadable-saves .us-more {
+	margin-top: 4px;
+	color: #a2937a;
+}
+
+body.theme-light .unreadable-saves {
+	background: rgba(156, 75, 58, .12);
+	color: #5b4a30;
+}
+
+body.theme-light .unreadable-saves .us-head,
+body.theme-light .unreadable-saves .us-file b {
+	color: #7c2f1c;
+}
+
+body.theme-light .unreadable-saves .us-more {
+	color: #6d5c40;
+}
+
 body.theme-light .game-data-banner {
 	background: rgba(176, 138, 80, .10);
 	border-color: #c8ad82;

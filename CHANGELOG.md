@@ -10,6 +10,21 @@ Compared with upstream Eternity Keeper 0.21a, from 2016:
 - **A ready-to-run Windows download.** One zip holding `Eternity Keeper.exe`,
   the Java 8 runtime it needs and the embedded browser. Nothing to install, and
   whatever Java the machine has is never used.
+- **Or an installer.** `EternityKeeper-<version>-win64-setup.exe` holds the same
+  files and asks for no administrator rights: it installs for your user, adds a
+  Start menu entry and an entry under Installed apps, upgrades an older version
+  in place, and its uninstaller leaves your settings and save backups alone.
+  Every build of it is installed, started and uninstalled on a clean Windows
+  machine before it is offered.
+- **The save list opens at once.** A search used to unpack every save whole
+  (5.8 s and 767 MB of temporary files for twelve saves, at every start); it
+  now unpacks only what a tile is drawn from, and the rest of a save when it
+  is opened or compared.
+- **A damaged file in the saves folder costs only its own tile.** A save cut
+  short, a file that is not a save, a summary with a field missing: the list
+  shows the others and names each one it left out, with the reason. One of
+  them used to end the whole search, and a save that was simply missing left
+  its owner looking for it.
 - **Works from any folder.** Settings and the log live in
   `%APPDATA%\Eternity Keeper`, so the editor runs from Program Files, a
   shortcut or a USB stick. Settings from an older copy are brought across once.
@@ -118,6 +133,18 @@ Compared with upstream Eternity Keeper 0.21a, from 2016:
   another tab reloads the save.
 - A save that breaks the format's own rules is flagged when it opens, before
   the game quietly drops what it cannot read.
+- **The editor always answers.** A save damaged into a shape the editor had
+  never met could end the work behind a spinner without a word, and the spinner
+  then turned for ever (one changed byte in a real save did it). Every request
+  the page makes now gets an answer, and a failed edit is taken back.
+- **Saving never takes the name of a file already in the saves folder.** The
+  number in a new save's name was the first one free among the saves the list
+  had read; a file put there since (a backup restored, a save the list could
+  not read) could be replaced by the first Save.
+- **Leftovers are cleared out.** An editor that crashed or was killed left its
+  working copy of the open save in the temp folder for good (2.5 GB had
+  collected on the machine this was written on); they are removed at the next
+  start, once a day old.
 - **A damaged save is never written back.** A save that can only be read in
   part — cut short, or corrupted part of the way through — still opens, with a
   warning that says how much is missing, but no edit, Save, import or export

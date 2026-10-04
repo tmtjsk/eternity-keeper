@@ -73,7 +73,7 @@ public final class ChrDialog {
 		final Vector<String> filters = new Vector<>();
 		filters.add("." + extension);
 
-		Environment.getInstance().workers().execute(() -> browser.runFileDialog(
+		Environment.getInstance().workers().execute(Answered.to(callback, () -> browser.runFileDialog(
 			mode, title, suggested, filters, 0, (selectedFilter, files) -> {
 				if (files == null || files.isEmpty() || files.get(0).isEmpty()) {
 					callback.failure(-1, cancelled);
@@ -81,8 +81,9 @@ public final class ChrDialog {
 				}
 
 				final String path = files.get(0);
-				Environment.getInstance().mutationWorker().execute(() -> chosen.accept(path));
-			}));
+				Environment.getInstance().mutationWorker().execute(
+					Answered.to(callback, () -> chosen.accept(path)));
+			})));
 	}
 
 	/** The name typed into a save dialog, with {@code .chr} on the end unless it has it. */

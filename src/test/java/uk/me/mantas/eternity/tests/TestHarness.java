@@ -157,7 +157,9 @@ public abstract class TestHarness {
 		when(mockEnvironment.directory()).thenReturn(mockDirectories);
 		when(mockEnvironment.factory()).thenReturn(mockFactory);
 		when(mockEnvironment.state()).thenReturn(mockState);
-		when(mockState.workingSave()).thenReturn(new WorkingSave());
+		final UnpackedSaves unpacked = new UnpackedSaves();
+		when(mockState.unpacked()).thenReturn(unpacked);
+		when(mockState.workingSave()).thenReturn(new WorkingSave(unpacked));
 		when(mockEnvironment.variables()).thenReturn(mockVariables);
 		when(mockEnvironment.workers()).thenReturn(environment.workers());
 		when(mockEnvironment.mutationWorker()).thenReturn(environment.mutationWorker());

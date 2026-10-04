@@ -224,6 +224,11 @@ public class GameDataExtraction {
 			onFinished.run();
 		} else {
 			logger.error("Reading game data failed: %s%n", progress.error);
+
+			// The reader builds in "<out>.new" and clears it when it fails by
+			// itself. Stopped, it was killed where it stood, and the half-read
+			// folder stayed in the data folder until the next read.
+			FileUtils.deleteQuietly(new File(out.getPath() + ".new"));
 		}
 	}
 

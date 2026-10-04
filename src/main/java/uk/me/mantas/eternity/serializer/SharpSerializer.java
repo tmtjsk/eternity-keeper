@@ -107,7 +107,8 @@ public class SharpSerializer {
 				LittleEndianDataInputStream stream =
 					new LittleEndianDataInputStream(counting)) {
 
-				Deserializer deserializer = new Deserializer(stream, this);
+				Deserializer deserializer =
+					new Deserializer(stream, this, targetFile.length() - position);
 				Property property = deserializer.deserialize();
 				position += counting.getByteCount();
 

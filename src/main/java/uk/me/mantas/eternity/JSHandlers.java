@@ -97,7 +97,10 @@ public class JSHandlers {
 	}
 
 	public static void register (final CefClient cefClient, final EternityKeeper frame) {
+		// Guarded: whatever becomes of a handler's work, its query is answered,
+		// and answered once.
 		handlers(frame).forEach((name, handler) -> cefClient.addMessageRouter(
-			CefMessageRouter.create(new CefMessageRouterConfig(name, name + "Cancel"), handler)));
+			CefMessageRouter.create(new CefMessageRouterConfig(name, name + "Cancel")
+				, Answered.guarded(handler))));
 	}
 }

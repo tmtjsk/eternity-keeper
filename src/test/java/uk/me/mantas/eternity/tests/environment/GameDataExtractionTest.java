@@ -19,6 +19,7 @@
 package uk.me.mantas.eternity.tests.environment;
 
 import org.json.JSONObject;
+import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -129,6 +130,32 @@ public class GameDataExtractionTest extends TestHarness {
 		assertTrue(error, error.contains("exit code 3"));
 		assertTrue(error, error.contains("MemoryError"));
 		assertEquals(0, finished.get());
+	}
+
+	// The reader clears its own half-built folder when it fails by itself, and
+	// at the start of its next run. Stopped, it is killed where it stands, so
+	// the folder stayed in the data folder until the next read, if there was
+	// one.
+	@Test
+	public void aStoppedRunLeavesNothingHalfReadBehind () throws Exception {
+		final File staging = new File(out.getPath() + ".new");
+		FileUtils.writeStringToFile(new File(out, "catalog.json"), "what was read before", "UTF-8");
+
+		final GameDataExtraction extraction = fake("hang");
+		assertTrue(extraction.start(game));
+		final long deadline = System.currentTimeMillis() + 30000;
+		while (!new File(staging, "catalog.json").exists() && System.currentTimeMillis() < deadline) {
+			Thread.sleep(50);
+		}
+
+		assertTrue("the fake has read half of it", new File(staging, "catalog.json").exists());
+		extraction.cancel();
+		extraction.await(30000);
+
+		assertFalse("nothing half-read is left", staging.exists());
+		assertEquals("and what was read before is untouched", "what was read before"
+			, FileUtils.readFileToString(new File(out, "catalog.json"), "UTF-8"));
+		assertTrue(extraction.status().getString("error").startsWith("Stopped before it finished"));
 	}
 
 	@Test

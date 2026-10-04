@@ -35,6 +35,8 @@ import uk.me.mantas.eternity.tests.TestHarness;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -79,6 +81,7 @@ public class SaveMutationHandlerTest extends TestHarness {
 		final AtomicReference<Thread> ranOn = new AtomicReference<>();
 		String problem = null;
 		IOException throwing = null;
+		RuntimeException failing = null;
 		String marker = null;
 
 		@Override
@@ -93,6 +96,18 @@ public class SaveMutationHandlerTest extends TestHarness {
 
 			if (marker != null) {
 				FileUtils.writeStringToFile(new File(save, marker), "edit", "UTF-8");
+			}
+
+			if (failing != null) {
+				// Part of the way through, as a bug would be: one file written,
+				// the way every writer writes one (invariant 20) -- kept for
+				// undo, then a new file moved over it.
+				final File world = new File(save, "MobileObjects.save");
+				final File writing = new File(save, "MobileObjects.save.writing");
+				Environment.getInstance().state().workingSave().history().keep(world);
+				FileUtils.writeStringToFile(writing, "half an edit", "UTF-8");
+				Files.move(writing.toPath(), world.toPath(), StandardCopyOption.REPLACE_EXISTING);
+				throw failing;
 			}
 
 			return problem;
@@ -252,6 +267,32 @@ public class SaveMutationHandlerTest extends TestHarness {
 		verify(callback, timeout(60000)).failure(anyInt()
 			, argThat(message -> message.contains("MobileObjects.save is locked")));
 		verify(callback, never()).success(anyString());
+	}
+
+	// A manager that meets a save in a shape it never expected fails with
+	// something nobody catches by name. The page used to be left waiting --
+	// the thread simply ended -- and now it is told, and whatever the edit had
+	// written by then is put back.
+	@Test
+	public void anEditThatFailsUnexpectedlyStillAnswersAndIsTakenBack () throws Exception {
+		final File save = workingSave();
+		final Probe probe = new Probe();
+		probe.failing = new IllegalStateException("an inventory with no owner");
+		final CefQueryCallback callback = mock(CefQueryCallback.class);
+
+		send(probe, request(save, false), callback);
+
+		verify(callback, timeout(60000)).failure(anyInt()
+			, argThat(message -> message.contains("an inventory with no owner")
+				&& message.contains("was not done")));
+		verify(callback, never()).success(anyString());
+
+		final File edited = probe.sawSave.get();
+		assertArrayEquals("what it had written is put back"
+			, FileUtils.readFileToByteArray(new File(save, "MobileObjects.save"))
+			, FileUtils.readFileToByteArray(new File(edited, "MobileObjects.save")));
+		assertTrue("and nothing is left to undo"
+			, Environment.getInstance().state().workingSave().history().undoable().isEmpty());
 	}
 
 	/**

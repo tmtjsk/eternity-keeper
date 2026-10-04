@@ -44,6 +44,21 @@ var SavedGame = function () {
 		, view: self.views.ATTR
 	};
 
+	// The name a character is listed by: what is typed into the name box as
+	// soon as it is typed, and otherwise the name the save was opened with
+	// (a companion's own name box is empty: the game supplies her name).
+	var listedName = character => {
+		var typed = character.stats && character.stats.OverrideName
+			? $.trim(String(character.stats.OverrideName.value || '')) : '';
+		return typed || character.name;
+	};
+
+	self.refreshName = character => {
+		self.html.characterList.find('li')
+			.filter((i, li) => $(li).data('guid') === character.GUID)
+			.find('.character-name').text(listedName(character));
+	};
+
 	var populateCharacterList = (container, characters) => {
 		// The main character always sits at the top marked with a star; the
 		// rest of the party is sorted alphabetically.
@@ -63,7 +78,8 @@ var SavedGame = function () {
 						character.isMainCharacter
 							? 'fa fa-star main-character-star'
 							: 'fa fa-heartbeat'))
-					.append(document.createTextNode(' ' + character.name))
+					.append(document.createTextNode(' '))
+					.append($('<span>').addClass('character-name').text(listedName(character)))
 					.addClass(character.isDead ? 'dead' : '')
 					.click(self.switchCharacter.bind(self, character.GUID));
 
@@ -635,6 +651,15 @@ var SavedGame = function () {
 		if (haveSkills) sheet.append(skillRow);
 	};
 
+	// The totals follow what is typed into the attribute and skill boxes, not
+	// only the dropdowns: they used to keep the old numbers until the sheet was
+	// next drawn, under a box that already showed the new one.
+	self.refreshSheet = () => {
+		if (identityCharacter) {
+			populateSheet(identityCharacter);
+		}
+	};
+
 	var populateIdentity = data => {
 		var grid = self.html.identityGrid.empty();
 		var note = self.html.identityNote.empty();
@@ -851,6 +876,7 @@ var SavedGame = function () {
 				// what the game itself would store for that rank.
 				entry.value = pointsForRank(wanted);
 				describe(wanted, entry.value);
+				populateSheet(data);
 				Eternity.Modifications.transition({modifications: true});
 			});
 
@@ -1234,6 +1260,10 @@ SavedGame.prototype.update = function (e) {
 		var character =
 			self.state.saveData.characters.filter(c => c.GUID === self.state.activeCharacter)[0];
 		character.stats[key].value = value;
+		self.refreshSheet();
+		if (key === 'OverrideName') {
+			self.refreshName(character);
+		}
 	} else {
 		var ex = key.split('.');
 		self.state.saveData.globals[ex[0]][ex[1]][ex[2]].value = value;

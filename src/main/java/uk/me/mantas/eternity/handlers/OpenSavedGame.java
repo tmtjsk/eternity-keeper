@@ -28,6 +28,7 @@ import uk.me.mantas.eternity.environment.Environment;
 import uk.me.mantas.eternity.save.SavedGameOpener;
 
 import java.io.File;
+import java.io.IOException;
 
 public class OpenSavedGame extends CefMessageRouterHandlerAdapter {
 	private static final Logger logger = Logger.getLogger(OpenSavedGame.class);
@@ -48,8 +49,25 @@ public class OpenSavedGame extends CefMessageRouterHandlerAdapter {
 		// Whatever the last save left unsaved goes. Queued behind any edit
 		// still writing, so the copy is never deleted out from under one.
 		final Environment environment = Environment.getInstance();
-		environment.mutationWorker().execute(() -> environment.state().workingSave().opening());
-		environment.workers().execute(new SavedGameOpener(request, callback));
+		environment.mutationWorker().execute(Answered.to(callback
+			, () -> environment.state().workingSave().opening()));
+
+		// The opener reads its way through whatever the save holds, and a save
+		// can be damaged into a shape it never met: one byte changed in a real
+		// one, and this used to end the thread with the page still waiting.
+		environment.workers().execute(Answered.to(callback, () -> {
+			// The list unpacked only what it draws; the world state and the
+			// areas follow now that the save is wanted.
+			try {
+				environment.state().unpacked().complete(new File(request));
+			} catch (final IOException e) {
+				unpackError(callback, e.getMessage());
+				return;
+			}
+
+			new SavedGameOpener(request, callback).run();
+		}));
+
 		return true;
 	}
 
@@ -62,6 +80,17 @@ public class OpenSavedGame extends CefMessageRouterHandlerAdapter {
 		final String json = new JSONStringer()
 			.object()
 				.key("error").value("NOT_EXISTS")
+			.endObject()
+			.toString();
+
+		callback.success(json);
+	}
+
+	private static void unpackError (final CefQueryCallback callback, final String reason) {
+		final String json = new JSONStringer()
+			.object()
+				.key("error").value("UNPACK_ERR")
+				.key("msg").value(reason)
 			.endObject()
 			.toString();
 

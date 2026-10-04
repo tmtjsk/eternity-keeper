@@ -52,7 +52,7 @@ public class DeleteSavedGame extends CefMessageRouterHandlerAdapter {
 		, final CefQueryCallback callback) {
 
 		// The copy of a large save takes a moment; not on the browser's thread.
-		Environment.getInstance().workers().execute(() -> delete(new File(request), callback));
+		Environment.getInstance().workers().execute(Answered.to(callback, () -> delete(new File(request), callback)));
 		return true;
 	}
 

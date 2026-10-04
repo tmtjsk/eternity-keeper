@@ -22,6 +22,7 @@ package uk.me.mantas.eternity.save;
 import net.lingala.zip4j.ZipFile;
 import net.lingala.zip4j.exception.ZipException;
 import uk.me.mantas.eternity.Logger;
+import uk.me.mantas.eternity.environment.Environment;
 
 import java.io.File;
 import java.util.*;
@@ -38,53 +39,97 @@ public class SaveGameExtractor {
 	public final AtomicInteger totalFiles = new AtomicInteger(0);
 	public final AtomicInteger currentCount = new AtomicInteger(0);
 
+	private static final List<String> LISTED_FILES = new ArrayList<>();
+	static {
+		LISTED_FILES.addAll(Arrays.asList(REQUIRED_FILES));
+		LISTED_FILES.addAll(Arrays.asList(OPTIONAL_FILES));
+	}
+
+	/** A file in the saves folder that the list leaves out, and why. */
+	public static class Unreadable {
+		public final String name;
+
+		/** In words that finish "... is not listed, because". */
+		public final String reason;
+
+		Unreadable (final String name, final String reason) {
+			this.name = name;
+			this.reason = reason;
+		}
+	}
+
+	private final List<Unreadable> unreadable = new ArrayList<>();
+
 	public SaveGameExtractor (final String savesLocation, final File workingDirectory) {
 		this.savesLocation = savesLocation;
 		this.workingDirectory = workingDirectory;
 	}
 
-	private File unpackSave (final File save) {
-		final String destinationPath = new File(workingDirectory, save.getName()).getAbsolutePath();
+	/** What the last search left out of the list. */
+	public synchronized List<Unreadable> unreadable () {
+		return new ArrayList<>(unreadable);
+	}
 
+	private synchronized void leaveOut (final File save, final String reason) {
+		logger.error("'%s' is not listed: %s%n", save.getAbsolutePath(), reason);
+		unreadable.add(new Unreadable(save.getName(), reason));
+	}
+
+	// One save's tile, or nothing and the reason. The saves folder is the one
+	// place the editor reads what it did not write, so whatever is wrong with
+	// a file in it -- cut short, not a zip at all, a summary with a field
+	// missing -- costs that file its tile and nothing else. An exception here
+	// used to end the whole search, and the list with it.
+	private SaveGameInfo tile (final File save) {
 		try {
-			final ZipFile archive = new ZipFile(save);
-			archive.extractAll(destinationPath);
-			currentCount.getAndIncrement();
-			return new File(destinationPath);
+			return extractInfo(unpackSave(save));
 		} catch (final ZipException e) {
-			logger.error("Unable to unzip '%s': %s%n", save.getAbsolutePath(), e.getMessage());
+			leaveOut(save, "it could not be unpacked (" + e.getMessage() + ")");
+		} catch (final SaveFileInfoException e) {
+			leaveOut(save, e.getMessage());
+		} catch (final RuntimeException e) {
+			logger.error(e, "Unable to list '%s'.%n", save.getAbsolutePath());
+			leaveOut(save, "it could not be read (" + e + ")");
+		} finally {
+			currentCount.getAndIncrement();
 		}
 
 		return null;
 	}
 
-	static Optional<SaveGameInfo> extractInfo (final File saveFolder) {
+	// Only what the save's tile in the list is drawn from. The rest of it --
+	// the world state and a couple of hundred area files, 110 MB of a late
+	// save -- is unpacked when the save is opened or compared
+	// (UnpackedSaves.complete), not for every save on every search.
+	private File unpackSave (final File save) throws ZipException {
+		final File destination = new File(workingDirectory, save.getName());
+		final ZipFile archive = new ZipFile(save);
+		for (final String name : LISTED_FILES) {
+			if (archive.getFileHeader(name) != null) {
+				archive.extractFile(name, destination.getAbsolutePath());
+			}
+		}
+
+		Environment.getInstance().state().unpacked().listed(destination, save);
+		return destination;
+	}
+
+	private static SaveGameInfo extractInfo (final File saveFolder) throws SaveFileInfoException {
 		final File[] contents = saveFolder.listFiles();
-
-		if (contents == null) {
-			logger.error("Unzip resulted in 0 files for '%s'.%n", saveFolder.getAbsolutePath());
-			return Optional.empty();
-		}
-
-		final Set<String> requiredFiles = new HashSet<>(Arrays.asList(REQUIRED_FILES));
+		final Set<String> requiredFiles = new TreeSet<>(Arrays.asList(REQUIRED_FILES));
 		final Set<String> optionalFiles = new HashSet<>(Arrays.asList(OPTIONAL_FILES));
-		final Map<String, File> importantFiles = Arrays.stream(contents)
-			.filter(f -> requiredFiles.contains(f.getName()) || optionalFiles.contains(f.getName()))
-			.collect(Collectors.toMap(File::getName, Function.identity()));
+		final Map<String, File> importantFiles =
+			Arrays.stream(contents == null ? new File[0] : contents)
+				.filter(f -> requiredFiles.contains(f.getName()) || optionalFiles.contains(f.getName()))
+				.collect(Collectors.toMap(File::getName, Function.identity()));
 
-		if (!importantFiles.keySet().containsAll(requiredFiles)) {
-			logger.error(
-				"All required files not present in extracted save game '%s'.%n"
-				, saveFolder.getAbsolutePath());
-
-			return Optional.empty();
+		requiredFiles.removeAll(importantFiles.keySet());
+		if (!requiredFiles.isEmpty()) {
+			throw new SaveFileInfoException("it has no " + String.join(" or ", requiredFiles)
+				+ ", and every save the game writes has one");
 		}
 
-		try {
-			return Optional.of(new SaveGameInfo(saveFolder, importantFiles));
-		} catch (final SaveFileInfoException e) {
-			return Optional.empty();
-		}
+		return new SaveGameInfo(saveFolder, importantFiles);
 	}
 
 	public Optional<SaveGameInfo[]> unpackAllSaves () {
@@ -108,15 +153,15 @@ public class SaveGameExtractor {
 			.toArray(File[]::new);
 		totalFiles.set(saveFiles.length);
 		currentCount.set(0);
+		synchronized (this) {
+			unreadable.clear();
+		}
 
 		Arrays.sort(saveFiles); // Just for determinism in the tests.
 		final SaveGameInfo[] info =
 			Arrays.stream(saveFiles)
-				.map(this::unpackSave)
-				.filter(a -> a != null)
-				.map(SaveGameExtractor::extractInfo)
-				.filter(Optional::isPresent)
-				.map(Optional::get)
+				.map(this::tile)
+				.filter(Objects::nonNull)
 				.toArray(SaveGameInfo[]::new);
 
 		return Optional.of(info);

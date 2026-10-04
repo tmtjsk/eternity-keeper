@@ -24,6 +24,7 @@ import org.junit.Before;
 import org.junit.Test;
 import uk.me.mantas.eternity.EKUtils;
 import uk.me.mantas.eternity.Settings;
+import uk.me.mantas.eternity.environment.Environment;
 import uk.me.mantas.eternity.save.ChangesSaver;
 import uk.me.mantas.eternity.save.SaveBackups;
 import uk.me.mantas.eternity.save.SaveBackups.Backup;
@@ -83,5 +84,50 @@ public class PackageSaveGameTest extends TestHarness {
 
 		assertTrue(new File(saves, written.getName()).isFile());
 		assertTrue(SaveBackups.forThisProcess().list().isEmpty());
+	}
+
+	// The number in a new save's name is the first one free, and it used to be
+	// looked for only among the saves the list had unpacked. The list is as old
+	// as the last search, and it leaves out what it cannot read: a backup put
+	// back since, a save cut short. Such a file's number counted as free, and
+	// the first Save of an edit replaced it.
+	@Test
+	public void aNewSaveTakesNoNameAlreadyInTheSavesFolder () throws Exception {
+		final File listed = EKUtils.createTempDir(PREFIX).get();
+		Environment.getInstance().directory().working(listed);
+		final File opened = new File(listed, "abc 7 Encampment.savegame");
+		assertTrue(opened.mkdirs());
+
+		// Nothing of this session below 7 in the list, so 0 it would have been.
+		assertEquals("abc 0 Encampment.savegame"
+			, ChangesSaver.previewSaveFileName(opened.getAbsolutePath()));
+
+		FileUtils.writeStringToFile(
+			new File(saves, "abc 0 Encampment.savegame"), "put back from a backup", StandardCharsets.UTF_8);
+		FileUtils.writeStringToFile(
+			new File(saves, "abc 1 CaedNua.savegame"), "cut short", StandardCharsets.UTF_8);
+		FileUtils.writeStringToFile(
+			new File(saves, "xyz 2 Encampment.savegame"), "another playthrough's", StandardCharsets.UTF_8);
+
+		assertEquals("abc 2 Encampment.savegame"
+			, ChangesSaver.previewSaveFileName(opened.getAbsolutePath()));
+	}
+
+	// Whatever else is in the saves folder -- a log, a folder, a file with one
+	// word for a name -- has no number to take.
+	@Test
+	public void whatIsNotASaveTakesNoNumber () throws Exception {
+		final File listed = EKUtils.createTempDir(PREFIX).get();
+		Environment.getInstance().directory().working(listed);
+		final File opened = new File(listed, "abc 7 Encampment.savegame");
+		assertTrue(opened.mkdirs());
+
+		FileUtils.writeStringToFile(new File(saves, "abc.savegame"), "one word", StandardCharsets.UTF_8);
+		FileUtils.writeStringToFile(new File(saves, "abc notes.txt"), "not a save", StandardCharsets.UTF_8);
+		assertTrue(new File(saves, "abc 0 converted").mkdir());
+		assertTrue(new File(listed, "abc.savegame").mkdir());
+
+		assertEquals("abc 0 Encampment.savegame"
+			, ChangesSaver.previewSaveFileName(opened.getAbsolutePath()));
 	}
 }

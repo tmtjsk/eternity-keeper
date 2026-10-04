@@ -1,9 +1,10 @@
 <#
 .SYNOPSIS
-Builds the Windows release: target\release\EternityKeeper-<version>-win64.zip.
+Builds the Windows release: target\release\EternityKeeper-<version>-win64.zip
+and, where Inno Setup 6 is installed, EternityKeeper-<version>-win64-setup.exe.
 
 .DESCRIPTION
-Everything a player needs in one folder, so nothing has to be installed:
+Everything a player needs in one folder, so nothing else has to be installed:
 
     Eternity Keeper\
         Eternity Keeper.exe     the launcher (Launch4j, built by mvn -Pwin64)
@@ -14,18 +15,30 @@ Everything a player needs in one folder, so nothing has to be installed:
         gamedata\               the game-data reader, frozen with PyInstaller
         README.txt, LICENSE, CHANGELOG.md, THIRD-PARTY-NOTICES.md
 
+The zip is that folder. The installer (tools\release\installer.iss) puts the
+same folder under %LOCALAPPDATA%\Programs with a Start menu entry and an
+uninstaller; tools\release\test-installer.ps1 installs, starts and removes it.
+
 Needs: a Java 8 JDK whose folder has a jre\ inside (Temurin 8 does), Maven,
-and Python with the packages in tools\gamedata\requirements.txt.
+and Python with the packages in tools\gamedata\requirements.txt. For the
+installer, Inno Setup 6 (winget install --id JRSoftware.InnoSetup -e).
 
 .EXAMPLE
 pwsh tools\release\build-release.ps1
 pwsh tools\release\build-release.ps1 -Jdk C:\jdk8 -SkipTests
+pwsh tools\release\build-release.ps1 -RequireInstaller
 #>
 param(
 	# The JDK to build with and whose jre\ ships. Defaults to $env:EK_JDK, then
 	# the one the development setup keeps beside the checkout.
 	[string]$Jdk = $(if ($env:EK_JDK) { $env:EK_JDK } else { Join-Path $PSScriptRoot '..\..\..\tools\jdk8u492-b09' }),
 	[string]$Python = $(if ($env:EK_PYTHON) { $env:EK_PYTHON } else { 'python' }),
+	# Inno Setup's compiler, for the installer. Defaults to $env:EK_ISCC, then
+	# ISCC.exe on PATH, then the folders Inno Setup 6 installs into. Without
+	# it only the zip is built.
+	[string]$Iscc = $env:EK_ISCC,
+	# Fail if the installer cannot be built, instead of building only the zip.
+	[switch]$RequireInstaller,
 	[switch]$SkipTests
 )
 
@@ -34,7 +47,25 @@ $repo = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $target = Join-Path $repo 'target'
 
 function Step ($text) { Write-Host "==> $text" -ForegroundColor Cyan }
-function Fail ($text) { Write-Host "ERROR: $text" -ForegroundColor Red; exit 1 }
+function Fail ($text) {
+	# An annotation as well: a run's log needs a GitHub sign-in to read.
+	if ($env:GITHUB_ACTIONS) { Write-Host "::error title=Release build::$($text -replace "`r?`n", ' ')" }
+	Write-Host "ERROR: $text" -ForegroundColor Red
+	exit 1
+}
+
+function Find-Iscc ($given) {
+	$candidates = @($given)
+	$onPath = Get-Command ISCC.exe -ErrorAction SilentlyContinue
+	if ($onPath) { $candidates += $onPath.Source }
+	foreach ($base in ${env:ProgramFiles(x86)}, $env:ProgramFiles, (Join-Path $env:LOCALAPPDATA 'Programs')) {
+		if ($base) { $candidates += (Join-Path $base 'Inno Setup 6\ISCC.exe') }
+	}
+	foreach ($candidate in $candidates) {
+		if ($candidate -and (Test-Path $candidate)) { return (Resolve-Path $candidate).Path }
+	}
+	return $null
+}
 
 # --- Prerequisites -----------------------------------------------------------
 
@@ -150,8 +181,28 @@ $zip = Join-Path $release "EternityKeeper-$version-win64.zip"
 Step "Zipping $zip"
 Compress-Archive -Path $stage -DestinationPath $zip -CompressionLevel Optimal
 
-$size = '{0:N0} MB' -f ((Get-Item $zip).Length / 1MB)
-$hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant()
-Step "Done: $zip ($size)"
-Write-Host "SHA-256 $hash"
-Set-Content -Path "$zip.sha256" -Value "$hash  $(Split-Path $zip -Leaf)" -Encoding ascii
+function Publish ($file) {
+	$size = '{0:N0} MB' -f ((Get-Item $file).Length / 1MB)
+	$hash = (Get-FileHash $file -Algorithm SHA256).Hash.ToLowerInvariant()
+	Step "Done: $file ($size)"
+	Write-Host "SHA-256 $hash"
+	Set-Content -Path "$file.sha256" -Value "$hash  $(Split-Path $file -Leaf)" -Encoding ascii
+}
+
+Publish $zip
+
+# --- Installer -------------------------------------------------------------------
+
+# Out of the same staged folder, so the installer and the zip hold the same
+# files. tools\release\test-installer.ps1 installs, starts and uninstalls it.
+$compiler = Find-Iscc $Iscc
+if ($compiler) {
+	Step "Building the installer with $compiler"
+	& $compiler /Qp "/DAppVersion=$version" "/DStage=$stage" "/DOutput=$release" (Join-Path $PSScriptRoot 'installer.iss')
+	if ($LASTEXITCODE -ne 0) { Fail 'Inno Setup could not build the installer.' }
+	Publish (Join-Path $release "EternityKeeper-$version-win64-setup.exe")
+} elseif ($RequireInstaller) {
+	Fail 'Inno Setup 6 (ISCC.exe) was not found, so the installer could not be built. Install it (winget install --id JRSoftware.InnoSetup -e) or pass -Iscc.'
+} else {
+	Write-Host 'Inno Setup 6 (ISCC.exe) was not found, so only the zip was built. To build the installer too: winget install --id JRSoftware.InnoSetup -e' -ForegroundColor Yellow
+}

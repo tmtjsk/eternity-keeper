@@ -28,6 +28,7 @@ import uk.me.mantas.eternity.handlers.ChrDialog;
 import uk.me.mantas.eternity.tests.TestHarness;
 
 import java.util.Vector;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -102,14 +103,20 @@ public class ChrDialogTest extends TestHarness {
 	public void theChoiceIsActedOnOnTheMutationWorker () throws Exception {
 		final AtomicReference<String> chosen = new AtomicReference<>();
 		final AtomicReference<Thread> ranOn = new AtomicReference<>();
+		final CountDownLatch acted = new CountDownLatch(1);
 
 		ChrDialog.choose(answering("C:/party/Eder.chr"), FileDialogMode.FILE_DIALOG_OPEN
 			, "Choose a character", mock(CefQueryCallback.class), "NO_SAVE", path -> {
 				chosen.set(path);
 				ranOn.set(Thread.currentThread());
+				acted.countDown();
 			});
 
-		settle();
+		// Waited for by name. Letting both queues run dry is not the same
+		// thing: the workers are a pool, so an empty task can finish on one
+		// thread before the dialog has answered on another, and this test then
+		// looked before anything had been chosen.
+		assertTrue("the choice was acted on", acted.await(30, TimeUnit.SECONDS));
 		final AtomicReference<Thread> worker = new AtomicReference<>();
 		Environment.getInstance().mutationWorker()
 			.submit(() -> worker.set(Thread.currentThread())).get(30, TimeUnit.SECONDS);

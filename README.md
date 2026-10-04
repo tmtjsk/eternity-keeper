@@ -12,15 +12,34 @@ for everything added since.
 > Interactive. It contains no game files: item names, icons and other game data
 > are read from your own installation.
 
-## Download and run (Windows)
+## Download and install (Windows)
 
-1. Download `EternityKeeper-<version>-win64.zip` from the releases page.
-2. Extract the whole zip anywhere, keeping every folder in it.
-3. Run `Eternity Keeper.exe`.
+From the releases page, take either of these. They hold the same files.
 
-Nothing needs installing: the zip carries the Java 8 runtime and the embedded
-browser the editor uses. On first launch it finds your game and saves, then
-offers to read item names and icons from your install (a few minutes, once).
+- **`EternityKeeper-<version>-win64-setup.exe`**, the installer. It asks for no
+  administrator rights: it installs for your user, under
+  `%LOCALAPPDATA%\Programs\Eternity Keeper`, adds a Start menu entry, and is
+  removed again from *Settings → Apps → Installed apps*. Running a newer
+  version's installer upgrades the one that is there.
+- **`EternityKeeper-<version>-win64.zip`**, with nothing installed: extract the
+  whole zip anywhere, keeping every folder in it, and run `Eternity Keeper.exe`.
+
+Nothing else is needed: both carry the Java 8 runtime and the embedded browser
+the editor uses. It runs on 64-bit Windows 10 and 11.
+
+Keep it in a folder whose path uses letters of your Windows' own language or
+plain Latin ones (`C:\Games\Eternity Keeper` always works). The Java 8 runtime
+cannot start from a folder named in another script, and the editor then says it
+cannot find its `jre` folder; the installer checks this for you. Your user
+name, saves folder and game folder can be in any script.
+
+The downloads are not signed, so Windows may warn about an unrecognised app the
+first time: choose **More info**, then **Run anyway**.
+
+On first launch the editor finds your game and saves, then offers to read item
+names and icons from your install (a few minutes, once). Its settings, its log
+and the backups of your saves are kept in `%APPDATA%\Eternity Keeper` whichever
+way you installed it, and uninstalling leaves that folder alone.
 
 Windows is the supported platform for 1.0. Linux builds compile but are
 untested; macOS has no build yet.
@@ -124,7 +143,24 @@ pwsh tools/release/build-release.ps1
 
 Builds the jar and `Eternity Keeper.exe`, freezes the game-data reader with
 PyInstaller, and zips them with a Java 8 runtime into
-`target/release/EternityKeeper-<version>-win64.zip`.
+`target/release/EternityKeeper-<version>-win64.zip`. Where
+[Inno Setup 6](https://jrsoftware.org/isinfo.php) is installed
+(`winget install --id JRSoftware.InnoSetup -e`) it also builds the installer,
+`EternityKeeper-<version>-win64-setup.exe`, out of the same folder
+([tools/release/installer.iss](tools/release/installer.iss)).
+
+```powershell
+pwsh tools/release/test-installer.ps1 -Setup target/release/EternityKeeper-<version>-win64-setup.exe
+```
+
+installs it for the current user into a folder of its own, checks every part is
+in place, starts the installed editor and waits for it to draw its page, then
+uninstalls it and checks nothing is left but the data folder.
+
+The `Package` workflow does both on GitHub's Windows runner, a machine with
+none of the development setup on it: whenever the packaging changes, when run
+by hand, and for a tag named `v*`, whose zip and installer it attaches to a
+draft pre-release.
 
 ## Contributing
 

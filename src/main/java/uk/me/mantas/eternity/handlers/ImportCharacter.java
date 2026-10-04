@@ -69,8 +69,8 @@ public class ImportCharacter extends CefMessageRouterHandlerAdapter {
 		if (confirmedChrPath != null) {
 			final String chrPath = confirmedChrPath;
 			final boolean overwriteExisting = overwrite;
-			Environment.getInstance().mutationWorker().execute(
-				() -> doImport(request, callback, chrPath, overwriteExisting));
+			Environment.getInstance().mutationWorker().execute(Answered.to(callback
+				, () -> doImport(request, callback, chrPath, overwriteExisting)));
 		} else {
 			ChrDialog.choose(browser, FileDialogMode.FILE_DIALOG_OPEN, "Choose a character"
 				, callback, "NO_SAVE", chrFile -> analyseThenImport(request, callback, chrFile));

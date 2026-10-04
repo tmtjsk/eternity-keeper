@@ -644,23 +644,37 @@ public class ChangesSaver implements Runnable {
 		// TODO: try the current system epoch first, as that's what the id actually is
 		// (although the game doesn't care)
 
-		int candidateID = 0;
-		File[] existingSaves = workingDirectory.listFiles();
-
-		if (existingSaves == null) {
-			return candidateID;
+		// Unique among the saves the list unpacked, and in the saves folder
+		// itself. The list is as old as the last search and leaves out what it
+		// could not read, so a number can look free while a file is sitting
+		// under it -- a backup put back since, a save cut short -- and the
+		// first Save of an edit used to replace that file.
+		final Set<String> existingIDs = new HashSet<>(gameIDs(workingDirectory.listFiles(), sessionID));
+		final String savesLocation = Settings.getInstance().json.optString("savesLocation", "");
+		if (!savesLocation.isEmpty()) {
+			existingIDs.addAll(gameIDs(new File(savesLocation).listFiles(file ->
+				file.isFile() && file.getName().toLowerCase().endsWith(".savegame")), sessionID));
 		}
 
-		Set<String> existingIDs = Arrays.stream(existingSaves)
-				.filter(s -> s.getName().startsWith(sessionID))
-				.map(s -> s.getName().split(" ")[1])
-				.collect(Collectors.toSet());
-
+		int candidateID = 0;
 		while (existingIDs.contains(String.format("%d", candidateID))) {
 			candidateID++;
 		}
 
 		return candidateID;
+	}
+
+	// The second word of every name whose first is the session's.
+	private static Set<String> gameIDs (final File[] saves, final String sessionID) {
+		if (saves == null) {
+			return Collections.emptySet();
+		}
+
+		return Arrays.stream(saves)
+			.map(save -> save.getName().split(" "))
+			.filter(words -> words.length > 1 && words[0].replace("-", "").equals(sessionID))
+			.map(words -> words[1])
+			.collect(Collectors.toSet());
 	}
 
 	private static class DeserializationException extends Exception {

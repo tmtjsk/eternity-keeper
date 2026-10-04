@@ -44,7 +44,7 @@ public class RenameSavedGame extends CefMessageRouterHandlerAdapter {
 		, boolean persistent
 		, CefQueryCallback callback) {
 
-		Environment.getInstance().mutationWorker().execute(() -> rename(request, callback));
+		Environment.getInstance().mutationWorker().execute(Answered.to(callback, () -> rename(request, callback)));
 		return true;
 	}
 

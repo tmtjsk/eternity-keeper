@@ -51,7 +51,7 @@ public class Backups extends CefMessageRouterHandlerAdapter {
 		, final CefQueryCallback callback) {
 
 		// A restore copies a whole save; not on the browser's thread.
-		Environment.getInstance().workers().execute(() -> answer(request, callback));
+		Environment.getInstance().workers().execute(Answered.to(callback, () -> answer(request, callback)));
 		return true;
 	}
 

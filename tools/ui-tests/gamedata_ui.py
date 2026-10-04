@@ -17,7 +17,10 @@ from cdp import Page
 import config
 from config import GAME, JAVA, REPO, SAVES
 
+# Normalised: the launcher's own path is compared with what Windows reports,
+# which never has a forward slash in it.
 RELEASE = os.environ.get("EK_RELEASE")
+RELEASE = os.path.normpath(RELEASE) if RELEASE else RELEASE
 DATA = os.path.join(config.OUT, "fresh data" if RELEASE else "fresh-data")
 CWD = os.path.join(config.OUT, "fresh-cwd")
 NOT_A_GAME = os.path.join(config.OUT, "not-a-game")

@@ -258,9 +258,14 @@ var InventoryEditor = function () {
 				var lots = groups[name];
 				if (lots.length < 2) return;
 
-				var cap = lots[0].maxStack || 1;
+				// The stash stacks without limit (BaseInventory.InfiniteStacking),
+				// so there one stack is the tidy state whatever the item's own
+				// cap. Judged by the cap, 155 lockpicks and two loose ones were
+				// "32 stacks' worth" and nothing was merged.
+				var cap = parseKey(key).component === STASH
+					? Infinity : (lots[0].maxStack || 1);
 				var total = lots.reduce((sum, item) => sum + (item.stackSize || 1), 0);
-				var wanted = Math.ceil(total / cap);
+				var wanted = Math.max(1, Math.ceil(total / cap));
 				if (wanted >= lots.length) return;
 
 				merged += lots.length - wanted;
@@ -982,7 +987,6 @@ var InventoryEditor = function () {
 			return;
 		}
 
-		self.html.invStashCount.text(container.items.length + ' items');
 		renderFilters();
 
 		var filter = (self.html.invStashSearch.val() || '').toLowerCase();
@@ -995,6 +999,7 @@ var InventoryEditor = function () {
 			sorted = sorted.filter(item => (item.filter || 0) === stashFilter);
 		}
 
+		var shown = 0;
 		sorted.forEach(item => {
 			if (filter && (item.displayName || '').toLowerCase().indexOf(filter) < 0) {
 				return;
@@ -1008,7 +1013,14 @@ var InventoryEditor = function () {
 			decorateForSale(tile, item);
 			bindTile(tile, key, item.uiSlot, item);
 			self.html.invStashGrid.append(tile);
+			shown++;
 		});
+
+		// How many are on screen, when a category or the search hides the rest:
+		// "226 items" over a dozen tiles read as a stash that had lost things.
+		var total = container.items.length;
+		self.html.invStashCount.text(shown < total
+			? shown + ' of ' + total + ' items' : total + ' items');
 
 		// The stash is effectively unlimited, so instead of drawing a fixed
 		// grid we leave one spare tile to drop things onto.

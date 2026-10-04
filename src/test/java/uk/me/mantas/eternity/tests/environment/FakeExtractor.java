@@ -63,6 +63,9 @@ public class FakeExtractor {
 				break;
 
 			case "hang":
+				// Part of the way through, as the real one is when it is
+				// stopped: what it has read so far is in "<out>.new".
+				write(new File(out.getPath() + ".new", "catalog.json"), "{\"half\":true}");
 				System.out.println("PROGRESS 5 Reading item and ability bundles");
 				Thread.sleep(60000);
 				break;

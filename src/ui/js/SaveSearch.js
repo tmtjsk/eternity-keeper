@@ -26,6 +26,38 @@ var SaveSearch = function () {
 		, opening: false
 		, selected: -1
 		, busy: false
+		, unreadable: []
+	};
+
+	// How many of the files left out are named on the page; eternity.log has
+	// every one.
+	var UNREADABLE_SHOWN = 5;
+
+	// The files in the folder that are not in the list, each with the reason.
+	// A save that is simply missing leaves its owner looking for it. Text
+	// only: a file's name is whatever somebody called the file.
+	var renderUnreadable = (container, files) => {
+		container.empty().toggle(files.length > 0);
+		if (files.length < 1) {
+			return;
+		}
+
+		$('<div class="us-head">').text(files.length === 1
+			? 'One file in this folder is not listed, because it could not be read as a save:'
+			: files.length + ' files in this folder are not listed, because they could not'
+				+ ' be read as saves:').appendTo(container);
+
+		files.slice(0, UNREADABLE_SHOWN).forEach(file => {
+			$('<div class="us-file">')
+				.append($('<b>').text(file.name))
+				.append(document.createTextNode(' \u2014 ' + file.reason + '.'))
+				.appendTo(container);
+		});
+
+		if (files.length > UNREADABLE_SHOWN) {
+			$('<div class="us-more">').text('And ' + (files.length - UNREADABLE_SHOWN)
+				+ ' more: eternity.log names every one.').appendTo(container);
+		}
 	};
 
 	// Prefer the scene title from saveinfo.xml: the game strips non-ASCII
@@ -111,6 +143,8 @@ var SaveSearch = function () {
 			$('#saveActionCompare').prop('disabled', true);
 		}
 
+		renderUnreadable(self.html.unreadableSaves, self.state.unreadable || []);
+
 		if (self.state.searching) {
 			self.html.searchForSavedGames.prop('disabled', true);
 			self.html.searchForSavedGames.find('i').css('display', 'inline-block');
@@ -143,20 +177,25 @@ SaveSearch.prototype.search = function () {
 		Eternity.Progress.render({});
 		self.transition({searching: false});
 
-		var saves = JSON.parse(response);
-		if (saves.error) {
-			Eternity.GenericError.render({msg: 'No saves found.'});
+		var reply = JSON.parse(response);
+		var unreadable = reply.unreadable || [];
+		if (reply.error) {
+			// Nothing of the last search is left to open: every search starts
+			// by emptying the folder its saves were unpacked into, so the tiles
+			// that used to stay on screen here opened nothing.
+			self.transition({saves: [], unreadable: unreadable, selected: -1});
+			Eternity.GenericError.render({msg: reply.msg || 'No saves found.'});
 			return;
 		}
 
-		self.transition({saves: saves, selected: -1});
+		self.transition({saves: reply.saves, unreadable: unreadable, selected: -1});
 	};
 
 	var failure = () => {
 		clearInterval(interval);
 		Eternity.Progress.render({});
 		self.transition({searching: false});
-		console.error('Listing saved games failed.');
+		Eternity.GenericError.render({msg: 'The saves folder could not be searched.'});
 	};
 
 	var pollForUpdate = () => {
@@ -209,9 +248,10 @@ SaveSearch.prototype.open = function (info, i) {
 		}
 	};
 
-	var failure = () => {
+	var failure = (code, message) => {
 		self.transition({opening: false});
-		Eternity.GenericError.render({msg: 'Error opening saved game file: ' + info.absolutePath});
+		Eternity.GenericError.render({msg: 'This save could not be opened'
+			+ (message ? ': ' + message : '.') + ' (' + info.absolutePath + ')'});
 	};
 
 	if (self.state.opening !== false || self.state.busy) {

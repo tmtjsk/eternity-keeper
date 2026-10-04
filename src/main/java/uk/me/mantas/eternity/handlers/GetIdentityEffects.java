@@ -44,8 +44,8 @@ public class GetIdentityEffects extends CefMessageRouterHandlerAdapter {
 		, final boolean persistent
 		, final CefQueryCallback callback) {
 
-		Environment.getInstance().workers().execute(() ->
-			callback.success(IdentityCatalog.getInstance().asJSON().toString()));
+		Environment.getInstance().workers().execute(Answered.to(callback, () ->
+			callback.success(IdentityCatalog.getInstance().asJSON().toString())));
 
 		return true;
 	}

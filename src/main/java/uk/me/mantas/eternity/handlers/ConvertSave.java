@@ -53,7 +53,7 @@ public class ConvertSave extends CefMessageRouterHandlerAdapter {
 		, final boolean persistent
 		, final CefQueryCallback callback) {
 
-		Environment.getInstance().mutationWorker().execute(() -> convert(request, callback));
+		Environment.getInstance().mutationWorker().execute(Answered.to(callback, () -> convert(request, callback)));
 		return true;
 	}
 

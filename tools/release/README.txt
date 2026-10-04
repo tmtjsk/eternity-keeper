@@ -8,14 +8,23 @@ abilities and the stronghold is read from your own installation.
 
 STARTING IT
 
+If you used the installer, Eternity Keeper is in the Start menu.
+
+If you downloaded the zip:
 1. Extract the whole zip anywhere, keeping every folder in it.
 2. Double-click "Eternity Keeper.exe".
 
-Nothing needs installing: the Java runtime and browser the editor uses are in
-the "jre" and "lib" folders beside it.
+Nothing else needs installing: the Java runtime and browser the editor uses
+are in the "jre" and "lib" folders beside it.
 
 Windows may warn about an unrecognised app the first time. Choose
 "More info", then "Run anyway".
+
+If it says it cannot find the Java runtime it ships with although the "jre"
+folder is there, the folder's path has letters Windows cannot pass on to that
+runtime (a folder named in another script than your Windows' own language).
+Move the Eternity Keeper folder to a path with plain letters, for example
+C:\Games, and start it again.
 
 
 FIRST LAUNCH
@@ -48,6 +57,16 @@ The editor keeps its settings and a log in
 Settings shows the exact path. Please attach eternity.log to a bug report.
 
 To start over, close the editor and delete that folder.
+
+
+REMOVING IT
+
+Installed: Settings > Apps > Installed apps > Eternity Keeper > Uninstall.
+From the zip: delete the folder you extracted.
+
+Either way your settings and the backups of your saves stay in
+    %APPDATA%\Eternity Keeper
+until you delete that folder as well.
 
 
 LICENSE

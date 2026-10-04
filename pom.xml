@@ -238,7 +238,11 @@
 									</jre>
 									<messages>
 										<startupErr>Eternity Keeper could not start.</startupErr>
-										<bundledJreErr>Eternity Keeper could not find the Java runtime it ships with (the "jre" folder beside it). Re-extract the download, keeping every folder in it.</bundledJreErr>
+										<!-- Two causes, and the second looks nothing like the first: the
+										     launcher and Java 8 read their own paths in the computer's code
+										     page, so from a folder named in another script (measured: Cyrillic
+										     and Japanese on a Central European Windows) the jre is "not there". -->
+										<bundledJreErr>Eternity Keeper could not find the Java runtime it ships with (the "jre" folder beside it). If the download was extracted whole, with every folder in it, the cause is where it was put: this folder's path has letters that Windows cannot pass on to the runtime. Move the Eternity Keeper folder to a path with plain letters, for example C:\Games, and start it again.</bundledJreErr>
 										<jreVersionErr>The "jre" folder beside Eternity Keeper is not the Java 8 runtime it ships with. Re-extract the download.</jreVersionErr>
 										<launcherErr>Eternity Keeper's launcher failed.</launcherErr>
 									</messages>

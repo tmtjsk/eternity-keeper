@@ -129,6 +129,34 @@ in every mid-game save.
 | Stronghold upgrade rows 1,930px wide | Upgrade list capped at 1,180px |
 | Panel bar (title, Revert, Apply) in five places across eight tabs | One frame for every view, and a reserved scrollbar gutter so short tabs don't shift |
 
+### Review of the whole repository (2026-10-04 and 05)
+
+Measured first, then fixed; each has a test that failed before.
+
+| Found | How | Fixed by |
+|---|---|---|
+| Every search unpacked every save whole: 5.84 s and 767 MB for twelve saves | Timing the list | `SaveGameExtractor` unpacks the eight files a tile is drawn from; `environment/UnpackedSaves.complete` fetches the rest on open and compare, and `WorkingSave` asks it before anything is read or copied. 0.3 s, and opening costs 0.7 s more for the one save opened |
+| 49 folders, 2.5 GB, left in `%TEMP%` by editors that were killed | Looking | `environment/TempSweep` at start, by the names the editor makes and a day old |
+| One save with a field missing from `saveinfo.xml` ended the whole search with a NullPointerException | `DamagedSavesTest` | Each save's tile is made on its own; what is left out is named with the reason, in the reply (`unreadable`) and on the page |
+| A search that failed left the page on "Searching..." for ever | Reading the handler | `SaveInfoLister.run` answers whatever happens |
+| A search that found nothing left the last search's tiles on screen, opening nothing | Writing the suite | `saves: []` on `NO_RESULTS` |
+| A length read out of damaged bytes asked for 2 GB: an `OutOfMemoryError`, the thread gone, the page waiting | `DamagedPacketFileTest`, a thousand damaged files from a fixed seed | Lengths are bounded by what the file has left; a stack that runs out counts as a failed read |
+| One changed byte left a tree the write check tripped over, uncaught | The same test | `PacketDeserializer` treats a tree that cannot be made sense of as unreadable; `DictionaryProperty.findEntry` no longer assumes a key |
+| The opener and every Apply had no catch-all: any unexpected exception left the spinner turning | Following the two above upwards | `handlers/Answered`: every worker hop goes through `Answered.to`, every handler is registered through `Answered.guarded` (one answer per query), and `AnsweredTest` reads the handlers' sources to keep it so. An edit that fails that way is aborted and put back; one written and then unreadable is undone |
+| Save could take the name of a file already in the saves folder | Reading `getAvailableGameID` while checking what lazy unpacking changed | The number is looked for in the saves folder as well as in the list |
+| `updateSaveInfo` failed on an empty array when the summary could not be parsed | Reading | It throws an `IOException` that says so |
+| `ChrDialogTest` raced the pool it waited on | It began failing | It waits for the choice itself |
+| A game-data read that was stopped left its half-built `gamedata.new` folder behind | Stopping one in the release and looking | `GameDataExtraction` removes it after a run that did not succeed |
+| The sheet's totals did not follow a typed attribute or skill; the sidebar did not follow the name box; Tidy merged nothing in the stash when a stack was over the item's cap (it divided by the cap; the stash has none) and the stash count ignored the filter | `checklist.py`, written to walk the manual checklist | `SavedGame.refreshSheet`/`refreshName`; Tidy treats the stash as unlimited; "12 of 226 items" |
+
+Checked and found sound: no HTML sink in the page takes text from a save (the
+three string-built fragments hold a class name, a boolean and the server's own
+base64); the page loads nothing from the network; `saveinfo.xml` cannot make
+the parser read a file or call an address (jOOX parses a string inside a
+wrapper element, where a document type is not allowed — pinned by test, since
+it is an accident of how it is called); zip4j refuses an entry that climbs out
+of its folder.
+
 ### Proposed, not done (needs a decision)
 
 | Item | Size | Recommendation |
@@ -789,12 +817,22 @@ the updater's jar lists and dead platform helpers deleted; README rewritten;
 moved into `tools/ui-tests`; GitHub Actions for tests and tagged releases; a
 bug-report form that asks for `eternity.log`.
 
-### 4.6 Still open before a public release
+### 4.6 An installer, and a clean machine to test it on — *done, 2026-10-05*
+
+| What | How |
+|---|---|
+| Installer | `tools/release/installer.iss` (Inno Setup 6), built by `build-release.ps1` out of the same staged folder as the zip: per-user under `%LOCALAPPDATA%\Programs`, no administrator, Start menu entry, Installed apps entry, uninstaller; an upgrade clears the last version's program folders first (only where `eternity-keeper.jar` shows an earlier install); the uninstaller leaves `%APPDATA%\Eternity Keeper` alone and says so |
+| Tested where nothing is installed | `tools/release/test-installer.ps1` installs silently into a folder with a space, checks every part, the Start menu entry and the Installed apps entry, runs the shipped Java and the reader's self-test, starts the installed editor and waits for its page over the DevTools port, then uninstalls and checks nothing is left but the data folder. The `Package` workflow runs it on GitHub's Windows runner — the clean machine 4.6 used to list as missing — when the packaging changes, by hand, and for every `v*` tag |
+| What a clean machine needs | Nothing: the browser natives link their runtime statically and the JRE ships its own (checked by reading every shipped binary's import table) |
+| Where it can live | Anywhere the system's code page can spell. Measured on a cp1250 Windows: Polish letters in the install path work, Cyrillic and Japanese do not — Launch4j 3.12 and Java 8 read their own paths as ANSI, and the launcher then reports the `jre` folder missing. The launcher's message now says so, the installer refuses such a folder and picks `C:\Eternity Keeper` when the user's own Programs folder is one, and both READMEs say it. **A user profile in another script is fine**: settings, the log, the unpacked saves, a working copy and a Save were all driven with `%APPDATA%` and `%TEMP%` under `Профиль 日本語` |
+
+### 4.7 Still open before a public release
 
 | Item | Why |
 |---|---|
 | Unsigned executable | SmartScreen warns on first run; the README says how to proceed. Code signing costs money |
-| Verified on one machine | The zip has been tested from a fresh folder here, not on a clean Windows install without Python or a JDK |
+| Install folder outside the code page | See 4.6. Going further means replacing Launch4j with a launcher that hands Java the folder's 8.3 short name, and that only where the volume keeps short names |
+| Dependencies as old as the code | logback 1.0.13, commons-io 2.4, guava 30.0, zip4j 2.6.4. Their published flaws need what the editor never does (a network receiver, a writable logging configuration); what the editor does do with hostile input is tested instead — a zip that climbs out of its folder, a summary that asks the parser to fetch a file or call an address, a thousand damaged packet files. zip4j writes every save, so changing it means reading a save back in the game again |
 
 ---
 
@@ -896,6 +934,6 @@ Features first, per the project owner's direction; compatibility afterwards.
 8b. ~~Multi-store detection (4.1)~~ done
 9. ~~Faster conversion (4.3)~~ done, with the premise corrected
 10. ~~A release people can install (4.4, 4.5)~~ done, 1.0.0-beta
-10b. The open items in 4.6 ← next
+10b. The open items in 4.7 ← next
 10c. Mac support (4.2)
 11. ~~Delete the auto-updater and bootstrapper~~ done, in the audit (§2)

@@ -82,7 +82,7 @@ public abstract class SaveMutationHandler extends CefMessageRouterHandlerAdapter
 		, final boolean persistent
 		, final CefQueryCallback callback) {
 
-		Environment.getInstance().mutationWorker().execute(() -> handle(request, callback));
+		Environment.getInstance().mutationWorker().execute(Answered.to(callback, () -> handle(request, callback)));
 		return true;
 	}
 
@@ -162,6 +162,22 @@ public abstract class SaveMutationHandler extends CefMessageRouterHandlerAdapter
 			opener.with("historyStep", step);
 		}
 
-		opener.run();
+		try {
+			opener.run();
+		} catch (final RuntimeException | StackOverflowError e) {
+			// Written, and then not readable back. The page is told the edit
+			// was not made and goes on showing the save as it was, so the
+			// save goes back to that too: its next edit would otherwise be
+			// worked out against a save the page has never seen.
+			if (step > 0) {
+				try {
+					history.undo(save, step);
+				} catch (final IOException undoing) {
+					logger.error("The edit could not be taken back either: %s%n", undoing.getMessage());
+				}
+			}
+
+			throw e;
+		}
 	}
 }

@@ -54,6 +54,13 @@ public class CompareSaves extends CatalogQuery {
 				throw new IllegalArgumentException(REFUSED);
 			}
 
+			// The list unpacked only what it draws of each save.
+			try {
+				Environment.getInstance().state().unpacked().complete(folder);
+			} catch (final IOException e) {
+				throw new IllegalArgumentException(e.getMessage());
+			}
+
 			return folder;
 		} catch (final IOException e) {
 			throw new IllegalArgumentException(REFUSED);
