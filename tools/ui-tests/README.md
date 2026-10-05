@@ -98,8 +98,18 @@ party) and checks them in the file; `ingame_keep.py` builds one with the
 Crucible Knight dismissed and Kestorik released; `ingame_quick.py` one with
 Aloth's weapon sets traded and lockpicks split into the Watcher's quick slot;
 `ingame_vendors.py` one with everything the party sold to Caed Nua's General
-Goods Merchant taken out of his stock; `filedialog.py` answers the
-native file dialogs the editor opens. They are not pass/fail suites.
+Goods Merchant taken out of his stock; `ingame_import.py` one with a companion
+exported and imported over himself in a later save of the same playthrough;
+`ingame_iron.py` one with the Trial of Iron switch flipped (off by default,
+on for the save `EK_IRON_SAVE` names); `filedialog.py` answers the native
+file dialogs the editor opens. They are not pass/fail suites: each leaves its
+save in the test-env saves folder and writes what to look for in the game
+beside the suites' other output. [docs/testing.md](../../docs/testing.md)
+has how to load one in the game without touching your own saves, and why the
+game's log has to be read afterwards.
+
+`screenshots.py` draws the pictures the README shows into `docs/screenshots`
+(it needs Pillow). Look at them before committing them.
 
 A caution: many page reloads in one session can leave queries unanswered, which
 shows up as a dialog stuck on its loading text. That is why each suite gets a

@@ -4,17 +4,28 @@ A save editor for **Pillars of Eternity**: characters, inventory, abilities,
 grimoires, the stronghold, the party, and more. It works with the current
 version of the game (tested with Steam v3.9.5).
 
-This is a fork of [Eternity Keeper](https://bitbucket.org/Fyorl/eternity-keeper)
-by Kim Mantas, which stopped at 0.21a in 2016. See [CHANGELOG.md](CHANGELOG.md)
-for everything added since.
+Eternity Keeper was written by Kim Mantas in 2015 and 2016
+([Bitbucket](https://bitbucket.org/Fyorl/eternity-keeper)). ktully added the
+conversion of Windows Store saves (0.20a, 2020), and
+[aybrkaknc](https://github.com/aybrkaknc/eternity-keeper) brought it up to the
+current game, the turn-based patch included (0.21a, February 2026). This
+version builds on that one: see [CHANGELOG.md](CHANGELOG.md) for everything
+added since.
 
 > Unofficial fan project, not affiliated with Obsidian Entertainment or Paradox
 > Interactive. It contains no game files: item names, icons and other game data
 > are read from your own installation.
 
+![The Inventory tab: equipment around the character, quick items and weapon sets, every party member's pack](docs/screenshots/inventory.png)
+
+| A character | Abilities and talents | The stronghold |
+|---|---|---|
+| ![Attributes, skills and identity, with what each choice is worth](docs/screenshots/character.png) | ![What a character knows, and what their talents grant](docs/screenshots/abilities.png) | ![Upgrades, Prestige and Security, hirelings](docs/screenshots/stronghold.png) |
+
 ## Download and install (Windows)
 
-From the releases page, take either of these. They hold the same files.
+From the [releases page](../../releases), take either of these. They hold the
+same files.
 
 - **`EternityKeeper-<version>-win64-setup.exe`**, the installer. It asks for no
   administrator rights: it installs for your user, under
@@ -179,6 +190,10 @@ the game's own.
 
 Every item ever sold to a vendor stays in the save, inside the `.lvl` files,
 which is one reason saves grow as a game goes on.
+
+[docs/](docs/README.md) has the notes kept while this was built: where each
+thing lives in a save, what the game does with it when the save loads, the
+rules an edit has to keep, and how each feature was checked in the game.
 
 ## Acknowledgements
 

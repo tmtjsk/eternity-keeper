@@ -149,6 +149,9 @@ Measured first, then fixed; each has a test that failed before.
 | A game-data read that was stopped left its half-built `gamedata.new` folder behind | Stopping one in the release and looking | `GameDataExtraction` removes it after a run that did not succeed |
 | A resurrected companion's quick-slot items existed twice under one ID: the game leaves them in the area the companion died in, and the donor brings the same objects. The game logged three exceptions on loading that area | Reading Player.log after loading an edited save in the game | `GuidRemap.heldByAreas`: resurrection and import also give fresh IDs to what an area file of the save still holds (35 objects on the test save). Loaded again in the game: no exception |
 | The sheet's totals did not follow a typed attribute or skill; the sidebar did not follow the name box; Tidy merged nothing in the stash when a stack was over the item's cap (it divided by the cap; the stash has none) and the stash count ignored the filter | `checklist.py`, written to walk the manual checklist | `SavedGame.refreshSheet`/`refreshName`; Tidy treats the stash as unlimited; "12 of 226 items" |
+| A scripted install stopped at a message box: the installer said "cannot start from this folder" with `MsgBox`, which `/SUPPRESSMSGBOXES` does not suppress. On a build machine nobody is there to close it | Running the installer's test for the first time, where the box came up on the screen of the person at the machine | `SuppressibleMsgBox`; the test gives every run of setup a time limit and says what a setup that does not finish is probably doing; the workflow's job has a limit of its own |
+| An upgrade given its folder on the command line was not checked at all: the page the check sat on is not shown when an earlier install is found | Adding an upgrade to the installer's test | The folder is checked again in `PrepareToInstall`, which every install passes |
+| The uninstaller left the launcher's options file behind, and the folder with it | The same test | `[UninstallDelete]` |
 
 Checked and found sound: no HTML sink in the page takes text from a save (the
 three string-built fragments hold a class name, a boolean and the server's own
@@ -818,17 +821,17 @@ the updater's jar lists and dead platform helpers deleted; README rewritten;
 moved into `tools/ui-tests`; GitHub Actions for tests and tagged releases; a
 bug-report form that asks for `eternity.log`.
 
-### 4.6 An installer, and a clean machine to test it on — *written 2026-10-05; first built by the Package workflow*
+### 4.6 An installer, and a clean machine to test it on — *done 2026-10-05*
 
-Inno Setup is not installed on the development machine, so the installer script
-and its test were written and read through there but **not yet compiled or
-run**: the `Package` workflow does both on its first push. Everything else in
-the table was measured on the zip.
+Compiled with Inno Setup 6.7.3 and run on the development machine and, by the
+`Package` workflow, on GitHub's Windows runner. The script compiled as it was
+written; running its test is what found the faults (the last three rows of the
+review table in §2). The rest of the table was measured on the zip.
 
 | What | How |
 |---|---|
 | Installer | `tools/release/installer.iss` (Inno Setup 6), built by `build-release.ps1` out of the same staged folder as the zip: per-user under `%LOCALAPPDATA%\Programs`, no administrator, Start menu entry, Installed apps entry, uninstaller; an upgrade clears the last version's program folders first (only where `eternity-keeper.jar` shows an earlier install); the uninstaller leaves `%APPDATA%\Eternity Keeper` alone and says so |
-| Tested where nothing is installed | `tools/release/test-installer.ps1` installs silently into a folder with a space, checks every part, the Start menu entry and the Installed apps entry, runs the shipped Java and the reader's self-test, starts the installed editor and waits for its page over the DevTools port, then uninstalls and checks nothing is left but the data folder. The `Package` workflow runs it on GitHub's Windows runner — the clean machine 4.6 used to list as missing — when the packaging changes, by hand, and for every `v*` tag |
+| Tested where nothing is installed | `tools/release/test-installer.ps1` installs silently into a folder with a space, checks every part, the Start menu entry and the Installed apps entry, runs the shipped Java and the reader's self-test, starts the installed editor and waits for its page over the DevTools port, then uninstalls and checks nothing is left but the data folder. On the way it asks setup for a folder the system's code page cannot spell (refused, nothing installed), runs setup while the installed editor is open (refused, the editor left running: the launcher's mutex is the one setup looks for), installs over the install as the next version would (stale files in the program folders gone, the launcher's options file kept) and, with `-DefaultFolder`, installs once with no folder given and checks setup chose the user's own Programs folder. The `Package` workflow runs it on GitHub's Windows runner — the clean machine 4.6 used to list as missing — when the packaging changes, by hand, and for every `v*` tag |
 | What a clean machine needs | Nothing: the browser natives link their runtime statically and the JRE ships its own (checked by reading every shipped binary's import table) |
 | Where it can live | Anywhere the system's code page can spell. Measured on a cp1250 Windows: Polish letters in the install path work, Cyrillic and Japanese do not — Launch4j 3.12 and Java 8 read their own paths as ANSI, and the launcher then reports the `jre` folder missing. The launcher's message now says so, the installer refuses such a folder and picks `C:\Eternity Keeper` when the user's own Programs folder is one, and both READMEs say it. **A user profile in another script is fine**: settings, the log, the unpacked saves, a working copy and a Save were all driven with `%APPDATA%` and `%TEMP%` under `Профиль 日本語` |
 
@@ -838,7 +841,7 @@ the table was measured on the zip.
 |---|---|
 | Unsigned executable | SmartScreen warns on first run; the README says how to proceed. Code signing costs money |
 | Install folder outside the code page | See 4.6. Going further means replacing Launch4j with a launcher that hands Java the folder's 8.3 short name, and that only where the volume keeps short names |
-| Dependencies as old as the code | logback 1.0.13, commons-io 2.4, guava 30.0, zip4j 2.6.4. Their published flaws need what the editor never does (a network receiver, a writable logging configuration); what the editor does do with hostile input is tested instead — a zip that climbs out of its folder, a summary that asks the parser to fetch a file or call an address, a thousand damaged packet files. zip4j writes every save, so changing it means reading a save back in the game again |
+| ~~Dependencies as old as the code~~ | Done 2026-10-05: Logback 1.3.16 (the newest line that still runs on Java 8) with SLF4J 2, Commons IO 2.22.0, Guava 33.7.2 and zip4j 2.11.6 replace 1.0.13, 2.4, 30.0 and 2.6.4. Their published flaws needed what the editor never does (a network receiver, a writable logging configuration), so this buys a download nothing warns about rather than safety. Every class in the new jars is a Java 8 class; the Java 9 module descriptors they carry are kept out of the shaded jar. zip4j writes every save, so saves written with it were loaded in the game again |
 
 ---
 
@@ -846,6 +849,15 @@ the table was measured on the zip.
 
 Not requested, offered for the record.
 
+- **Names in the game's language.** The game ships eight languages
+  (`data/localized/<code>`, each with a `language.xml` naming it) and the
+  editor shows every item, ability, upgrade and hireling in English, whatever
+  the player's game says: the three extractors and `save/GameText` read
+  `localized/en` only. The catalogs would keep each name's table and ID beside
+  the English text, and resolve it through `GameText` in the language the
+  game is set to (the registry's `LanguageName` value) or the one chosen in
+  Settings, falling back to English string by string. Extracted data made
+  before this has no IDs and stays English until the game data is read again.
 - ~~**Load-list party portraits.**~~ Done (2026-09-21): `save/PartyPortraits`
   redraws `0.png`…`5.png` on Save from each member's small portrait, in party
   slot order; verified in the game's load list.
@@ -940,6 +952,9 @@ Features first, per the project owner's direction; compatibility afterwards.
 8b. ~~Multi-store detection (4.1)~~ done
 9. ~~Faster conversion (4.3)~~ done, with the premise corrected
 10. ~~A release people can install (4.4, 4.5)~~ done, 1.0.0-beta
-10b. The open items in 4.7 ← next
-10c. Mac support (4.2)
+10b. ~~The dependencies in 4.7~~ done; the installer of 4.6 compiled, run and
+     fixed. What 4.7 still lists needs a decision (signing) or a report
+     from someone it affects (a folder outside the code page)
+10c. Names in the game's language (§5) ← next
+10d. Mac support (4.2)
 11. ~~Delete the auto-updater and bootstrapper~~ done, in the audit (§2)

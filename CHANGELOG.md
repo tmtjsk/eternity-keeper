@@ -2,8 +2,9 @@
 
 ## 1.0.0-beta (unreleased)
 
-The first release of this fork, and the first that installs by unzipping.
-Compared with upstream Eternity Keeper 0.21a, from 2016:
+The first release with an installer and a ready-to-run download. Compared with
+Eternity Keeper 0.21a (aybrkaknc's update of February 2026, which made the
+editor read the current game's saves, the turn-based patch included):
 
 ### Getting started
 
@@ -15,7 +16,9 @@ Compared with upstream Eternity Keeper 0.21a, from 2016:
   Start menu entry and an entry under Installed apps, upgrades an older version
   in place, and its uninstaller leaves your settings and save backups alone.
   The release workflow installs, starts and uninstalls every build of it on a
-  clean Windows machine before attaching it to a release.
+  clean Windows machine before attaching it to a release, and checks that
+  it upgrades over an older copy, stops while the editor is open, and
+  refuses a folder the editor could not start from.
 - **The save list opens at once.** A search used to unpack every save whole
   (5.8 s and 767 MB of temporary files for twelve saves, at every start); it
   now unpacks only what a tile is drawn from, and the rest of a save when it
@@ -175,6 +178,8 @@ Compared with upstream Eternity Keeper 0.21a, from 2016:
 ### Also
 
 - Light and dark themes.
+- Save tiles on one line of the list start at one height; a tile beside one
+  whose title took two lines used to hang below it.
 - Every tab adapts to the window. The Abilities tab puts what a character
   knows, their talents and the browser side by side at one height; the
   Stronghold tab spreads its upgrades across the whole width in two columns.
@@ -185,6 +190,11 @@ Compared with upstream Eternity Keeper 0.21a, from 2016:
   (`-Dek.debugPort`): it let any program on the machine drive the editor.
 - org.json is now a public-domain release. The 2014 one was under the JSON
   License, whose "Good, not Evil" clause is at odds with the GPL.
+- The other libraries inside the editor are current ones: Logback 1.3.16,
+  Commons IO 2.22.0, Guava 33.7.2 and zip4j 2.11.6, in place of releases
+  from 2012 to 2020 that security scanners flag. None of their published
+  flaws could be reached through the editor; the point is a download that
+  nothing warns about.
 
 ### Removed
 

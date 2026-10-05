@@ -41,7 +41,10 @@ the browser (`Environment.initialise()` then
 ## Rules the save format enforces
 
 Breaking one of these produces a save the game silently drops things from, or
-cannot load at all. Most were learned the hard way.
+cannot load at all. Most were learned the hard way;
+[docs/invariants.md](docs/invariants.md) has each in full, with the fault that
+taught it, and [docs/features.md](docs/features.md) says what the game does
+with each feature's data when a save loads.
 
 1. **Never write to the user's save.** Edits go to a private working copy
    (`environment/WorkingSave`); Save writes a new file.
@@ -67,6 +70,50 @@ cannot load at all. Most were learned the hard way.
    values are recomputed from something else every time a save loads (a
    companion's base attributes, every `<Skill>Bonus`), so editing them does
    nothing.
+11. **A read that comes up short is never written.**
+   `PacketDeserializer.deserialize()` throws `ShortReadException` for a file
+   cut short or damaged part of the way through, and anything that writes what
+   it read reads it that way. `deserializeEvenIfShort()` is for showing a
+   damaged save, nothing else.
+12. **Write a packet file with `DeserializedPackets.replace`.** The serializer
+   appends, so writing straight into an existing file leaves the old contents
+   in front of the new. `replace` writes a new file and moves it over the old
+   one, refuses an edit that newly breaks one of these rules
+   (`serializer/PacketInvariants`, with a message for the user), and keeps the
+   file it replaced so that Undo can put it back.
+13. **What the opener sends in a field that Save writes back is exactly what
+   the save holds.** Save writes every such value it is sent, so anything
+   worked out for display goes in a field of its own. An English fallback name
+   once reached every saved file this way.
+14. **A tab's staged changes touch nothing Save writes until its Apply**, and
+   whatever reopens the save from outside the tabs (a resurrection, an import,
+   a party change, Undo) waits for a staged draft: `EditHistory.refused()`.
+15. **Every query the page makes gets an answer.** Work handed to a worker in
+   `handlers/` is `execute(Answered.to(callback, ...))`, which answers
+   `failure` for work that dies; `AnsweredTest` reads the package for a hop
+   that is not.
+16. **Objects brought in from another save get IDs of their own wherever the
+   target already has those IDs, in an area file as much as in the world
+   state** (`save/GuidRemap`). The `.lvl` files hold objects too: what a dead
+   companion had in their quick slots, what the party sold to a store.
+17. **The folder the save list unpacked holds only a tile's pictures** until
+   `UnpackedSaves.complete(folder)`. Resolve the open save's folder with
+   `WorkingSave.forEditing` or `forReading`, never from the list's entry.
+
+## Testing in the game
+
+A change to what the game loads is finished when the game has loaded it.
+
+- The game reads only `%USERPROFILE%\Saved Games\Pillars of Eternity` and
+  looks in it once, at launch. Back that folder up, copy the test save in
+  under a name that clashes with nothing, and take it out again afterwards. A
+  Trial of Iron save comes back under a new name when the game quits.
+- Read the screens, **then read `Player.log`**
+  (`%USERPROFILE%\AppData\LocalLow\Obsidian Entertainment\Pillars of Eternity`)
+  for `Exception` and `already exists`. Two objects under one ID look fine on
+  every screen; the log is the only place the game says so.
+- `tools/ui-tests/ingame_*.py` build saves for this through the editor's own
+  controls and write down what each edit should look like in the game.
 
 ## Pull requests
 
