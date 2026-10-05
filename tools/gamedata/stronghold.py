@@ -102,6 +102,19 @@ def resolve(dbstring):
     return table(dbstring.get("StringTable", 0)).get(sid, "")
 
 
+def source(dbstring):
+    """Where a text resolve() found came from, as [table, id] (see items.py)."""
+    if not isinstance(dbstring, dict):
+        return None
+
+    sid = dbstring.get("StringID", -1)
+    index = dbstring.get("StringTable", 0)
+    if sid is None or sid < 0 or sid not in table(index):
+        return None
+
+    return [index, sid]
+
+
 def name_of(types, index):
     return types[index] if isinstance(index, int) and 0 <= index < len(types) else ""
 
@@ -217,7 +230,9 @@ def main():
         entry = {
             "ordinal": raw["UpgradeType"],
             "name": resolve(raw.get("Name")) or key,
+            "nameId": source(raw.get("Name")),
             "description": resolve(raw.get("Description")),
+            "descriptionId": source(raw.get("Description")),
             "cost": raw.get("Cost", 0),
             "days": raw.get("TimeToBuild", 0),
             "prestige": raw.get("PrestigeAdjustment", 0),

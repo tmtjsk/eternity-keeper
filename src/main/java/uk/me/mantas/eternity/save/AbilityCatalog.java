@@ -266,8 +266,8 @@ public class AbilityCatalog {
 			}
 
 			entries.put(key.toLowerCase(), new Entry(
-				ability.optString("name", "")
-				, ability.optString("desc", "")
+				GameText.said(ability, "name", "")
+				, GameText.said(ability, "desc", "")
 				, ability.optString("icon", "")
 				, ability.optString("kind", "ability")
 				, ability.optString("component", "GenericAbility")

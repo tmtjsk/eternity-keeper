@@ -29,6 +29,7 @@ import uk.me.mantas.eternity.Logger;
 import uk.me.mantas.eternity.Settings;
 import uk.me.mantas.eternity.environment.Environment;
 import uk.me.mantas.eternity.environment.GameLocator;
+import uk.me.mantas.eternity.save.GameText;
 
 import java.io.File;
 import java.nio.file.Path;
@@ -125,7 +126,15 @@ public class GetDefaultSaveLocation extends CefMessageRouterHandlerAdapter {
 		if (defaultGameLocation == null) {
 			defaultGameLocation = "";
 		} else {
+			final boolean found = !defaultGameLocation.equals(settings.optString("gameLocation", ""));
 			settings.put("gameLocation", defaultGameLocation);
+
+			// The game's names are read once and kept, out of the install that
+			// settings name: whatever asked before this one was found was told
+			// there is none.
+			if (found) {
+				GameText.startAgain();
+			}
 		}
 
 		callback.success(foundDefault(defaultSaveLocation, defaultGameLocation, notes));

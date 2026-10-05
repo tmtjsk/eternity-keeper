@@ -19,11 +19,13 @@
 
 package uk.me.mantas.eternity.save;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import uk.me.mantas.eternity.Logger;
 import uk.me.mantas.eternity.Settings;
 import uk.me.mantas.eternity.environment.Environment;
+import uk.me.mantas.eternity.environment.GameLanguage;
 import uk.me.mantas.eternity.game.DatabaseString.StringTableType;
 
 import javax.xml.stream.XMLInputFactory;
@@ -54,8 +56,13 @@ import java.util.Optional;
  * constant in lower case — and are read straight off the disk the way
  * portraits are, rather than copied into the extracted game data.
  *
- * <p>English, like every other name the editor shows: the item and ability
- * catalogs are extracted from the English tables too.
+ * <p>In the language the game is played in. The game ships every table once
+ * per language ({@code data/localized/<code>/text}), and
+ * {@link GameLanguage} says which one applies: the one Settings names, else
+ * the one the game is set to, else English. Whatever that language's table
+ * lacks is said in English, entry by entry. The catalogs hold the English
+ * names they were extracted with and ask here only for the other language's
+ * word ({@link #translated}).
  *
  * <p>A table is read the first time something asks for it and kept. With no
  * install, no such table, or one that will not parse, a lookup is simply
@@ -68,13 +75,20 @@ public class GameText {
 
 	private static GameText instance = null;
 
+	// The English tables, and the same folder of the language in use: null
+	// when that is English too.
 	private final File directory;
+	private final File translation;
+	private final String language;
 	private final Map<StringTableType, Map<Integer, String>> tables = new HashMap<>();
+	private final Map<StringTableType, Map<Integer, String>> translated = new HashMap<>();
 	private final Map<String, Map<Integer, String>> quests = new HashMap<>();
 
 	public static synchronized GameText getInstance () {
 		if (instance == null) {
-			instance = new GameText(gameDirectory());
+			final Optional<File> game = gameDirectory();
+			instance = new GameText(game
+				, GameLanguage.current(game.orElse(null), chosenLanguage()));
 		}
 
 		return instance;
@@ -85,14 +99,33 @@ public class GameText {
 		instance = null;
 	}
 
+	/**
+	 * Reads the game's names from scratch the next time anything asks: the
+	 * text here and the four catalogs, which take their names from it when
+	 * they load. For when the install or the language has changed; names are
+	 * otherwise read once and kept.
+	 */
+	public static void startAgain () {
+		reset();
+		ItemCatalog.reset();
+		AbilityCatalog.reset();
+		StrongholdCatalog.reset();
+		IdentityCatalog.reset();
+	}
+
 	/** Testing seam — pretends the game is not installed. */
 	public static synchronized void useNoText () {
-		instance = new GameText(Optional.empty());
+		instance = new GameText(Optional.empty(), GameLanguage.ENGLISH);
 	}
 
 	/** Testing seam — reads from a game directory of the caller's choosing. */
 	public static synchronized void useTextAt (final File gameDirectory) {
-		instance = new GameText(Optional.of(gameDirectory));
+		instance = new GameText(Optional.of(gameDirectory), GameLanguage.ENGLISH);
+	}
+
+	/** Testing seam — the same, in one of the languages that install has. */
+	public static synchronized void useTextAt (final File gameDirectory, final String language) {
+		instance = new GameText(Optional.of(gameDirectory), language);
 	}
 
 	/**
@@ -110,11 +143,35 @@ public class GameText {
 		}
 	}
 
-	private GameText (final Optional<File> gameDirectory) {
+	// The choice Settings holds; nothing where there are no settings to read.
+	private static String chosenLanguage () {
+		try {
+			return Settings.getInstance().json.optString("language", "");
+		} catch (final NullPointerException e) {
+			return "";
+		}
+	}
+
+	private GameText (final Optional<File> gameDirectory, final String wanted) {
 		directory = gameDirectory
 			.map(game -> new File(new File(game
 				, Environment.getInstance().config().pillarsDataDirectory()), TABLES))
 			.orElse(null);
+
+		// A language the install has no text for is English: the name comes
+		// from settings, and is never put into a path unless a folder of
+		// exactly that name is one of the install's languages.
+		final Optional<File> folder = GameLanguage.ENGLISH.equalsIgnoreCase(wanted)
+			? Optional.empty()
+			: GameLanguage.folder(gameDirectory.orElse(null), wanted);
+
+		translation = folder.map(found -> new File(found, "text/game")).orElse(null);
+		language = folder.isPresent() ? folder.get().getName() : GameLanguage.ENGLISH;
+	}
+
+	/** The language names are shown in, as the install's folder for it is called. */
+	public String language () {
+		return language;
 	}
 
 	public synchronized Optional<String> lookup (final StringTableType table, final int id) {
@@ -122,7 +179,51 @@ public class GameText {
 			return Optional.empty();
 		}
 
-		return Optional.ofNullable(tables.computeIfAbsent(table, this::read).get(id));
+		final Optional<String> word = translated(table, id);
+		return word.isPresent()
+			? word : Optional.ofNullable(tables.computeIfAbsent(table, this::read).get(id));
+	}
+
+	/**
+	 * The word for an entry in the language in use, where that is not English
+	 * and its table has one: what a catalog shows in place of the English
+	 * name it holds.
+	 */
+	public synchronized Optional<String> translated (final StringTableType table, final int id) {
+		if (translation == null || table == null || id < 0) {
+			return Optional.empty();
+		}
+
+		final String word = translated.computeIfAbsent(table, wanted -> read(
+			new File(translation, wanted.name().toLowerCase(Locale.ROOT) + ".stringtable"))).get(id);
+		return word == null || word.isEmpty() ? Optional.empty() : Optional.of(word);
+	}
+
+	/**
+	 * What a catalog shows for one of its entries: the text it was extracted
+	 * with (English), unless the entry says where that text came from
+	 * ({@code "nameId": [table, id]} beside {@code "name"}) and the language in
+	 * use has a word of its own there.
+	 */
+	public static String said (final JSONObject entry, final String field, final String fallback) {
+		final String english = entry.optString(field, fallback);
+		final JSONArray source = entry.optJSONArray(field + "Id");
+		if (source == null || source.length() != 2) {
+			return english;
+		}
+
+		return getInstance().translated(source.optInt(0, -1), source.optInt(1, -1)).orElse(english);
+	}
+
+	/** {@link #translated}, by the number a catalog keeps for the table (5 is items). */
+	public Optional<String> translated (final int table, final int id) {
+		for (final StringTableType type : StringTableType.values()) {
+			if (type.n == table && type != StringTableType.Unassigned) {
+				return translated(type, id);
+			}
+		}
+
+		return Optional.empty();
 	}
 
 	/**
@@ -144,8 +245,25 @@ public class GameText {
 			return Collections.emptyMap();
 		}
 
-		return quests.computeIfAbsent(name, key ->
-			read(new File(new File(directory.getParentFile(), QUESTS), key + ".stringtable")));
+		return quests.computeIfAbsent(name, key -> {
+			final Map<Integer, String> entries =
+				read(new File(new File(directory.getParentFile(), QUESTS), key + ".stringtable"));
+			if (translation == null) {
+				return entries;
+			}
+
+			// Entry by entry: a title in the player's language, and an
+			// objective the translation lacks in English.
+			final Map<Integer, String> said = new HashMap<>(entries);
+			read(new File(new File(translation.getParentFile(), QUESTS), key + ".stringtable"))
+				.forEach((id, word) -> {
+					if (!word.isEmpty()) {
+						said.put(id, word);
+					}
+				});
+
+			return said;
+		});
 	}
 
 	private Map<Integer, String> read (final StringTableType table) {

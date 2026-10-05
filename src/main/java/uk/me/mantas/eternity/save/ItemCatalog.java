@@ -61,6 +61,7 @@ public class ItemCatalog {
 	private static ItemCatalog instance = null;
 
 	private final Map<String, Entry> entries = new HashMap<>();
+	private boolean localizable = false;
 	private final IconFolder icons;
 
 	/** One catalogued item. All fields except {@link #name} may be absent. */
@@ -176,8 +177,9 @@ public class ItemCatalog {
 					continue;
 				}
 
+				localizable |= item.has("nameId");
 				entries.put(key.toLowerCase(), new Entry(
-					item.optString("name", "")
+					GameText.said(item, "name", "")
 					, item.optString("icon", "")
 					, item.optInt("maxStack", 1)
 					, item.optInt("quest", 0) != 0
@@ -265,6 +267,14 @@ public class ItemCatalog {
 
 	public Optional<Entry> lookup (final String baseItem) {
 		return Optional.ofNullable(entries.get(keyOf(baseItem)));
+	}
+
+	/**
+	 * Whether the names can be shown in another language at all: data read
+	 * before the catalog kept where each name came from can only be English.
+	 */
+	public boolean localizable () {
+		return localizable;
 	}
 
 	public int size () {

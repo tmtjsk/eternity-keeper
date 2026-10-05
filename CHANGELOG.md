@@ -35,6 +35,11 @@ editor read the current game's saves, the turn-based patch included):
   upgrades and deities come from your own game install. The editor offers to
   read them on first launch (a few minutes, once), shows its progress, and
   can do it again from Settings after the game updates.
+- **Names in your game's language.** Items, abilities, spells, talents,
+  stronghold upgrades, hirelings and quests are shown as your game shows them:
+  the editor follows the language the game is set to, and Settings lets you
+  pick any other your install has. The editor's own words stay English, and
+  what a language has no word for is shown in English.
 - **Finds the game wherever it is installed**: Steam libraries on any drive,
   GOG, Epic, or common folders on every drive. A Microsoft Store copy is
   detected and explained, because Windows does not let other programs read its

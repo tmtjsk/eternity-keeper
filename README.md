@@ -48,7 +48,8 @@ The downloads are not signed, so Windows may warn about an unrecognised app the
 first time: choose **More info**, then **Run anyway**.
 
 On first launch the editor finds your game and saves, then offers to read item
-names and icons from your install (a few minutes, once). Its settings, its log
+names and icons from your install (a few minutes, once). The game's own names
+are shown in the language your game is set to; Settings has the choice. Its settings, its log
 and the backups of your saves are kept in `%APPDATA%\Eternity Keeper` whichever
 way you installed it, and uninstalling leaves that folder alone.
 

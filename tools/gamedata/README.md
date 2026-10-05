@@ -28,6 +28,7 @@ always followed for portraits.
 | `icons/` | The PNGs both catalogs reference | `items.py` |
 | `stronghold.json`, `stronghold-icons/` | The 25 buildable upgrades with cost, time, Prestige and Security, prerequisites, and the 28 hirelings — see [STRONGHOLD-NOTES.md](STRONGHOLD-NOTES.md) | `stronghold.py` |
 | `identity.json` | The 5 deities and 6 paladin orders with the dispositions they favour, and the bonus ladder | `identity.py` |
+| `nameId`, `descId`, `descriptionId` in the above | Beside each name and description, the string table and entry it was read from, as `[table, id]` (`DatabaseString.StringTableType`: 5 is items, 6 abilities...). The editor shows the name in the language the game is played in by reading the same entry from that language's table on the player's install | all three |
 | `gamedata.json` | What was read, from where and when — the editor's Settings dialog shows it | `extract_gamedata.py` |
 
 The editor looks for this in `%APPDATA%\Eternity Keeper\gamedata` (where it

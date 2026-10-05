@@ -1100,7 +1100,9 @@ the game.
   an Item component whose `DisplayName` is a `DatabaseString{StringTable,StringID}` into
   `data/localized/en/text/game/*.stringtable` and whose `IconTexture` is the icon.
   (`DatabaseString.StringTableType`: 1=Gui 4=Characters 5=Items 6=Abilities 16=ItemMods…
-  — item *names* live in **characters**, descriptions in **items**.) Parsing Unity
+  — measured on 2026-10-05: 2,009 of the 2,156 item *names* are in **items**, 142
+  in **characters**, 3 in recipes and 2 in abilities. This note used to say
+  names live in characters.) Parsing Unity
   bundles from Java 8 isn't realistic, so `tools/gamedata/items.py` (Python + UnityPy,
   run through `extract_gamedata.py`, which the editor itself runs) writes
   `catalog.json` + `icons/` — **never into the repo**, since it's derived from the
@@ -1119,6 +1121,74 @@ the game.
   right component is the one whose GameObject is named like the bundle — picking the
   first match labelled a belt "Firebrand". `ItemCatalog.useNoCatalog()` pins tests off it
   so extraction output doesn't depend on whether the machine has a game installed.
+- **Names in the game's language** (`environment/GameLanguage`, `save/GameText`,
+  `handlers/GetLanguages`, a choice in Settings; 2026-10-05): every item,
+  ability, talent, spell, stronghold upgrade (with its description), deity,
+  order, hireling and quest is shown as the game shows it to this player. The
+  editor's own words stay English.
+  - **The game ships its text once per language**: `data/localized/<code>`
+    under the data folder (de, en, es, fr, it, ko, pl, ru on the Steam build),
+    each with a `language.xml` (`<Name>polish</Name>`, what the game's own
+    setting says, and `<GUIString>Polski</GUIString>`, what the language calls
+    itself) and the same string tables under `text/game` and `text/quests`.
+    The expansions have folders of their own (`data_expansion1/localized/...`)
+    but the base tables already hold their entries: every catalog name resolves
+    from `data/localized`.
+  - **Which language**: the one Settings names (`language` in settings.json),
+    where the install has it; else the one the game is set to; else English.
+    The game's setting is a Unity PlayerPrefs value, on Windows in the
+    registry: `HKCU\Software\Obsidian Entertainment\Pillars of Eternity`,
+    value `LanguageName_h2027703280`, `REG_BINARY`, the name as text with a
+    zero after it (`656E676C69736800` is "english"). `GameLanguage` reads it
+    with `reg query <key> /f LanguageName` and matches it against the
+    `<Name>` of each language the install has. No registry, no such value, or
+    a name no folder claims: English.
+  - **The catalogs keep their English names and say where each came from.**
+    The extractors write `"nameId": [table, id]` beside `"name"` (and
+    `descId`, `descriptionId`): the number is `DatabaseString.StringTableType`
+    (4 characters, 5 items, 6 abilities, 938 stronghold...). Item names come
+    from *items* for 2,009 of 2,156 entries and from *characters* for 142,
+    whatever an earlier note here said. Re-reading the game data with the IDs
+    added changed nothing else: every other field of all five files compared
+    equal. A catalog asks `GameText.translated(table, id)` for the other
+    language's word when it loads (`GameText.said`), and keeps its own name
+    where there is none: no ID (data read by an earlier version), no entry or
+    an empty one in that language, no install. So English behaves exactly as
+    before, and needs no install at all.
+  - **What already read the install follows too**: hireling names
+    (`SerializedNameId`) and quest titles and objectives go through
+    `GameText.lookup`/`quest`, which answer in the language in use and fall
+    back to English entry by entry.
+  - **Names are read once and kept**, so `SaveSettings` starts `GameText` and
+    the four catalogs again when `language` or `gameLocation` changes, and only
+    then. (Before this a change of game folder went unnoticed by `GameText`
+    until the editor was restarted.) A save that is already open keeps the
+    names it was opened with; the dialog says the choice applies to saves
+    opened from now on.
+  - **A language code is never put into a path unless a folder of exactly
+    that name is one of the install's languages** (`GameLanguage.folder`): it
+    comes out of settings.json, which the page can write.
+  - **Data read before the IDs were kept** can only be English.
+    `ItemCatalog.localizable()` says which kind is loaded, and Settings asks
+    for the data to be read again when another language is chosen over it.
+  - **Nothing of this reaches a save.** A display name is never among what
+    Save writes (invariant 19); `language.py` saves a save with Polish chosen
+    and compares it with the one it was made from: the money that was edited
+    and the name typed, nothing else.
+  - **The UI suites are pinned to English** (`config.SETTINGS`): left to
+    follow the game, every suite that reads a name would depend on what the
+    game on that machine is set to. `TestHarness` pins the registry lookup off
+    (`GameLanguage.useNoSetting()`) for the same reason.
+  - Searching (the item and ability browsers, Find) matches the name shown,
+    and the catalog key, which is the English prefab name. The English name
+    itself is not searched once another language is shown.
+  - `TestEnvironment` copies every language's `language.xml`, `text/game` and
+    `text/quests` now (34 MB), not the conversations.
+  - Tests: `GameLanguageTest` (9), six more in `GameTextTest`,
+    `CatalogLanguageTest` (9), `GetLanguagesTest` (9: the reply, and that
+    saving the choice takes effect at once) and `language.py` (23 checks,
+    against the game's own Polish tables read independently). Not checked in
+    the game: nothing the game reads is changed.
 - **Polish save names**: the game strips non-ASCII when building `.savegame` filenames;
   the list/rename/suggestion UI now prefers `sceneTitle` from `saveinfo.xml` (proper
   UTF-8, BOM handled in `SaveGameInfo`).

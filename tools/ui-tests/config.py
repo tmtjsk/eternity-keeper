@@ -46,6 +46,9 @@ SETTINGS = {
     "savesLocation": SAVES,
     "gameLocation": os.path.join(os.path.dirname(SAVES), "poe"),
     "itemDataLocation": GAMEDATA,
+    # Names in English whatever the game on this machine is set to: left to
+    # follow the game, every suite that reads a name would depend on it.
+    "language": "en",
     "width": 2576, "height": 1408, "x": -8, "y": -8,
 }
 

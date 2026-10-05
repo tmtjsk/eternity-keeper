@@ -163,4 +163,110 @@ public class GameTextTest extends TestHarness {
 		assertTrue("never outside the quests folder"
 			, GameText.getInstance().quest("data/quests/../game/characters.quest").isEmpty());
 	}
+
+	// The game ships every table once per language, in
+	// data/localized/<code>/text. A player whose game is in Polish sees a
+	// Rycerz Tygla, and so should whoever edits that game's saves.
+	private static void polish (final File game, final String table, final String contents)
+		throws IOException {
+
+		FileUtils.write(new File(game
+			, "PillarsOfEternity_Data/data/localized/pl/text/" + table + ".stringtable")
+			, contents, "UTF-8");
+	}
+
+	@Test
+	public void aTableIsReadInTheLanguageAskedFor () throws IOException {
+		final File game = install();
+		polish(game, "game/characters", CHARACTERS.replace("Crucible Knight", "Rycerz Tygla"));
+
+		GameText.useTextAt(game, "pl");
+		assertEquals(Optional.of("Rycerz Tygla")
+			, GameText.getInstance().lookup(StringTableType.Characters, 329));
+		assertEquals("pl", GameText.getInstance().language());
+
+		GameText.useTextAt(game);
+		assertEquals(Optional.of("Crucible Knight")
+			, GameText.getInstance().lookup(StringTableType.Characters, 329));
+		assertEquals("en", GameText.getInstance().language());
+	}
+
+	@Test
+	public void whatALanguageLacksIsSaidInEnglish () throws IOException {
+		final File game = install();
+		// The Polish table has no 1171, an empty 12, and there is no Polish
+		// stronghold table at all.
+		polish(game, "game/characters", CHARACTERS
+			.replace("Crucible Knight", "Rycerz Tygla")
+			.replace("<ID>1171</ID>", "<ID>99999</ID>")
+			.replace("<DefaultText>Hiravias &amp; \"friends\" &lt;3</DefaultText>", "<DefaultText />"));
+		FileUtils.write(new File(game
+			, "PillarsOfEternity_Data/data/localized/en/text/game/stronghold.stringtable")
+			, CHARACTERS.replace("<ID>329</ID>", "<ID>79</ID>").replace("Crucible Knight", "Main Keep")
+			, "UTF-8");
+
+		GameText.useTextAt(game, "pl");
+		final GameText text = GameText.getInstance();
+		assertEquals(Optional.of("Rycerz Tygla"), text.lookup(StringTableType.Characters, 329));
+		assertEquals(Optional.of("Kestorik"), text.lookup(StringTableType.Characters, 1171));
+		assertEquals(Optional.of("Hiravias & \"friends\" <3"), text.lookup(StringTableType.Characters, 12));
+		assertEquals(Optional.of("Main Keep"), text.lookup(StringTableType.Stronghold, 79));
+	}
+
+	// A catalog keeps the English name it was read with, so what it asks for
+	// is only the other language's word for it: nothing when the language is
+	// English, or has no such entry.
+	@Test
+	public void aTranslationIsOnlyEverTheOtherLanguagesWord () throws IOException {
+		final File game = install();
+		polish(game, "game/characters", CHARACTERS
+			.replace("Crucible Knight", "Rycerz Tygla")
+			.replace("<ID>1171</ID>", "<ID>99999</ID>"));
+
+		GameText.useTextAt(game, "pl");
+		assertEquals(Optional.of("Rycerz Tygla"), GameText.getInstance().translated(4, 329));
+		assertEquals("no Polish word: the catalog keeps its own"
+			, Optional.empty(), GameText.getInstance().translated(4, 1171));
+		assertEquals("no such table", Optional.empty(), GameText.getInstance().translated(31337, 329));
+		assertEquals(Optional.empty(), GameText.getInstance().translated(4, -1));
+
+		GameText.useTextAt(game);
+		assertEquals("English is what the catalog already holds"
+			, Optional.empty(), GameText.getInstance().translated(4, 329));
+	}
+
+	@Test
+	public void aLanguageTheInstallDoesNotHaveIsEnglish () throws IOException {
+		final File game = install();
+
+		for (final String language : new String[]{"de", "", null, "../en", "pl/../en", "en/text"}) {
+			GameText.useTextAt(game, language);
+			assertEquals(String.valueOf(language), "en", GameText.getInstance().language());
+			assertEquals(Optional.of("Kestorik")
+				, GameText.getInstance().lookup(StringTableType.Characters, 1171));
+		}
+	}
+
+	@Test
+	public void aQuestIsReadInTheLanguageAskedFor () throws IOException {
+		final File game = install();
+		final String quest = CHARACTERS.replace("<ID>329</ID>", "<ID>0</ID>")
+			.replace("Crucible Knight", "Memories of the Ancients")
+			.replace("<ID>1171</ID>", "<ID>4</ID>")
+			.replace("Kestorik", "Enter Sun in Shadow.");
+		FileUtils.write(new File(game, "PillarsOfEternity_Data/data/localized/en/text/quests/"
+			+ "critical_path/act_4/cp_qst_confront_lka.stringtable"), quest, "UTF-8");
+		// The title is translated; the objective is missing from the Polish table.
+		polish(game, "game/characters", CHARACTERS);
+		polish(game, "quests/critical_path/act_4/cp_qst_confront_lka", quest
+			.replace("Memories of the Ancients", "Wspomnienia Starożytnych")
+			.replace("<ID>4</ID>", "<ID>40</ID>"));
+
+		GameText.useTextAt(game, "pl");
+		final Map<Integer, String> entries =
+			GameText.getInstance().quest("data/quests/critical_path/act_4/cp_qst_confront_lka.quest");
+
+		assertEquals("Wspomnienia Starożytnych", entries.get(0));
+		assertEquals("Enter Sun in Shadow.", entries.get(4));
+	}
 }

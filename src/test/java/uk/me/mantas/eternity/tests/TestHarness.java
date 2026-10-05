@@ -31,6 +31,7 @@ import uk.me.mantas.eternity.factory.SharpSerializerFactory;
 import uk.me.mantas.eternity.save.AbilityCatalog;
 import uk.me.mantas.eternity.save.ItemCatalog;
 import uk.me.mantas.eternity.save.GameText;
+import uk.me.mantas.eternity.environment.GameLanguage;
 import uk.me.mantas.eternity.environment.GameLocator;
 import uk.me.mantas.eternity.save.IdentityCatalog;
 import uk.me.mantas.eternity.save.PortraitCatalog;
@@ -100,6 +101,7 @@ public abstract class TestHarness {
 		PortraitCatalog.useNoCatalog();
 		GameText.useNoText();
 		GameLocator.useNoGame();
+		GameLanguage.useNoSetting();
 	}
 
 	@After

@@ -210,8 +210,8 @@ public class StrongholdCatalog {
 				final Upgrade upgrade = new Upgrade(
 					key
 					, entry.optInt("ordinal", -1)
-					, entry.optString("name", key)
-					, entry.optString("description", "")
+					, GameText.said(entry, "name", key)
+					, GameText.said(entry, "description", "")
 					, entry.optInt("cost", 0)
 					, entry.optInt("days", 0)
 					, entry.optInt("prestige", 0)

@@ -334,7 +334,7 @@ public class IdentityCatalog {
 			}
 
 			into.put(key, new Devotion(
-				entry.optString("name", key)
+				GameText.said(entry, "name", key)
 				, strings(entry.optJSONArray("positive"))
 				, strings(entry.optJSONArray("negative"))));
 		}

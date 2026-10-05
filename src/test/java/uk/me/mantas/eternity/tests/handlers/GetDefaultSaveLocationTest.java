@@ -161,6 +161,40 @@ public class GetDefaultSaveLocationTest extends TestHarness {
 			, Settings.getInstance().json.getString("gameLocation"));
 	}
 
+	// The game's own names are read once and kept, out of the install that
+	// settings name. Whatever asked before the install was found was told
+	// there is none; finding it has to start that again.
+	@Test
+	public void theGamesTextIsReadOnceTheGameIsFound () throws IOException {
+		final Environment environment = Environment.getInstance();
+		final Optional<File> drive = EKUtils.createTempDir(PREFIX);
+		assertTrue(drive.isPresent());
+
+		final File installation = new File(drive.get(), "Pillars of Eternity");
+		org.apache.commons.io.FileUtils.write(new File(installation
+			, "PillarsOfEternity_Data/data/localized/en/text/game/characters.stringtable")
+			, "<StringTableFile><Entries><Entry><ID>329</ID><DefaultText>Crucible Knight"
+				+ "</DefaultText></Entry></Entries></StringTableFile>", "UTF-8");
+
+		environment.variables().set(USERPROFILE, "404");
+		environment.variables().set(SYSTEMDRIVE, null);
+		environment.variables().set(XDG_DATA_HOME, null);
+		environment.variables().set(HOME, null);
+
+		uk.me.mantas.eternity.save.GameText.reset();
+		assertEquals(Optional.empty(), uk.me.mantas.eternity.save.GameText.getInstance().lookup(
+			uk.me.mantas.eternity.game.DatabaseString.StringTableType.Characters, 329));
+
+		GameLocator.use(locatorFinding(drive.get()));
+		new GetDefaultSaveLocation().onQuery(
+			mock(CefBrowser.class), 0, "", false, mock(CefQueryCallback.class));
+
+		assertEquals(Optional.of("Crucible Knight")
+			, uk.me.mantas.eternity.save.GameText.getInstance().lookup(
+				uk.me.mantas.eternity.game.DatabaseString.StringTableType.Characters, 329));
+		uk.me.mantas.eternity.save.GameText.useNoText();
+	}
+
 	@Test
 	public void aStoreThatCannotBeUsedIsExplainedRatherThanIgnored () {
 		// The Microsoft Store copy is detectable but unreadable, so the answer

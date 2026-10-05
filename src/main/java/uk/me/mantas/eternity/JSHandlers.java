@@ -87,6 +87,7 @@ public class JSHandlers {
 		// Read-only lookups into the game's own data.
 		handlers.put("getGameStructures", new GetGameStructures());
 		handlers.put("getIdentityEffects", new GetIdentityEffects());
+		handlers.put("getLanguages", new GetLanguages());
 		handlers.put("browseItems", new BrowseItems());
 		handlers.put("browseAbilities", new BrowseAbilities());
 		handlers.put("browsePortraits", new BrowsePortraits());

@@ -6126,6 +6126,25 @@ body.theme-light .gd-bar {
 	flex: 0 0 auto;
 }
 
+/* The language of the game's names. Modals keep the dark chrome in both
+   themes, so nothing here has a light-mode override. */
+.settings-language {
+	display: none;
+	margin-top: 16px;
+}
+
+.settings-language select {
+	width: auto;
+	min-width: 260px;
+}
+
+.settings-language-note {
+	margin: 8px 0 0 0;
+	font-size: 12px;
+	line-height: 1.5;
+	color: #a2937a;
+}
+
 .settings-files {
 	margin: 14px 0 0 0;
 	font-size: 11px;

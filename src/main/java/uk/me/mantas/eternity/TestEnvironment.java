@@ -140,20 +140,37 @@ public class TestEnvironment {
 			System.exit(1);
 		}
 
-		// The game's own words: hireling and prisoner names are only ids into
-		// these tables (save/GameText), so without them the stronghold tab
-		// falls back to naming people after their globals.
-		final Path text = Paths.get(
-			"PillarsOfEternity_Data", "data", "localized", "en", "text", "game");
+		// The game's own words, in every language it ships: hireling and
+		// prisoner names are only ids into these tables (save/GameText), quests
+		// are named out of them, and the catalogs' names are shown in the
+		// language of the game through them. Not the conversations, which are
+		// three quarters of the text and which nothing reads.
+		final Path localized = Paths.get("PillarsOfEternity_Data", "data", "localized");
 
 		try {
 			System.out.printf("Copying portraits...%n");
 			FileUtils.copyDirectory(portraitsLocation, portraitsWorkspace);
 
 			System.out.printf("Copying the game's text...%n");
-			FileUtils.copyDirectory(
-				gameLocation.toPath().resolve(text).toFile()
-				, gameWorkspace.toPath().resolve(text).toFile());
+			final File[] languages = gameLocation.toPath().resolve(localized).toFile()
+				.listFiles(File::isDirectory);
+
+			for (final File language : languages == null ? new File[0] : languages) {
+				final File copy =
+					gameWorkspace.toPath().resolve(localized).resolve(language.getName()).toFile();
+
+				final File description = new File(language, "language.xml");
+				if (description.isFile()) {
+					FileUtils.copyFileToDirectory(description, copy);
+				}
+
+				for (final String part : new String[]{"game", "quests"}) {
+					final File tables = new File(new File(language, "text"), part);
+					if (tables.isDirectory()) {
+						FileUtils.copyDirectory(tables, new File(new File(copy, "text"), part));
+					}
+				}
+			}
 		} catch (final IOException e) {
 			System.err.printf("Failed: %s%n", e.getMessage());
 			System.exit(1);

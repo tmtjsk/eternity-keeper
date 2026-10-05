@@ -116,6 +116,29 @@ def resolve(dbstring):
     return table(dbstring.get("StringTable", 0)).get(sid)
 
 
+def source(dbstring):
+    """Where a text resolve() found came from, as [table, id].
+
+    The catalogs keep every name in English. The editor shows it in the
+    language the game is played in by looking the same entry up in that
+    language's copy of the table, on the player's own install.
+    """
+    if not isinstance(dbstring, dict):
+        return None
+    sid = dbstring.get("StringID", -1)
+    index = dbstring.get("StringTable", 0)
+    if sid is None or sid < 0 or sid not in table(index):
+        return None
+    return [index, sid]
+
+
+def with_source(entry, field, dbstring):
+    """Note beside entry[field] where its text came from."""
+    found = source(dbstring)
+    if found:
+        entry[field + "Id"] = found
+
+
 def save_icon(by_id, pointer, icons_seen):
     """Export a PPtr<Texture2D> as a PNG and return its file name."""
     path_id = (pointer or {}).get("m_PathID", 0)
@@ -196,9 +219,11 @@ def ability_entry(bundle, wanted, own, by_id, gameobject_names, script_names,
             "icon": save_icon(by_id, talent.get("Icon"), icons_seen),
             "path": path,
         }
+        with_source(entry, "name", talent.get("DisplayName"))
         description = resolve(talent.get("Description"))
         if description:
             entry["desc"] = description
+            with_source(entry, "desc", talent.get("Description"))
         category = talent.get("Category")
         if isinstance(category, int) and 0 < category < len(TALENT_CATEGORIES):
             entry["category"] = TALENT_CATEGORIES[category]
@@ -260,9 +285,11 @@ def ability_entry(bundle, wanted, own, by_id, gameobject_names, script_names,
         # otherwise keeps the prefab's own value.
         "effect": 3 if is_spell else (ability.get("EffectType") or 5),
     }
+    with_source(entry, "name", ability.get("DisplayName"))
     description = resolve(ability.get("Description"))
     if description:
         entry["desc"] = description
+        with_source(entry, "desc", ability.get("Description"))
     level = ability.get("AcquisitionLevel")
     if isinstance(level, int) and level:
         entry["level"] = level
@@ -598,6 +625,7 @@ def main():
                 break
 
         entry = {"name": name, "icon": icon_file}
+        with_source(entry, "name", tree.get("DisplayName"))
         stack = tree.get("MaxStackSize")
         if isinstance(stack, int) and stack > 1:
             entry["maxStack"] = stack

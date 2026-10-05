@@ -93,6 +93,24 @@ def resolve(dbstring, fallback):
     return table(dbstring.get("StringTable", 0)).get(sid, fallback)
 
 
+# The number the game gives each table (DatabaseString.StringTableType); a
+# deity's name arrives with table 0 and is read from characters all the same.
+NUMBER = {"characters": 4, "gui": 1, "factions": 14}
+
+
+def source(dbstring):
+    """Where a text resolve() found came from, as [table, id] (see items.py)."""
+    if not isinstance(dbstring, dict):
+        return None
+
+    sid = dbstring.get("StringID", -1)
+    index = dbstring.get("StringTable", 0)
+    if sid is None or sid < 0 or sid not in table(index):
+        return None
+
+    return [NUMBER[TABLES[index]], sid]
+
+
 def find_religion(env, generator):
     """The Religion behaviour, matched on the class its m_Script points at."""
     scripts = set()
@@ -136,6 +154,7 @@ def entries(rows, names, key, spaced):
         constant = names[index]
         result[constant] = {
             "name": resolve(row.get("DisplayName"), spaced(constant)),
+            "nameId": source(row.get("DisplayName")),
             "positive": axes(row.get("PositiveTrait")),
             "negative": axes(row.get("NegativeTrait")),
         }

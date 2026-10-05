@@ -849,7 +849,8 @@ review table in §2). The rest of the table was measured on the zip.
 
 Not requested, offered for the record.
 
-- **Names in the game's language.** The game ships eight languages
+- ~~**Names in the game's language.**~~ Done (2026-10-05), as described
+  below; `docs/features.md` has what was learned. The game ships eight languages
   (`data/localized/<code>`, each with a `language.xml` naming it) and the
   editor shows every item, ability, upgrade and hireling in English, whatever
   the player's game says: the three extractors and `save/GameText` read
@@ -955,6 +956,6 @@ Features first, per the project owner's direction; compatibility afterwards.
 10b. ~~The dependencies in 4.7~~ done; the installer of 4.6 compiled, run and
      fixed. What 4.7 still lists needs a decision (signing) or a report
      from someone it affects (a folder outside the code page)
-10c. Names in the game's language (§5) ← next
-10d. Mac support (4.2)
+10c. ~~Names in the game's language (§5)~~ done
+10d. Mac support (4.2) ← next, if someone with a Mac can test it
 11. ~~Delete the auto-updater and bootstrapper~~ done, in the audit (§2)

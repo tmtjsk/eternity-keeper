@@ -65,6 +65,17 @@
 						<div class="gd-progress" id="settingsGameDataProgress"
 						     data-bound="GameData"><div class="gd-bar"></div></div>
 					</div>
+					<!-- The language the game's own names are shown in: items,
+					     abilities, upgrades, hirelings, quests. Settings.js fills
+					     this from the languages the install has text for, and hides
+					     it when there is only the one. -->
+					<div class="settings-language" id="settingsLanguage" data-bound="Settings">
+						<label for="gameLanguage">Names of items and abilities</label>
+						<select id="gameLanguage" class="form-control input-sm"
+						        data-bound="Settings"></select>
+						<p class="settings-language-note" id="gameLanguageNote"
+						   data-bound="Settings"></p>
+					</div>
 					<p class="settings-files" id="settingsFiles" data-bound="GameData"></p>
 				</div>
 				<div class="modal-footer">
