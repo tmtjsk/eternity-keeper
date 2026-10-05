@@ -455,6 +455,20 @@ day the `Package` workflow built and tested the installer on GitHub's runner.
   `#$00F1` is byte F1 in the system code page (`ń` here), not `ñ`, and a
   probe that built its test paths that way reported a pass that was not one.
   Real Unicode went in through `{param:...}`.
+- **An editor left open is an install refused.** `gamedata_ui.py`, run
+  against a release, started the release's editor and left it running; the
+  launcher's mutex outlives the launcher (the Java process inherits it), so
+  the next run of setup stopped with "Eternity Keeper is currently running".
+  The suite closes its editor now. `config.stop_editors()` before any installer
+  test.
+- **One failure nobody could explain.** Once in eight launches the installed
+  editor started (its log shows the page asking for the game folder) and the
+  test never saw its page on the DevTools port in two minutes. The next five
+  runs passed. An editor that cannot bind its port starts without DevTools,
+  and somebody at the machine closing the window that popped up would look the
+  same, so the test now asks Windows for a free port instead of using a fixed
+  one, and reports what was still running, what the port answered and the end
+  of both logs if it happens again.
 - PowerShell: `Start-Process -PassThru` with `WaitForExit(ms)` gives an empty
   `ExitCode` unless the handle was read first (`$null = $run.Handle`), and
   `$home` cannot be assigned (it is `$HOME`).
