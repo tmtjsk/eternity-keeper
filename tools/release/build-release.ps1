@@ -198,7 +198,13 @@ Publish $zip
 $compiler = Find-Iscc $Iscc
 if ($compiler) {
 	Step "Building the installer with $compiler"
-	& $compiler /Qp "/DAppVersion=$version" "/DStage=$stage" "/DOutput=$release" (Join-Path $PSScriptRoot 'installer.iss')
+	$definitions = @("/DAppVersion=$version", "/DStage=$stage", "/DOutput=$release")
+	# The links under "Installed apps" name the repository this release is
+	# built from: the one a GitHub workflow runs in, else the checkout's origin.
+	$projectUrl = if ($env:GITHUB_REPOSITORY) { "https://github.com/$env:GITHUB_REPOSITORY" }
+		else { (& git -C $repo remote get-url origin 2>$null) -replace '\.git$', '' }
+	if ($projectUrl -match '^https://[\w.-]+/[\w./-]+$') { $definitions += "/DAppUrl=$projectUrl" }
+	& $compiler /Qp @definitions (Join-Path $PSScriptRoot 'installer.iss')
 	if ($LASTEXITCODE -ne 0) { Fail 'Inno Setup could not build the installer.' }
 	Publish (Join-Path $release "EternityKeeper-$version-win64-setup.exe")
 } elseif ($RequireInstaller) {

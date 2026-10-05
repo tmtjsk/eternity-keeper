@@ -188,4 +188,9 @@ if FULL:
     check("every item icon was written", data and data.get("icons") == 1387, data)
     check("and every stronghold icon", data and data.get("strongholdIcons") == 25, data)
 
-sys.exit(summary(page))
+result = summary(page)
+# Nothing restarts this editor, so it would stay open, and an open editor
+# keeps the launcher's mutex: the next setup then stops and asks for it to be
+# closed (it did, in the middle of the installer's own test).
+config.stop_editors()
+sys.exit(result)

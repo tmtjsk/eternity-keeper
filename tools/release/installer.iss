@@ -24,6 +24,14 @@
 #define AppName "Eternity Keeper"
 #define AppExe "Eternity Keeper.exe"
 
+; Where the project lives: the publisher and support links under "Installed
+; apps". build-release.ps1 passes the repository the release is built from
+; (the one a GitHub workflow runs in, or the checkout's "origin"), so that a
+; release names the place that made it.
+#ifndef AppUrl
+  #define AppUrl "https://github.com/tmtjsk/eternity-keeper"
+#endif
+
 ; Inno Setup 6.3 named the architecture that also covers x64 emulation on Arm;
 ; before it there is only "x64".
 #if Ver >= EncodeVer(6, 3, 0)
@@ -39,8 +47,8 @@ AppName={#AppName}
 AppVersion={#AppVersion}
 AppVerName={#AppName} {#AppVersion}
 AppPublisher=Eternity Keeper contributors
-AppPublisherURL=https://github.com/tmtjsk/eternity-keeper
-AppSupportURL=https://github.com/tmtjsk/eternity-keeper/issues
+AppPublisherURL={#AppUrl}
+AppSupportURL={#AppUrl}/issues
 AppCopyright=GNU General Public License v3 or later
 VersionInfoVersion=1.0.0.0
 VersionInfoDescription={#AppName} setup
@@ -89,6 +97,12 @@ Type: filesandordirs; Name: "{app}\lib"; Check: IsEarlierInstall
 Type: filesandordirs; Name: "{app}\jre"; Check: IsEarlierInstall
 Type: filesandordirs; Name: "{app}\gamedata"; Check: IsEarlierInstall
 
+[UninstallDelete]
+; The launcher's options file, which a user may have put beside it (extra JVM
+; options, one to a line). An upgrade keeps it; with the launcher gone it is
+; the one thing that would keep the folder from being removed.
+Type: files; Name: "{app}\{#AppName}.l4j.ini"
+
 [Files]
 Source: "{#Stage}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
@@ -126,15 +140,38 @@ begin
     Result := ExpandConstant('{sd}\{#AppName}');
 end;
 
+function OutsideCodePage: String;
+begin
+  Result := 'Eternity Keeper cannot start from this folder. Its path has letters outside this computer''s language for non-Unicode programs, and the Java runtime the editor ships with cannot read them.'
+    + #13#10#13#10 + 'Choose a folder with plain letters in its path, for example '
+    + ExpandConstant('{sd}\{#AppName}') + '.';
+end;
+
+// Said on the page the folder is chosen on. Not with MsgBox: a silent install
+// (/VERYSILENT /SUPPRESSMSGBOXES) passes through here too, MsgBox ignores
+// /SUPPRESSMSGBOXES, and a script that runs setup would wait for ever at a
+// box nobody is there to close.
 function NextButtonClick(CurPageID: Integer): Boolean;
 begin
   Result := True;
   if (CurPageID = wpSelectDir) and (not InCodePage(WizardDirValue)) then
   begin
-    MsgBox('Eternity Keeper cannot start from this folder. Its path has letters outside this computer''s language for non-Unicode programs, and the Java runtime the editor ships with cannot read them.'
-      + #13#10#13#10 + 'Choose a folder with plain letters in its path, for example '
-      + ExpandConstant('{sd}\{#AppName}') + '.', mbError, MB_OK);
+    Log('Refused: the code page cannot spell ' + WizardDirValue);
+    SuppressibleMsgBox(OutsideCodePage, mbError, MB_OK, IDOK);
     Result := False;
+  end;
+end;
+
+// And once more where every install passes, just before anything is copied:
+// an upgrade never shows the folder page, so a folder given on the command
+// line (/DIR=) would otherwise get past the check above.
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+begin
+  Result := '';
+  if not InCodePage(ExpandConstant('{app}')) then
+  begin
+    Log('Refused: the code page cannot spell ' + ExpandConstant('{app}'));
+    Result := OutsideCodePage;
   end;
 end;
 
@@ -149,9 +186,9 @@ begin
   begin
     Data := ExpandConstant('{userappdata}\{#AppName}');
     if DirExists(Data) then
-      MsgBox('Your settings and the backups of your saves were left where they are:'
+      SuppressibleMsgBox('Your settings and the backups of your saves were left where they are:'
         + #13#10#13#10 + Data + #13#10#13#10
         + 'Delete that folder yourself if you no longer want them.'
-        , mbInformation, MB_OK);
+        , mbInformation, MB_OK, IDOK);
   end;
 end;

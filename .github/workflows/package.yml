@@ -23,6 +23,10 @@ permissions:
 jobs:
   package:
     runs-on: windows-latest
+    # The whole job takes about five minutes. Without a limit of its own, a
+    # step waiting for an answer nobody is there to give holds the machine for
+    # six hours.
+    timeout-minutes: 45
     permissions:
       contents: write
     steps:
@@ -62,9 +66,11 @@ jobs:
         if: failure()
         run: python .github/scripts/test_failures.py
 
-      - name: Install it, start it, uninstall it
+      # -DefaultFolder: also where setup puts the editor when nobody says, which
+      # is what nearly every user gets. This machine has nothing there to lose.
+      - name: Install it, start it, upgrade it, uninstall it
         shell: pwsh
-        run: ./tools/release/test-installer.ps1 -Setup (Get-Item target/release/*-setup.exe).FullName
+        run: ./tools/release/test-installer.ps1 -Setup (Get-Item target/release/*-setup.exe).FullName -DefaultFolder
 
       - uses: actions/upload-artifact@v4
         with:
