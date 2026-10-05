@@ -4,7 +4,12 @@
 #
 # Runs when the packaging itself changes, when asked for by hand, and for a tag
 # named v*, whose zip and installer are attached to a draft pre-release to be
-# checked and published by hand.
+# checked and published by hand. (GitHub does not apply the paths below to a
+# tag push: a tag always builds.)
+#
+# The game-data reader counts as packaging: the release carries it frozen by
+# PyInstaller, which has to be told about anything it imports, and a frozen
+# reader once wrote every catalog and not one icon.
 name: Package
 
 on:
@@ -13,6 +18,7 @@ on:
     tags: ['v*']
     paths:
       - 'tools/release/**'
+      - 'tools/gamedata/**'
       - '.github/workflows/package.yml'
       - 'pom.xml'
   workflow_dispatch:

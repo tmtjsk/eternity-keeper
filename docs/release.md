@@ -76,8 +76,13 @@ any folder, and the DevTools port off by default. What is worth knowing:
   before that, any test reaching `Settings` created the user's real data folder
   (`TestIsolationTest` pins it).
 - **CI** (`.github/workflows/ci.yml`, GitHub Actions on the fork, windows-latest,
-  Temurin 8): Java tests, the merge tests and a compile of the reader on every
-  push; a `v*` tag also builds the zip into a draft pre-release. **Run logs need
+  Temurin 8): Java tests, the page's node tests and a compile of the reader on
+  every push. **Package** (`.github/workflows/package.yml`) builds the zip and
+  the installer and runs `test-installer.ps1 -DefaultFolder` on the runner, a
+  machine with none of the development setup: when the packaging or the
+  game-data reader changes, when started by hand, and for a `v*` tag, whose zip
+  and installer it attaches to a draft pre-release for someone to publish. A
+  tag push is never path-filtered. **Run logs need
   a GitHub sign-in, annotations do not** — failing tests are turned into
   annotations (`.github/scripts/test_failures.py`), readable with
   `curl https://api.github.com/repos/<owner>/<repo>/check-runs/<job id>/annotations`
