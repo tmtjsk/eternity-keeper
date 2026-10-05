@@ -321,6 +321,9 @@ button#searchForSavedGames {
 .save-info {
 	position: relative;
 	display: inline-block;
+	/* Tiles are as tall as their titles need; on their baselines the short
+	   ones hung below a neighbour whose title took two lines. */
+	vertical-align: top;
 	width: 600px;
 	cursor: pointer;
 	background-color: rgba(0, 0, 0, .25);

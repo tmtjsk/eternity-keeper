@@ -12,9 +12,34 @@ SAVE = "0945952c89c640e4a18cdb293e3946b4 32111932 CaedNua.savegame"
 page = Page()
 boot(page)
 to_list(page)
+E = page.eval
+
+# ---- the save list ------------------------------------------------------------
+# A tile is as tall as its title needs, and one test save's name takes two
+# lines. Its neighbours on the same line used to hang 18px lower: the tiles
+# are inline blocks, which sit on each other's baselines unless told otherwise.
+page.wait_for("$('#saveBlocks .save-info').length > 0 && !Eternity.SaveSearch.state.searching", 120, "the save list")
+time.sleep(1.0)
+lines = json.loads(E("""JSON.stringify((function(){
+  var tiles = $('#saveBlocks .save-info:visible').toArray().map(function(e){
+    var b = e.getBoundingClientRect(); return {t: Math.round(b.top), b: Math.round(b.bottom)}; });
+  tiles.sort(function(x, y){ return x.t - y.t; });
+  var lines = [];
+  tiles.forEach(function(tile){
+    var line = lines[lines.length - 1];
+    if (line && tile.t < line.b - 20) { line.tops.push(tile.t); line.heights.push(tile.b - tile.t); line.b = Math.max(line.b, tile.b); }
+    else lines.push({b: tile.b, tops: [tile.t], heights: [tile.b - tile.t]});
+  });
+  return lines;
+})())"""))
+uneven = [line for line in lines if len(set(line["heights"])) > 1]
+check("the save list has a line of tiles of different heights to measure", len(uneven) > 0,
+      [line["heights"] for line in lines])
+ragged = [line["tops"] for line in lines if max(line["tops"]) - min(line["tops"]) > 1]
+check("save tiles on one line start at one height", not ragged, ragged)
+
 open_save(page, SAVE)
 time.sleep(1.5)
-E = page.eval
 
 RECT = r"""(function(sel){ var el = $(sel).filter(':visible')[0]; if (!el) return null;
   var b = el.getBoundingClientRect();
