@@ -29,18 +29,17 @@ Eternity is a trademark of its respective owners.
 | Component | Version | License |
 |---|---|---|
 | JSON in Java (org.json) | 20250517 | Public domain |
-| Apache Commons IO | 2.4 | Apache 2.0 |
-| zip4j | 2.6.4 | Apache 2.0 |
+| Apache Commons IO | 2.22.0 | Apache 2.0 |
+| zip4j | 2.11.6 | Apache 2.0 |
 | jOOX | 1.3.0 | Apache 2.0 |
 | jOOλ | 0.9.6 | Apache 2.0 |
 | Joda-Time | 2.7 | Apache 2.0 |
-| Guava, failureaccess, listenablefuture | 30.0-jre | Apache 2.0 |
-| Error Prone annotations | 2.3.4 | Apache 2.0 |
-| J2ObjC annotations | 1.3 | Apache 2.0 |
-| JSR-305 annotations | 3.0.2 | BSD 3-Clause |
-| Checker Framework qualifiers | 3.5.0 | MIT |
-| Logback | 1.0.13 | EPL 1.0 or LGPL 2.1 (dual) |
-| SLF4J API | 1.7.5 | MIT |
+| Guava, failureaccess, listenablefuture | 33.7.2-jre | Apache 2.0 |
+| Error Prone annotations | 2.50.0 | Apache 2.0 |
+| J2ObjC annotations | 3.1 | Apache 2.0 |
+| JSpecify annotations | 1.0.1 | Apache 2.0 |
+| Logback | 1.3.16 | EPL 1.0 or LGPL 2.1 (dual) |
+| SLF4J API | 2.0.7 | MIT |
 | Jargo | 0.1.1 | Apache 2.0 |
 
 The save-file reader in `uk.me.mantas.eternity.serializer` is a Java
