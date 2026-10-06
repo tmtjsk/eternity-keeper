@@ -82,7 +82,7 @@ any folder, and the DevTools port off by default. What is worth knowing:
   machine with none of the development setup: when the packaging or the
   game-data reader changes, when started by hand, and for a `v*` tag, whose zip
   and installer it attaches to a draft release for someone to publish. A tag
-  push is never path-filtered. The README's "Making a release" has the steps.
+  push is never path-filtered. CONTRIBUTING.md's "Making a release" has the steps.
 - **The release's page is written by `tools/release/release-notes.ps1`**: the
   download and install text in `tools/release/release-notes.md` (`{version}`
   stands for the version), then the version's section of `CHANGELOG.md`. It

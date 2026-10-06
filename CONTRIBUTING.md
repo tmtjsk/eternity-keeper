@@ -17,6 +17,108 @@ Java does not trust its certificate. Set
 `MAVEN_OPTS=-Djavax.net.ssl.trustStoreType=WINDOWS-ROOT` to use the Windows
 certificate store.
 
+## Running from a checkout
+
+`run.bat` starts `target/eternity-keeper.jar` with a JDK 8 (it prefers
+`..\tools\jdk8u492-b09` beside the checkout, else `java` on `PATH`) and keeps
+settings and the log in the checkout rather than in `%APPDATA%`. Useful
+system properties:
+
+| Property | Effect |
+|---|---|
+| `-Dek.data=<folder>` | Where settings, the log and game data live |
+| `-Dek.ui=<folder>` | Load the UI from this folder |
+| `-Dek.debugPort=13002` | Open the embedded browser's DevTools port (the UI tests use it) |
+| `-Dek.extractor=<program>` | The game-data reader to run (`.py` runs under Python) |
+
+The UI is loaded from `src/ui` on disk, so a change to the page needs a
+restart of the editor, not a rebuild.
+
+## Game data
+
+`tools/gamedata/extract_gamedata.py` reads the item and ability catalogs,
+progression tables, stronghold upgrades and deities out of a game install with
+[UnityPy](https://github.com/K0lb3/UnityPy). The editor runs it itself (from a
+checkout, under `python`), but it also works by hand:
+
+```bash
+pip install -r tools/gamedata/requirements.txt
+python tools/gamedata/extract_gamedata.py --game "<install folder>" --out "<folder>"
+```
+
+See [tools/gamedata/README.md](tools/gamedata/README.md) for what it reads and why.
+
+## Tests
+
+```bash
+mvn test -Pwin64
+node src/test/js/SaveMergeTest.js
+node src/test/js/SaveFindTest.js
+node src/test/js/SaveCompareTest.js
+node src/test/js/SaveHistoryTest.js
+```
+
+The scripted UI suites, which drive a running editor over the DevTools
+protocol, are in [tools/ui-tests](tools/ui-tests/README.md).
+
+## Making a release
+
+```powershell
+pwsh tools/release/build-release.ps1
+```
+
+builds the jar and `Eternity Keeper.exe`, freezes the game-data reader with
+PyInstaller, and zips them with a Java 8 runtime into
+`target/release/EternityKeeper-<version>-win64.zip`. Where
+[Inno Setup 6](https://jrsoftware.org/isinfo.php) is installed
+(`winget install --id JRSoftware.InnoSetup -e`) it also builds the installer,
+`EternityKeeper-<version>-win64-setup.exe`, out of the same folder
+([tools/release/installer.iss](tools/release/installer.iss)).
+
+```powershell
+pwsh tools/release/test-installer.ps1 -Setup target/release/EternityKeeper-<version>-win64-setup.exe
+```
+
+installs it for the current user into a folder of its own, checks every part is
+in place, starts the installed editor and waits for it to draw its page,
+upgrades it, then uninstalls it and checks nothing is left but the data folder.
+
+The `Package` workflow does both on GitHub's Windows runner, a machine with
+none of the development setup on it: whenever the packaging or the game-data
+reader changes, when run by hand, and for a tag named `v*`. To release:
+
+1. Set the version in `pom.xml`, and give its section of `CHANGELOG.md` the
+   release date (`## 1.0.0-beta (2026-10-06)`); push, and wait for `CI` and
+   `Package` to pass.
+2. Tag that commit with `v` and the version, and push the tag:
+   `git tag -a v1.0.0-beta -m "Eternity Keeper 1.0.0-beta"`, then
+   `git push origin refs/tags/v1.0.0-beta`.
+3. A few minutes later the tag's `Package` run has built and tested the
+   release again and left a draft on the Releases page, holding the zip, the
+   installer and their checksums, with a page written by
+   [tools/release/release-notes.ps1](tools/release/release-notes.ps1) out of
+   `tools/release/release-notes.md` and the version's section of the
+   changelog. Read it over and choose **Publish release**. A version with a
+   hyphen in it is published as a pre-release.
+
+## How the saves work
+
+A `.savegame` is a heavily compressed zip: `MobileObjects.save` (the world
+state), one `.lvl` file per visited area, `saveinfo.xml` and a screenshot. The
+world state is serialized with the .NET library
+[SharpSerializer](https://github.com/polenter/SharpSerializer), which
+`uk.me.mantas.eternity.serializer` reimplements in Java; `TypeMap.java` maps
+every C# type a save can hold. The game's saves are compressed harder than
+default zip settings, so the files the editor writes are somewhat larger than
+the game's own.
+
+Every item ever sold to a vendor stays in the save, inside the `.lvl` files,
+which is one reason saves grow as a game goes on.
+
+[docs/](docs/README.md) has the notes kept while this was built: where each
+thing lives in a save, what the game does with it when the save loads, the
+rules an edit has to keep, and how each feature was checked in the game.
+
 ## How the code is laid out
 
 | Where | What |
