@@ -41,6 +41,33 @@ function Problem ($text) {
 	Write-Host "WARNING: $text" -ForegroundColor Yellow
 }
 
+# GitHub shows a release's page with every line break kept, unlike a file in
+# the repository, so the changelog's wrapped paragraphs broke mid-sentence
+# (132 times on 1.0.0-beta's page). Each paragraph and list item becomes one
+# line; headings, list items, tables, quotes and code blocks keep their own.
+function Unwrap ([string[]]$text) {
+	$out = New-Object System.Collections.Generic.List[string]
+	$fenced = $false
+	foreach ($line in $text) {
+		if ($line -match '^\s*```') {
+			$fenced = -not $fenced
+			$out.Add($line)
+			continue
+		}
+
+		$previous = if ($out.Count) { $out[$out.Count - 1] } else { '' }
+		$starts = $fenced -or $line -match '^\s*$' -or $line -match '^\s*(#|[-*+] |\d+\. |\||>)' `
+			-or $previous -match '^\s*$' -or $previous -match '^\s*(#|\||```)'
+		if ($starts) {
+			$out.Add($line)
+		} else {
+			$out[$out.Count - 1] = $previous.TrimEnd() + ' ' + $line.Trim()
+		}
+	}
+
+	return , $out.ToArray()
+}
+
 $version = ([xml](Get-Content (Join-Path $repo 'pom.xml') -Raw)).project.version
 if ($tag -and $env:GITHUB_REF_NAME -ne "v$version") {
 	Problem "The tag $env:GITHUB_REF_NAME does not name the version in pom.xml ($version), so its release would carry files called EternityKeeper-$version-win64 under another name."
@@ -62,7 +89,7 @@ if ($start -lt 0) {
 		if ($lines[$i] -match '^## ') { $end = $i; break }
 	}
 
-	$changes = ($lines[$start..($end - 1)] -join "`n").TrimEnd()
+	$changes = ((Unwrap $lines[$start..($end - 1)]) -join "`n").TrimEnd()
 	if ($lines[$start] -match '\(unreleased\)') {
 		Problem "CHANGELOG.md still calls $version unreleased: put the release date in its heading."
 	}
