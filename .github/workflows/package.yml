@@ -3,9 +3,13 @@
 # starts the editor from it and uninstalls it again.
 #
 # Runs when the packaging itself changes, when asked for by hand, and for a tag
-# named v*, whose zip and installer are attached to a draft pre-release to be
-# checked and published by hand. (GitHub does not apply the paths below to a
-# tag push: a tag always builds.)
+# named v* -- which has to be "v" and the version in pom.xml. Once a tag's
+# build and installer test have passed here, its zip and installer are
+# attached to a draft release, with its page written by
+# tools/release/release-notes.ps1 (a pre-release for a version with a hyphen,
+# like 1.0.0-beta), to be checked and published by hand from the Releases
+# page. GitHub does not apply the paths below to a tag push: a tag always
+# builds.
 #
 # The game-data reader counts as packaging: the release carries it frozen by
 # PyInstaller, which has to be told about anything it imports, and a frozen
@@ -78,6 +82,16 @@ jobs:
         shell: pwsh
         run: ./tools/release/test-installer.ps1 -Setup (Get-Item target/release/*-setup.exe).FullName -DefaultFolder
 
+      # The release's page: how to install it, then the version's section of
+      # CHANGELOG.md. Written on every run, so that a page that cannot be
+      # written shows before a tag does. For a tag it also checks that the tag
+      # names pom.xml's version, and hands over the release's name. After the
+      # build: mvn clean empties target.
+      - name: Release notes
+        id: notes
+        shell: pwsh
+        run: ./tools/release/release-notes.ps1 -Out target/release-notes.md
+
       - uses: actions/upload-artifact@v4
         with:
           name: eternity-keeper-windows
@@ -88,11 +102,16 @@ jobs:
             target/release/*-setup.exe
             target/release/*.sha256
 
+      # A draft, which only people with write access to the repository can see
+      # until one of them publishes it.
       - uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/v')
         with:
           draft: true
-          prerelease: true
+          name: ${{ steps.notes.outputs.name }}
+          body_path: target/release-notes.md
+          prerelease: ${{ steps.notes.outputs.prerelease }}
+          fail_on_unmatched_files: true
           files: |
             target/release/*.zip
             target/release/*-setup.exe

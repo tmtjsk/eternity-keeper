@@ -81,8 +81,24 @@ any folder, and the DevTools port off by default. What is worth knowing:
   the installer and runs `test-installer.ps1 -DefaultFolder` on the runner, a
   machine with none of the development setup: when the packaging or the
   game-data reader changes, when started by hand, and for a `v*` tag, whose zip
-  and installer it attaches to a draft pre-release for someone to publish. A
-  tag push is never path-filtered. **Run logs need
+  and installer it attaches to a draft release for someone to publish. A tag
+  push is never path-filtered. The README's "Making a release" has the steps.
+- **The release's page is written by `tools/release/release-notes.ps1`**: the
+  download and install text in `tools/release/release-notes.md` (`{version}`
+  stands for the version), then the version's section of `CHANGELOG.md`. It
+  runs on every `Package` run, so a page that cannot be written shows before
+  a tag does. For a tag it is strict: the tag has to be `v` and `pom.xml`'s
+  version (otherwise the release would carry files named for another
+  version), and the changelog section has to exist and be dated. It names the
+  release "Eternity Keeper <version>" and marks a version with a hyphen as a
+  pre-release.
+- **The workflow drafts; a person publishes.** Publishing is a public act
+  that Claude Code's permission check refuses to take on someone's behalf
+  (2026-10-06: it refused both pushing the tag and a workflow that would
+  publish by itself, though the owner had asked for the release to be
+  published), and the browser pane had no GitHub sign-in to press Publish
+  with. So the owner pushes the tag and presses **Publish release**; a session
+  prepares everything up to that. **Run logs need
   a GitHub sign-in, annotations do not** — failing tests are turned into
   annotations (`.github/scripts/test_failures.py`), readable with
   `curl https://api.github.com/repos/<owner>/<repo>/check-runs/<job id>/annotations`

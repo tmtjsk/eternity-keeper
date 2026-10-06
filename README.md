@@ -166,13 +166,26 @@ pwsh tools/release/test-installer.ps1 -Setup target/release/EternityKeeper-<vers
 ```
 
 installs it for the current user into a folder of its own, checks every part is
-in place, starts the installed editor and waits for it to draw its page, then
-uninstalls it and checks nothing is left but the data folder.
+in place, starts the installed editor and waits for it to draw its page,
+upgrades it, then uninstalls it and checks nothing is left but the data folder.
 
 The `Package` workflow does both on GitHub's Windows runner, a machine with
-none of the development setup on it: whenever the packaging changes, when run
-by hand, and for a tag named `v*`, whose zip and installer it attaches to a
-draft pre-release.
+none of the development setup on it: whenever the packaging or the game-data
+reader changes, when run by hand, and for a tag named `v*`. To release:
+
+1. Set the version in `pom.xml`, and give its section of `CHANGELOG.md` the
+   release date (`## 1.0.0-beta (2026-10-06)`); push, and wait for `CI` and
+   `Package` to pass.
+2. Tag that commit with `v` and the version, and push the tag:
+   `git tag -a v1.0.0-beta -m "Eternity Keeper 1.0.0-beta"`, then
+   `git push origin refs/tags/v1.0.0-beta`.
+3. A few minutes later the tag's `Package` run has built and tested the
+   release again and left a draft on the Releases page, holding the zip, the
+   installer and their checksums, with a page written by
+   [tools/release/release-notes.ps1](tools/release/release-notes.ps1) out of
+   `tools/release/release-notes.md` and the version's section of the
+   changelog. Read it over and choose **Publish release**. A version with a
+   hyphen in it is published as a pre-release.
 
 ## Contributing
 
