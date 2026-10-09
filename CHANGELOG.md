@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.0.1-beta (unreleased)
+## 1.0.1-beta (2026-10-09)
 
 ### Fixed
 
