@@ -16,6 +16,8 @@
   March and Raedric's fampyr). **Read again** in Settings picks these up on
   an install where the data was read before.
 
+## 1.0.0-beta (2026-10-06)
+
 The first release with an installer and a ready-to-run download. Compared with
 Eternity Keeper 0.21a (aybrkaknc's update of February 2026, which made the
 editor read the current game's saves, the turn-based patch included):
