@@ -122,6 +122,7 @@ $frozen = Join-Path $target 'gamedata'
 & $Python -m PyInstaller --noconfirm --clean --onedir --console --name extract_gamedata `
 	--paths (Join-Path $repo 'tools\gamedata') `
 	--hidden-import items --hidden-import stronghold --hidden-import identity `
+	--hidden-import ingameglobal `
 	--collect-all UnityPy --collect-all TypeTreeGeneratorAPI `
 	--collect-all texture2ddecoder --collect-all etcpak --collect-all astc_encoder `
 	--collect-all archspec `

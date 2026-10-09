@@ -275,8 +275,9 @@ the game.
     `data/localized/en/text/game/<table>.stringtable` (one per
     `DatabaseString.StringTableType`, lower-cased) lazily with StAX, all or
     nothing per table; `TestHarness` pins it with `GameText.useNoText()`. The
-    stronghold catalog cannot supply hireling names — `HirelingPrefab` never
-    resolves inside the `ingameglobal` bundle — but the save's
+    stronghold catalog carries each hireling's prefab name
+    (`NPC_Goldpact_Knight`; `HirelingPrefab` resolves in `resources.assets`,
+    never in the old bundle) but no display name — the save's
     `SerializedNameId` is the prefab's `DisplayName.StringID`. Without an install
     a name falls back to the global ("b_warden_wilds_hireling" → "Warden
     Wilds"). `TestEnvironment` now copies the English text folder (3.3 MB) into

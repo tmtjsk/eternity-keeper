@@ -11,9 +11,10 @@
 # at the moment of building, and nothing recomputes them on load: an editor that
 # adds an upgrade without them leaves a save the game could never have produced.
 #
-# InGameGlobal lives in its own object bundle and its MonoBehaviours are stored
-# by script reference alone, so shaping them needs a typetree generated from
-# Assembly-CSharp.dll (pip install TypeTreeGeneratorAPI).
+# ingameglobal.py finds the prefab (in resources.assets, since the game loads
+# it with Resources.Load) and shapes its behaviours, which are stored by script
+# reference alone, with a typetree generated from Assembly-CSharp.dll (pip
+# install TypeTreeGeneratorAPI).
 #
 # Output lands OUTSIDE the git repo, next to the item catalog, because it is
 # derived from the user's own game install.
@@ -23,11 +24,10 @@ import os
 import re
 import sys
 
-import UnityPy
-from UnityPy.helpers.TypeTreeGenerator import TypeTreeGenerator
+import ingameglobal
 
 # Set by configure(), which extract_gamedata.py calls; never hard-coded.
-ROOT = GAME = BUNDLE = TEXT = OUT = ICONS = None
+ROOT = GAME = TEXT = OUT = ICONS = None
 
 # Why icons could not be written, the first few.
 icon_failures = []
@@ -35,11 +35,9 @@ icon_failures = []
 
 def configure(game_root, out):
     """Read from the install at `game_root` and write into `out`."""
-    global ROOT, GAME, BUNDLE, TEXT, OUT, ICONS
+    global ROOT, GAME, TEXT, OUT, ICONS
     ROOT = game_root
     GAME = os.path.join(ROOT, "PillarsOfEternity_Data")
-    BUNDLE = os.path.join(GAME, "assetbundles", "prefabs", "objectbundle",
-                          "ingameglobal.unity3d")
     TEXT = os.path.join(GAME, "data", "localized", "en", "text", "game")
     OUT = out
     ICONS = os.path.join(OUT, "stronghold-icons")
@@ -141,34 +139,17 @@ def save_icon(by_id, pointer, seen):
         return ""
 
 
-def find_stronghold(env, generator):
-    """The Stronghold behaviour, matched on the class its m_Script points at.
+def find_stronghold(trees):
+    """The Stronghold behaviour among the InGameGlobal prefab's: the one with
+    the Upgrades array.
 
-    An unrelated Faction asset is also named "Stronghold", so matching on the
-    object's own name finds the wrong thing.
+    Told by its fields rather than by the class its m_Script points at: that
+    pointer does not resolve when read out of resources.assets, while the
+    fields behind it do. An unrelated Faction asset elsewhere is also named
+    "Stronghold", which is why only the prefab's own components are looked at.
     """
-    scripts = set()
-    for obj in env.objects:
-        if obj.type.name != "MonoScript":
-            continue
-        try:
-            if obj.read().m_ClassName == "Stronghold":
-                scripts.add(obj.path_id)
-        except Exception:
-            continue
-
-    env.typetree_generator = generator
-
-    for obj in env.objects:
-        if obj.type.name != "MonoBehaviour":
-            continue
-        try:
-            tree = obj.read_typetree()
-        except Exception:
-            continue
-
-        if (tree.get("m_Script") or {}).get("m_PathID") in scripts \
-                and isinstance(tree.get("Upgrades"), list):
+    for tree in trees:
+        if isinstance(tree.get("Upgrades"), list) and "StandardHirelings" in tree:
             return tree
 
     return None
@@ -188,37 +169,21 @@ def hireling_entry(raw, by_id, guest):
     if guest:
         entry["minimumPrestige"] = raw.get("MinimumPrestige", 0)
 
-    # The hireling's display name lives on the CharacterStats prefab it points
-    # at, which the save also records by name.
+    # The hireling's CharacterStats, on a prefab the save also records by name.
     prefab = (raw.get("HirelingPrefab") or {}).get("m_PathID", 0)
-    stats = by_id.get(prefab)
-    if stats is not None:
-        try:
-            entry["prefab"] = stats.read().m_Name or ""
-        except Exception:
-            pass
+    entry["prefab"] = ingameglobal.prefab_name(by_id.get(prefab))
 
     return entry
 
 
 def main():
-    if not os.path.isfile(BUNDLE):
-        sys.exit("no ingameglobal bundle at %s" % BUNDLE)
+    trees, by_id = ingameglobal.load(ROOT)
+    tree = find_stronghold(trees)
+    if tree is None:
+        sys.exit("no Stronghold behaviour with an Upgrades array on the "
+                 "InGameGlobal prefab")
 
     os.makedirs(ICONS, exist_ok=True)
-    env = UnityPy.load(BUNDLE)
-
-    version = next((a.unity_version for a in env.assets
-                    if getattr(a, "unity_version", None)), "5.4.0f3")
-
-    generator = TypeTreeGenerator(version)
-    generator.load_local_game(ROOT)
-
-    tree = find_stronghold(env, generator)
-    if tree is None:
-        sys.exit("no Stronghold behaviour with an Upgrades array in the bundle")
-
-    by_id = {obj.path_id: obj for obj in env.objects}
     seen = set()
     upgrades = {}
 
@@ -271,14 +236,16 @@ def main():
 
         upgrades[key] = entry
 
+    # Keyed by the global the game sets on hiring, as the catalog always was
+    # (the prefab's name only became readable with resources.assets).
     hirelings = {}
     for raw in tree.get("StandardHirelings") or []:
         entry = hireling_entry(raw, by_id, guest=False)
-        hirelings[entry.get("prefab") or entry["hiredGlobal"]] = entry
+        hirelings[entry["hiredGlobal"] or entry["prefab"]] = entry
 
     for raw in tree.get("GuestHirelings") or []:
         entry = hireling_entry(raw, by_id, guest=True)
-        hirelings[entry.get("prefab") or entry["hiredGlobal"]] = entry
+        hirelings[entry["hiredGlobal"] or entry["prefab"]] = entry
 
     catalog = {
         "upgrades": upgrades,

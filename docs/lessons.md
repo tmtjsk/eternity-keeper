@@ -525,3 +525,45 @@ Pillars of Eternity v3.9.5, each followed by a read of Player.log:
   exception during any load. The only exceptions in two sessions, seventeen
   of them, are the game's own on leaving Caed Nua, which the untouched save
   logs as well.
+
+## The game-data reader on a clean install (2026-10-09)
+
+The first bug report after the release, under the Reddit post: "it fails to
+read my game data. My installation does not have ingameglobal unity bundle
+asset." The reader stopped at the stronghold stage, and since its output is
+all or nothing, the items and abilities it had already read went too.
+
+- **`objectbundle/ingameglobal.unity3d` is not the game's.** It is a Unity
+  4.6.1 bundle from the 2015 build. The current game is Unity 2019.4 (since
+  the 2025 rebuild) and loads bundles with no extension, each with a
+  `.mainasset` sidecar naming the prefab inside; Steam's updates left 2,998
+  `*.unity3d` files of the old build beside them on this machine (and an
+  empty `assetbundles/px1.unity3d`), which is the only reason the reader ever
+  found the file. A clean install has none of them. The game loads
+  `InGameGlobal` with `Resources.Load("Prefabs/InGameGlobal")`, out of
+  `resources.assets` (3 occurrences of the name; the GameObject has 39
+  components), and `tools/gamedata/ingameglobal.py` now takes it from there.
+- **The leftover was stale as well.** Against `resources.assets`, the 2015
+  bundle had the Brighthollow Hearth and Courtyard Pool at 1,600 cp (the
+  game, and the community guides: 600) and lacked two hirelings
+  (`b_bleakwalker_hireling`, from The White March Part II, and
+  `b_henchman_fampyr`). The deities and orders were identical. The editor
+  only shows an upgrade's cost (`StrongholdEditor.js`), so the beta showed
+  two wrong labels and wrote nothing wrong.
+- **A file's Unity version says whether the game loads it.**
+  `UnityPy.load(path).assets[0].unity_version` for anything the reader opens
+  should match the game's own `resources.assets`.
+- **`m_Script` read out of `resources.assets` does not resolve** (its
+  `m_FileID` came back as 16777216), while the fields behind it, the icon
+  pointers and the hirelings' `m_GameObject` all read correctly. So the two
+  behaviours are told by their fields (`Upgrades` with `StandardHirelings`;
+  `DeityInfo` with `PaladinOrderInfo`) among the components of the
+  `InGameGlobal` GameObject, where nothing else can be confused with them.
+- **`HirelingPrefab` resolves there** (it never did in the bundle), so the
+  catalog's hireling entries now carry the prefab's name
+  (`NPC_Goldpact_Knight`). The editor reads only `maxHirelings` from that
+  part of the catalog, so the keys stayed the hiring globals.
+- **The reader's output being all or nothing** turned a missing stronghold
+  table into no item names at all. Left as it is for now: the three stages
+  share one install, and a stage that cannot find its input is a reader
+  that is wrong about the install, which is better heard about than hidden.

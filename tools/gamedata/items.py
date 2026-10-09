@@ -445,6 +445,10 @@ def progression_tables():
 
 def main():
     os.makedirs(ICONS, exist_ok=True)
+    # The bundles the game loads have no extension, each with a .mainasset
+    # sidecar naming the prefab inside. The *.unity3d files beside them are the
+    # 2015 build's Unity 4 bundles, left on disk by Steam's updates and absent
+    # from a clean install (see ingameglobal.py).
     names = sorted(
         n for n in os.listdir(BUNDLES)
         if not n.endswith(".unity3d") and not n.endswith(".mainasset"))

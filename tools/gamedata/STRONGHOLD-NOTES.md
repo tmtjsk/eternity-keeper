@@ -24,16 +24,22 @@ or remove one without leaving the save in a state the game could never have
 reached.
 
 **It needs a typetree generated from the assembly.** The `Stronghold`
-MonoBehaviour hangs off the `InGameGlobal` prefab, in its own object bundle, and
-its MonoBehaviours are stored by script reference alone — UnityPy cannot shape
-them without reading `Assembly-CSharp.dll`, which is what `TypeTreeGeneratorAPI`
-is for. (`load_local_game` wants the game's *root* directory, not `Managed`.)
+MonoBehaviour hangs off the `InGameGlobal` prefab, which the game loads with
+`Resources.Load` out of `resources.assets` (`ingameglobal.py` finds it there;
+`objectbundle/ingameglobal.unity3d` is the 2015 build's bundle, left behind by
+Steam's updates, absent from a clean install and stale — see the README). Its
+MonoBehaviours are stored by script reference alone — UnityPy cannot shape them
+without reading `Assembly-CSharp.dll`, which is what `TypeTreeGeneratorAPI` is
+for. (`load_local_game` wants the game's *root* directory, not `Managed`.)
 
 ## Three things worth knowing before editing this
 
 **An unrelated Faction asset is also called "Stronghold".** Matching on an
-object's own `m_Name` finds that instead. The behaviour has to be matched on the
-class its `m_Script` points at.
+object's own `m_Name` finds that instead. The behaviour is taken from the
+components of the `InGameGlobal` GameObject itself, told by its `Upgrades`
+array; its `m_Script` pointer does not resolve when read out of
+`resources.assets`, while the fields behind it, the icon pointers and the
+hirelings' `m_GameObject` all do.
 
 **`StrongholdUpgrade.Type` has 28 values but only 25 are configured.**
 `BeastVault`, `RoadRepairs` and `AdditionalStorage` are cut content with no data

@@ -1,6 +1,20 @@
 # Changelog
 
-## 1.0.0-beta (2026-10-06)
+## 1.0.1-beta (unreleased)
+
+### Fixed
+
+- **Reading game data stopped on a clean install** with "no ingameglobal
+  bundle", and the editor was left without item, ability and stronghold data.
+  The reader took the stronghold upgrades and the deities from
+  `ingameglobal.unity3d`, a file of the 2015 game that Steam's updates leave
+  behind and that a fresh install — GOG, or Steam installed since the 2025
+  rebuild — never has. It now reads them from `resources.assets`, where the
+  current game keeps them. That also corrects two numbers the old file had
+  wrong (the Brighthollow Hearth and the Courtyard Pool cost 600 cp, not
+  1,600) and adds the two hirelings it lacked (the Bleakwalker of The White
+  March and Raedric's fampyr). **Read again** in Settings picks these up on
+  an install where the data was read before.
 
 The first release with an installer and a ready-to-run download. Compared with
 Eternity Keeper 0.21a (aybrkaknc's update of February 2026, which made the

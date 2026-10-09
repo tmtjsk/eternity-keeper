@@ -23,20 +23,17 @@ import os
 import re
 import sys
 
-import UnityPy
-from UnityPy.helpers.TypeTreeGenerator import TypeTreeGenerator
+import ingameglobal
 
 # Set by configure(), which extract_gamedata.py calls; never hard-coded.
-ROOT = GAME = BUNDLE = TEXT = OUT = None
+ROOT = GAME = TEXT = OUT = None
 
 
 def configure(game_root, out):
     """Read from the install at `game_root` and write into `out`."""
-    global ROOT, GAME, BUNDLE, TEXT, OUT
+    global ROOT, GAME, TEXT, OUT
     ROOT = game_root
     GAME = os.path.join(ROOT, "PillarsOfEternity_Data")
-    BUNDLE = os.path.join(GAME, "assetbundles", "prefabs", "objectbundle",
-                          "ingameglobal.unity3d")
     TEXT = os.path.join(GAME, "data", "localized", "en", "text", "game")
     OUT = out
 
@@ -111,29 +108,11 @@ def source(dbstring):
     return [NUMBER[TABLES[index]], sid]
 
 
-def find_religion(env, generator):
-    """The Religion behaviour, matched on the class its m_Script points at."""
-    scripts = set()
-    for obj in env.objects:
-        if obj.type.name != "MonoScript":
-            continue
-        try:
-            if obj.read().m_ClassName == "Religion":
-                scripts.add(obj.path_id)
-        except Exception:
-            continue
-
-    env.typetree_generator = generator
-
-    for obj in env.objects:
-        if obj.type.name != "MonoBehaviour":
-            continue
-        try:
-            tree = obj.read_typetree()
-        except Exception:
-            continue
-
-        if (tree.get("m_Script") or {}).get("m_PathID") in scripts:
+def find_religion(trees):
+    """The Religion behaviour among the InGameGlobal prefab's, told by its
+    fields (see stronghold.find_stronghold for why not by its m_Script)."""
+    for tree in trees:
+        if "DeityInfo" in tree and "PaladinOrderInfo" in tree:
             return tree
 
     return None
@@ -167,19 +146,10 @@ def spaced(constant):
 
 
 def main():
-    if not os.path.isfile(BUNDLE):
-        sys.exit("no ingameglobal bundle at %s" % BUNDLE)
-
-    env = UnityPy.load(BUNDLE)
-    version = next((a.unity_version for a in env.assets
-                    if getattr(a, "unity_version", None)), "5.4.0f3")
-
-    generator = TypeTreeGenerator(version)
-    generator.load_local_game(ROOT)
-
-    tree = find_religion(env, generator)
+    trees, _ = ingameglobal.load(ROOT)
+    tree = find_religion(trees)
     if tree is None:
-        sys.exit("no Religion behaviour in the bundle")
+        sys.exit("no Religion behaviour on the InGameGlobal prefab")
 
     catalog = {
         "deities": entries(tree.get("DeityInfo"), DEITIES, "DeityName", spaced),
